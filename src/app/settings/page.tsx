@@ -118,7 +118,14 @@ export default function SettingsPage() {
 
           {/* Section: Preferensi Aplikasi */}
           <h4 className="settings-section-title animate-fade-slide-up">Preferensi Aplikasi</h4>
-          <section className="glass-card animate-fade-slide-up" style={{ padding: "0 16px" }}>
+          <section
+            className="glass-card animate-fade-slide-up"
+            style={{
+              padding: "0 16px",
+              position: "relative",
+              zIndex: (isLangOpen || isWSOpen) ? 10 : 1
+            }}
+          >
             
             {/* Lang Dropdown */}
             <div className="settings-row" style={{ position: "relative" }}>
@@ -294,7 +301,14 @@ export default function SettingsPage() {
 
           {/* Section: Konfigurasi AI */}
           <h4 className="settings-section-title animate-fade-slide-up">Konektivitas & AI</h4>
-          <section className="glass-card animate-fade-slide-up" style={{ padding: "0 16px" }}>
+          <section
+            className="glass-card animate-fade-slide-up"
+            style={{
+              padding: "0 16px",
+              position: "relative",
+              zIndex: isAIOpen ? 10 : 1
+            }}
+          >
             
             {/* AI Provider Dropdown */}
             <div className="settings-row" style={{ position: "relative" }}>
@@ -372,7 +386,14 @@ export default function SettingsPage() {
 
           {/* Section: Keamanan & Info */}
           <h4 className="settings-section-title animate-fade-slide-up">Keamanan & Informasi</h4>
-          <section className="glass-card animate-fade-slide-up" style={{ padding: "0 16px" }}>
+          <section
+            className="glass-card animate-fade-slide-up"
+            style={{
+              padding: "0 16px",
+              position: "relative",
+              zIndex: 1
+            }}
+          >
             
             {/* Security Toggle */}
             <div className="settings-row">
