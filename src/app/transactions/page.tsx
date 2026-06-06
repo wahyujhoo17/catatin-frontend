@@ -238,7 +238,21 @@ export default function TransactionsPage() {
           </div>
 
           {/* Date Range & Type */}
-          <div style={{ display: "flex", gap: 12, overflowX: "visible", paddingBottom: 4 }}>
+          <div style={{ 
+            display: "flex", 
+            gap: 12, 
+            overflowX: "auto", 
+            paddingBottom: 12,
+            WebkitOverflowScrolling: "touch",
+            scrollbarWidth: "none", /* Firefox */
+            msOverflowStyle: "none", /* IE 10+ */
+          }}
+          className="hide-scrollbar-inline">
+            <style dangerouslySetInnerHTML={{__html: `
+              .hide-scrollbar-inline::-webkit-scrollbar {
+                display: none;
+              }
+            `}} />
             
               <button
                 onClick={() => setIsDatePickerOpen(true)}

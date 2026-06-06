@@ -418,8 +418,21 @@ export default function LoginPage() {
             {/* Google Login */}
             <button
               className="btn-secondary"
-              style={{ width: "100%", padding: "16px 24px", borderRadius: 16 }}
+              style={{
+                width: "100%",
+                padding: "16px 24px",
+                borderRadius: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                opacity: isLoading ? 0.5 : 1,
+              }}
               id="login-google"
+              disabled={isLoading}
+              onClick={() => {
+                // Future Google Login Implementation
+              }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24">
                 <path

@@ -21,6 +21,7 @@ export default function SettingsPage() {
 
   const [activeWS, setActiveWS] = useState("personal");
   const [isWSOpen, setIsWSOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Profile states
   const [profileName, setProfileName] = useState("");
@@ -645,10 +646,14 @@ export default function SettingsPage() {
 
           {/* Log Out Button */}
           <button
-            onClick={() => {
+            onClick={async () => {
+              setIsLoggingOut(true);
+              // Tambahkan sedikit delay agar animasi loading terlihat
+              await new Promise(resolve => setTimeout(resolve, 800));
               logout();
               router.push("/login");
             }}
+            disabled={isLoggingOut}
             className="btn-primary"
             style={{
               background: "var(--error)",
@@ -658,9 +663,22 @@ export default function SettingsPage() {
               fontSize: 16,
               padding: 14,
               borderRadius: 16,
+              opacity: isLoggingOut ? 0.7 : 1,
             }}
           >
-            Keluar dari Akun
+            {isLoggingOut ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ animation: "spin 1s linear infinite" }}
+                >
+                  progress_activity
+                </span>
+                Keluar...
+              </div>
+            ) : (
+              "Keluar dari Akun"
+            )}
           </button>
         </div>
       </main>

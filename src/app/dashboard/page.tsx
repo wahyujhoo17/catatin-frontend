@@ -114,6 +114,15 @@ export default function DashboardPersonalPage() {
 
   useEffect(() => {
     if (!isLoading && user) fetchDashboard();
+
+    const handleTransactionSaved = () => {
+      fetchDashboard();
+    };
+
+    window.addEventListener("transactionSaved", handleTransactionSaved);
+    return () => {
+      window.removeEventListener("transactionSaved", handleTransactionSaved);
+    };
   }, [isLoading, user, fetchDashboard]);
 
   const currentMonth = new Date().toLocaleDateString("id-ID", {

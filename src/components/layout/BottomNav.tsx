@@ -82,7 +82,10 @@ export default function BottomNav() {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [isRefining, setIsRefining] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  const [userAccounts, setUserAccounts] = useState<{id: string, name: string}[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -137,6 +140,20 @@ export default function BottomNav() {
     }
   };
 
+  const fetchAccounts = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const res = await fetch(`${API_BASE}/api/wallet`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.accounts) setUserAccounts(data.accounts);
+    } catch (e) {
+      console.warn("Failed to fetch accounts", e);
+    }
+  };
+
   const handleOpenScan = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsCameraOpen(true);
@@ -145,6 +162,7 @@ export default function BottomNav() {
     setScanResult(null);
     setScanError(null);
     setSelectedAccount(null);
+    fetchAccounts();
     startCamera();
   };
 
@@ -157,6 +175,7 @@ export default function BottomNav() {
     setScanError(null);
     setSelectedAccount(null);
     setIsFlashing(false);
+    setIsSaving(false);
   };
 
   // ─── Process receipt with AI ────────────────────────────────
@@ -180,7 +199,7 @@ export default function BottomNav() {
 
     try {
       let promptMsg =
-        "Tolong baca struk belanja ini dan catat semua item transaksinya sebagai pengeluaran. Berikan ringkasan total belanja.";
+        "Tolong analisis struk/gambar ini dengan detail. Ekstrak total akhir belanja sebagai transaksi. Tentukan secara mandiri jenisnya (Pengeluaran/Pemasukan, struk belanja biasanya Pengeluaran). Pastikan nominal 'amount' akurat. Jika ada logo/nama bank/dompet yang cocok dengan akun saya, asumsikan akun tersebut otomatis tanpa bertanya. Jika tidak ada petunjuk dompet di struk, bertanyalah dompet mana yang akan digunakan sesuai aturan.";
       if (extraInstruction) {
         promptMsg += " " + extraInstruction;
       }
@@ -197,6 +216,7 @@ export default function BottomNav() {
         body: JSON.stringify({
           message: promptMsg,
           image: base64Image,
+          draft: true,
         }),
       });
 
@@ -281,8 +301,86 @@ export default function BottomNav() {
     };
   }, [stream]);
 
+  const handleConfirmAndSave = async () => {
+    if (!scanResult || !scanResult.transactions || scanResult.transactions.length === 0) {
+      handleCloseScan();
+      return;
+    }
+
+    setIsSaving(true);
+    const token = localStorage.getItem("token");
+    
+    // Resolve account ID if user selected one from the UI options
+    let finalAccountId: string | undefined;
+    if (selectedAccount) {
+      const acc = userAccounts.find(a => a.name === selectedAccount);
+      if (acc) finalAccountId = acc.id;
+    }
+
+    try {
+      for (const tx of scanResult.transactions) {
+        await fetch(`${API_BASE}/api/transactions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            type: tx.type,
+            amount: tx.amount,
+            description: tx.description,
+            categoryId: (tx as any).categoryId,
+            accountId: finalAccountId || (tx as any).accountId,
+            date: (tx as any).date || new Date().toISOString(),
+          }),
+        });
+      }
+      
+      handleCloseScan();
+      
+      setTimeout(() => {
+        setSaveSuccess(true);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("transactionSaved"));
+        }
+        
+        setTimeout(() => {
+          setSaveSuccess(false);
+        }, 2000);
+      }, 300); // Slight delay for smoother transition after modal closes
+
+    } catch (e) {
+      setScanError("Gagal menyimpan transaksi");
+      setIsSaving(false);
+    }
+  };
+
   return (
     <>
+      {saveSuccess && (
+        <div style={{
+          position: "fixed",
+          top: 40,
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "var(--primary)",
+          color: "var(--on-primary)",
+          padding: "12px 24px",
+          borderRadius: 24,
+          zIndex: 99999,
+          fontWeight: 600,
+          fontSize: 14,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          boxShadow: "0 8px 32px rgba(79, 55, 138, 0.4)",
+          animation: "fadeSlideDown 0.3s ease-out forwards"
+        }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check_circle</span>
+          Transaksi berhasil disimpan!
+        </div>
+      )}
+
       <nav className="bottom-nav">
         {navItems.map((item, index) => {
           // Special center button for Scan
@@ -819,7 +917,7 @@ export default function BottomNav() {
                                   style={{ color: "#66BB6A", fontWeight: 700 }}
                                 >
                                   {scanResult.transactions.length} transaksi
-                                  tercatat
+                                  siap dicatat
                                 </span>
                               </div>
                               {scanResult.transactions.map((tx, i) => (
@@ -906,48 +1004,46 @@ export default function BottomNav() {
                   </span>
                   Scan Lagi
                 </button>
-                <button
-                  onClick={() => {
-                    if (selectedAccount && capturedImage) {
-                      processReceipt(
-                        capturedImage,
-                        `Gunakan akun ${selectedAccount}`,
-                      );
-                      setSelectedAccount(null);
-                    } else {
-                      handleCloseScan();
-                    }
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "12px 16px",
-                    borderRadius: 20,
-                    background: "var(--primary)",
-                    border: "none",
-                    color: "var(--on-primary)",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    boxShadow: "0 4px 16px rgba(79, 55, 138, 0.4)",
-                    transition: "opacity 0.2s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: 18 }}
-                  >
-                    check
-                  </span>
-                  {selectedAccount
-                    ? `Selesai — Pakai ${selectedAccount}`
-                    : "Selesai"}
-                </button>
+                {(() => {
+                  const askMatch = scanResult?.content?.match(/\[ASK_ACCOUNT:(.*?)\]/);
+                  const needsAccount = askMatch && askMatch[1].split(",").length > 0;
+                  const isReady = !needsAccount || selectedAccount !== null;
+
+                  return (
+                    <button
+                      onClick={handleConfirmAndSave}
+                      disabled={isSaving || !isReady}
+                      style={{
+                        flex: 1,
+                        padding: "12px 16px",
+                        borderRadius: 20,
+                        background: "var(--primary)",
+                        border: "none",
+                        color: "var(--on-primary)",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: isReady ? "pointer" : "not-allowed",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        boxShadow: isReady ? "0 4px 16px rgba(79, 55, 138, 0.4)" : "none",
+                        transition: "opacity 0.2s",
+                        opacity: isSaving || !isReady ? 0.5 : 1,
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.opacity = isSaving || !isReady ? "0.5" : "0.9")}
+                      onMouseLeave={(e) => (e.currentTarget.style.opacity = isSaving || !isReady ? "0.5" : "1")}
+                    >
+                      <span
+                        className="material-symbols-outlined"
+                        style={{ fontSize: 18 }}
+                      >
+                        {isSaving ? "hourglass_empty" : "check"}
+                      </span>
+                      {isSaving ? "Menyimpan..." : "Konfirmasi & Simpan"}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           )}
