@@ -55,11 +55,10 @@ export default function WorkspacePage() {
     try {
       const mode = ws.id === "pos" ? "POS" : "PERSONAL";
       await updateMode(mode);
-      router.push(ws.href);
+      window.location.href = ws.href;
     } catch {
       // fallback: tetap navigasi meski API gagal
-      router.push(ws.href);
-      setSaving(null); // only reset on fallback error
+      window.location.href = ws.href;
     }
   };
 

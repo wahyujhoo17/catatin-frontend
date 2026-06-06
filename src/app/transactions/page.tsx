@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import TopAppBar from "@/components/layout/TopAppBar";
-import { DayPicker, DateRange } from "react-day-picker";
-import "react-day-picker/dist/style.css";
+import { DateRange } from "react-day-picker";
+import PeriodSelector from "@/components/ui/PeriodSelector";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
@@ -43,18 +43,6 @@ export default function TransactionsPage() {
   const [filterSearch, setFilterSearch] = useState("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  // Close popover when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
-        setIsDatePickerOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   
@@ -212,7 +200,7 @@ export default function TransactionsPage() {
       <TopAppBar />
 
       <main style={{ marginTop: 72, padding: "0 var(--container-margin)", maxWidth: 672, margin: "72px auto 0" }}>
-        <header className="animate-fade-slide-up" style={{ paddingTop: 16, marginBottom: 24 }}>
+        <header className="animate-fade-slide-up mobile-header-with-back" style={{ paddingTop: 16, marginBottom: 24 }}>
           <h1 className="text-headline-lg" style={{ color: "var(--on-surface)" }}>Riwayat Transaksi</h1>
           <p className="text-body-md" style={{ color: "var(--on-surface-variant)", marginTop: 4 }}>
             Kelola semua riwayat pemasukan dan pengeluaran Anda.
@@ -252,9 +240,8 @@ export default function TransactionsPage() {
           {/* Date Range & Type */}
           <div style={{ display: "flex", gap: 12, overflowX: "visible", paddingBottom: 4 }}>
             
-            <div style={{ position: "relative" }} ref={popoverRef}>
               <button
-                onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+                onClick={() => setIsDatePickerOpen(true)}
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
                   padding: "10px 16px", borderRadius: 16,
@@ -266,28 +253,15 @@ export default function TransactionsPage() {
               >
                 {dateRange?.from ? (
                   dateRange.to ? (
-                    <>{format(dateRange.from, "d / M / yyyy")} - {format(dateRange.to, "d / M / yyyy")}</>
+                    <>{format(dateRange.from, "d/M/yy")} - {format(dateRange.to, "d/M/yy")}</>
                   ) : (
-                    <>{format(dateRange.from, "d / M / yyyy")}</>
+                    <>{format(dateRange.from, "d/M/yy")}</>
                   )
                 ) : (
-                  <span>Pilih Tanggal</span>
+                  <span>Pilih Periode</span>
                 )}
                 <span className="material-symbols-outlined" style={{ fontSize: 18, marginLeft: 4 }}>calendar_month</span>
               </button>
-
-              {isDatePickerOpen && (
-                <div className="date-picker-popover-content animate-fade-slide-up">
-                  <DayPicker
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    locale={id}
-                    showOutsideDays
-                  />
-                </div>
-              )}
-            </div>
 
             {[{ label: "Semua Tipe", val: "" }, { label: "Pemasukan", val: "INCOME" }, { label: "Pengeluaran", val: "EXPENSE" }].map(f => (
               <button
@@ -429,22 +403,36 @@ export default function TransactionsPage() {
         )}
       </main>
 
-      {/* Floating Back Button */}
-      <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 50 }}>
-        <button
-          onClick={() => router.back()}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "12px 24px", borderRadius: 9999,
-            background: "var(--primary)", color: "var(--on-primary)",
-            boxShadow: "0 4px 12px rgba(103, 80, 164, 0.3)",
-            border: "none", fontWeight: 600, fontSize: 16, cursor: "pointer"
-          }}
+      {/* Top Floating Back Button */}
+      <button
+        onClick={() => router.back()}
+        style={{
+          position: "fixed",
+          top: 88, /* Positioned slightly below TopAppBar */
+          left: "var(--container-margin)",
+          zIndex: 90, /* Below overlay 1000 but above content */
+          width: 40,
+          height: 40,
+          borderRadius: "50%",
+          background: "rgba(255, 255, 255, 0.8)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          border: "1px solid rgba(255, 255, 255, 0.4)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+          cursor: "pointer",
+        }}
+        aria-label="Kembali"
+      >
+        <span
+          className="material-symbols-outlined"
+          style={{ color: "var(--on-surface-variant)", fontSize: 22 }}
         >
-          <span className="material-symbols-outlined">arrow_back</span>
-          Kembali
-        </button>
-      </div>
+          arrow_back
+        </span>
+      </button>
 
       {/* Edit Modal */}
       {editingTx && (
@@ -489,6 +477,14 @@ export default function TransactionsPage() {
           </div>
         </div>
       )}
+
+      {/* Put Modals outside main to avoid transform breaking position: fixed */}
+      <PeriodSelector 
+        isOpen={isDatePickerOpen}
+        onClose={() => setIsDatePickerOpen(false)}
+        onSelectRange={setDateRange}
+        initialRange={dateRange}
+      />
     </div>
   );
 }

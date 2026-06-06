@@ -1088,3 +1088,198 @@ img {
 .date-picker-popover-content .rdp-nav_button:hover {
   background-color: rgba(0, 112, 243, 0.1);
 }
+
+/* --- Period Selector --- */
+.period-selector-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.period-selector-modal {
+  position: fixed;
+  z-index: 1001;
+  background: var(--surface);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile: Bottom Sheet */
+@media (max-width: 768px) {
+  .period-selector-modal {
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    padding: 24px;
+    padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+    animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1);
+    max-height: 90dvh;
+  }
+}
+
+
+/* Desktop: Centered Modal / Popover */
+@media (min-width: 769px) {
+  .period-selector-modal {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 480px;
+    border-radius: 24px;
+    padding: 32px;
+    animation: zoomIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1);
+  }
+}
+
+/* --- HeroUI / Premium Day Picker Styling --- */
+.custom-day-picker {
+  background: transparent;
+  --rdp-cell-size: 44px; /* Slightly reduced to fit better without scrolling */
+  --rdp-accent-color: var(--primary);
+  --rdp-background-color: transparent;
+  color: var(--on-surface);
+  font-family: inherit;
+  margin: 0 auto;
+}
+
+/* Header & Navigation */
+.custom-day-picker .rdp-caption_label {
+  font-size: 18px; /* Larger month title */
+  font-weight: 700;
+  text-transform: capitalize;
+  color: var(--on-surface);
+}
+
+.custom-day-picker .rdp-nav_button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transition: background 0.2s ease, color 0.2s ease;
+  color: var(--on-surface-variant);
+  background: transparent;
+}
+
+.custom-day-picker .rdp-nav_button:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--on-surface);
+}
+
+/* Days Headers (Sun, Mon, etc) */
+.custom-day-picker .rdp-head_cell {
+  font-size: 14px; /* Slightly larger header */
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  padding-bottom: 12px;
+}
+
+/* Base Day Buttons */
+.custom-day-picker .rdp-day {
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  color: var(--on-surface);
+  position: relative;
+  z-index: 1;
+  font-size: 16px; /* Larger day numbers */
+}
+
+.custom-day-picker .rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--on-surface);
+  border-radius: 50%;
+}
+
+.custom-day-picker .rdp-day_today:not(.rdp-day_selected) {
+  color: var(--primary);
+  font-weight: 700;
+  background-color: var(--primary-fixed);
+}
+
+/* Range Selection - Middle */
+.custom-day-picker .rdp-day_range_middle {
+  background-color: var(--primary-fixed) !important;
+  color: var(--primary) !important;
+  border-radius: 0 !important;
+}
+
+/* Range Selection - Start & End */
+.custom-day-picker .rdp-day_range_start,
+.custom-day-picker .rdp-day_range_end {
+  color: var(--on-primary) !important;
+  font-weight: 700;
+  background-color: transparent !important;
+}
+
+/* The actual perfect circles for Start & End */
+.custom-day-picker .rdp-day_range_start::after,
+.custom-day-picker .rdp-day_range_end::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--primary);
+  border-radius: 50%;
+  z-index: -1;
+  box-shadow: 0 4px 12px rgba(79, 55, 138, 0.3);
+}
+
+/* The connecting background for Start (Right side) */
+.custom-day-picker .rdp-day_range_start:not(.rdp-day_range_end)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 50%;
+  background-color: var(--primary-fixed);
+  z-index: -2;
+}
+
+/* The connecting background for End (Left side) */
+.custom-day-picker .rdp-day_range_end:not(.rdp-day_range_start)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 50%;
+  background-color: var(--primary-fixed);
+  z-index: -2;
+}
+
+/* Selected Single Day (Not in a range) */
+.custom-day-picker .rdp-day_selected:not(.rdp-day_range_start):not(.rdp-day_range_end):not(.rdp-day_range_middle) {
+  background-color: var(--primary) !important;
+  color: var(--on-primary) !important;
+  border-radius: 50% !important;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(79, 55, 138, 0.3);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoomIn {
+  from { opacity: 0; transform: translate(-50%, -40%) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Header margin for pages with top floating back button on mobile */
+@media (max-width: 768px) {
+  .mobile-header-with-back {
+    padding-left: 56px !important;
+  }
+}
