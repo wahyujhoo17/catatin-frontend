@@ -172,6 +172,7 @@ export default function CustomAIPage() {
     { value: "claude", label: "Anthropic Claude API" },
     { value: "ollama", label: "Ollama (Local LLM)" },
     { value: "deepseek", label: "DeepSeek API" },
+    { value: "openrouter", label: "OpenRouter API" },
     { value: "whisper", label: "Whisper Speech API" },
     { value: "google", label: "Google Speech-to-Text" },
     { value: "custom", label: "Custom Endpoints" }
