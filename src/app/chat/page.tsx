@@ -71,7 +71,10 @@ export default function ChatPage() {
       id: Date.now().toString(),
       type: "user",
       text: "[Mengunggah Foto Struk Kopi Sejahtera]",
-      time: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+      time: new Date().toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -83,7 +86,10 @@ export default function ChatPage() {
         id: (Date.now() + 1).toString(),
         type: "confirmation",
         text: "Struk Berhasil Dipindai oleh AI",
-        time: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+        time: new Date().toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
         data: {
           category: "Makanan & Minuman",
           amount: "Rp 98.000",
@@ -99,7 +105,11 @@ export default function ChatPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("scan") === "success") {
-        window.history.replaceState({}, document.title, window.location.pathname);
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname,
+        );
         setTimeout(handleScanReceipt, 500);
       }
     }
@@ -112,7 +122,10 @@ export default function ChatPage() {
       id: Date.now().toString(),
       type: "user",
       text: text.trim(),
-      time: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+      time: new Date().toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -138,7 +151,10 @@ export default function ChatPage() {
         id: (Date.now() + 1).toString(),
         type: "confirmation",
         text: "Berhasil Dicatat",
-        time: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+        time: new Date().toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
         data: {
           category: "Pengeluaran Umum",
           amount,
@@ -157,7 +173,10 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="mesh-bg" style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}>
+    <div
+      className="mesh-bg"
+      style={{ minHeight: "100dvh", display: "flex", flexDirection: "column" }}
+    >
       {/* Top App Bar */}
       <header
         style={{
@@ -177,15 +196,30 @@ export default function ChatPage() {
           boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
         }}
       >
-        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
-          <Image src="/logo/logo.png" alt="Catetin" width={100} height={32} style={{ height: 32, width: "auto", objectFit: "contain" }} priority />
+        <Link
+          href="/dashboard"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            textDecoration: "none",
+          }}
+        >
+          <Image
+            src="/logo/logo.png"
+            alt="Catetin"
+            width={100}
+            height={32}
+            style={{ width: "auto", height: "auto", objectFit: "contain" }}
+            priority
+          />
         </Link>
         <div
           style={{
             width: 40,
             height: 40,
             borderRadius: "50%",
-            background: "linear-gradient(135deg, var(--primary-fixed-dim), var(--primary-fixed))",
+            background:
+              "linear-gradient(135deg, var(--primary-fixed-dim), var(--primary-fixed))",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -229,7 +263,10 @@ export default function ChatPage() {
         }}
         aria-label="Kembali ke Dashboard"
       >
-        <span className="material-symbols-outlined" style={{ color: "var(--on-surface-variant)", fontSize: 22 }}>
+        <span
+          className="material-symbols-outlined"
+          style={{ color: "var(--on-surface-variant)", fontSize: 22 }}
+        >
           arrow_back
         </span>
       </button>
@@ -273,15 +310,25 @@ export default function ChatPage() {
               marginBottom: 16,
             }}
           >
-            <span className="material-symbols-outlined filled" style={{ color: "var(--primary)", fontSize: 40 }}>
+            <span
+              className="material-symbols-outlined filled"
+              style={{ color: "var(--primary)", fontSize: 40 }}
+            >
               auto_awesome
             </span>
           </div>
-          <h1 className="text-headline-md" style={{ color: "var(--on-surface)", marginBottom: 8 }}>
+          <h1
+            className="text-headline-md"
+            style={{ color: "var(--on-surface)", marginBottom: 8 }}
+          >
             Halo, Saya Catetin AI
           </h1>
-          <p className="text-body-md" style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}>
-            Membantu kamu mencatat keuangan dengan bahasa sehari-hari. Cukup ketik atau bicara.
+          <p
+            className="text-body-md"
+            style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}
+          >
+            Membantu kamu mencatat keuangan dengan bahasa sehari-hari. Cukup
+            ketik atau bicara.
           </p>
         </div>
 
@@ -294,29 +341,63 @@ export default function ChatPage() {
               style={{ animationDelay: `${idx * 0.05}s` }}
             >
               {msg.type === "user" && (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-end",
+                  }}
+                >
                   <div className="bubble-user">
                     <p style={{ margin: 0 }}>{msg.text}</p>
                   </div>
-                  <span className="text-label-md" style={{ color: "rgba(73, 69, 81, 0.6)", marginTop: 4, marginRight: 8 }}>
+                  <span
+                    className="text-label-md"
+                    style={{
+                      color: "rgba(73, 69, 81, 0.6)",
+                      marginTop: 4,
+                      marginRight: 8,
+                    }}
+                  >
                     {msg.time}
                   </span>
                 </div>
               )}
 
               {msg.type === "bot" && (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", maxWidth: "85%" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    maxWidth: "85%",
+                  }}
+                >
                   <div className="bubble-bot">
                     <p style={{ margin: 0 }}>{msg.text}</p>
                   </div>
-                  <span className="text-label-md" style={{ color: "rgba(73, 69, 81, 0.6)", marginTop: 4, marginLeft: 8 }}>
+                  <span
+                    className="text-label-md"
+                    style={{
+                      color: "rgba(73, 69, 81, 0.6)",
+                      marginTop: 4,
+                      marginLeft: 8,
+                    }}
+                  >
                     {msg.time}
                   </span>
                 </div>
               )}
 
               {msg.type === "confirmation" && msg.data && (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", maxWidth: "90%" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    maxWidth: "90%",
+                  }}
+                >
                   <div
                     style={{
                       background: "rgba(255, 255, 255, 0.85)",
@@ -332,27 +413,142 @@ export default function ChatPage() {
                     }}
                   >
                     {/* Left accent bar */}
-                    <div style={{ position: "absolute", top: 0, left: 0, width: 4, height: "100%", background: "var(--primary)" }} />
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: 4,
+                        height: "100%",
+                        background: "var(--primary)",
+                      }}
+                    />
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                      <div style={{ background: "rgba(79, 55, 138, 0.1)", padding: 6, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span className="material-symbols-outlined" style={{ color: "var(--primary)", fontSize: 20 }}>check_circle</span>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        marginBottom: 16,
+                      }}
+                    >
+                      <div
+                        style={{
+                          background: "rgba(79, 55, 138, 0.1)",
+                          padding: 6,
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <span
+                          className="material-symbols-outlined"
+                          style={{ color: "var(--primary)", fontSize: 20 }}
+                        >
+                          check_circle
+                        </span>
                       </div>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: "var(--on-surface)" }}>{msg.text}</span>
+                      <span
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 700,
+                          color: "var(--on-surface)",
+                        }}
+                      >
+                        {msg.text}
+                      </span>
                     </div>
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(203, 196, 210, 0.1)", paddingBottom: 6 }}>
-                        <span style={{ fontSize: 11, color: "rgba(73, 69, 81, 0.6)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>Kategori</span>
-                        <span className="text-body-sm" style={{ fontWeight: 600 }}>{msg.data.category}</span>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                        marginBottom: 16,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          borderBottom: "1px solid rgba(203, 196, 210, 0.1)",
+                          paddingBottom: 6,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "rgba(73, 69, 81, 0.6)",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Kategori
+                        </span>
+                        <span
+                          className="text-body-sm"
+                          style={{ fontWeight: 600 }}
+                        >
+                          {msg.data.category}
+                        </span>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(203, 196, 210, 0.1)", paddingBottom: 6 }}>
-                        <span style={{ fontSize: 11, color: "rgba(73, 69, 81, 0.6)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>Jumlah</span>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--error)" }}>{msg.data.amount}</span>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          borderBottom: "1px solid rgba(203, 196, 210, 0.1)",
+                          paddingBottom: 6,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "rgba(73, 69, 81, 0.6)",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Jumlah
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: "var(--error)",
+                          }}
+                        >
+                          {msg.data.amount}
+                        </span>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 11, color: "rgba(73, 69, 81, 0.6)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>Metode</span>
-                        <span className="text-body-sm" style={{ fontWeight: 600 }}>{msg.data.method}</span>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "rgba(73, 69, 81, 0.6)",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Metode
+                        </span>
+                        <span
+                          className="text-body-sm"
+                          style={{ fontWeight: 600 }}
+                        >
+                          {msg.data.method}
+                        </span>
                       </div>
                     </div>
 
@@ -399,14 +595,26 @@ export default function ChatPage() {
 
           {/* Suggestion Chips (show after first bot message) */}
           {messages.length <= 3 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "8px 0" }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                padding: "8px 0",
+              }}
+            >
               {suggestions.map((s) => (
                 <button
                   key={s.label}
                   className="chip"
                   onClick={() => sendMessage(s.label)}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{s.icon}</span>
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 18 }}
+                  >
+                    {s.icon}
+                  </span>
                   {s.label}
                 </button>
               ))}
@@ -416,7 +624,15 @@ export default function ChatPage() {
           {/* Typing Indicator */}
           {isTyping && (
             <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-              <div className="bubble-bot" style={{ padding: "16px 24px", display: "flex", gap: 6, alignItems: "center" }}>
+              <div
+                className="bubble-bot"
+                style={{
+                  padding: "16px 24px",
+                  display: "flex",
+                  gap: 6,
+                  alignItems: "center",
+                }}
+              >
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
@@ -460,7 +676,8 @@ export default function ChatPage() {
               display: "flex",
               alignItems: "center",
               gap: 8,
-              boxShadow: "0 -4px 30px rgba(0,0,0,0.06), 0 10px 40px rgba(0,0,0,0.06)",
+              boxShadow:
+                "0 -4px 30px rgba(0,0,0,0.06), 0 10px 40px rgba(0,0,0,0.06)",
             }}
           >
             <button
@@ -521,8 +738,34 @@ export default function ChatPage() {
       </div>
 
       {/* Background Decorative */}
-      <div style={{ position: "fixed", top: "25%", left: -96, width: 256, height: 256, background: "rgba(79, 55, 138, 0.05)", filter: "blur(120px)", borderRadius: "50%", zIndex: -1, pointerEvents: "none" }} />
-      <div style={{ position: "fixed", bottom: "25%", right: -96, width: 320, height: 320, background: "rgba(118, 91, 0, 0.05)", filter: "blur(120px)", borderRadius: "50%", zIndex: -1, pointerEvents: "none" }} />
+      <div
+        style={{
+          position: "fixed",
+          top: "25%",
+          left: -96,
+          width: 256,
+          height: 256,
+          background: "rgba(79, 55, 138, 0.05)",
+          filter: "blur(120px)",
+          borderRadius: "50%",
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          bottom: "25%",
+          right: -96,
+          width: 320,
+          height: 320,
+          background: "rgba(118, 91, 0, 0.05)",
+          filter: "blur(120px)",
+          borderRadius: "50%",
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+      />
     </div>
   );
 }

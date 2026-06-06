@@ -655,6 +655,10 @@ img {
     --card-padding: 16px;
   }
 
+  .hidden-mobile {
+    display: none !important;
+  }
+
   .text-display-lg {
     font-size: 32px;
     line-height: 40px;
