@@ -105,6 +105,7 @@ export default function ChatPage() {
           body: JSON.stringify({
             message: text,
             image: imageBase64 || undefined,
+            history: messages.slice(-10).map(m => ({ type: m.type, text: m.text })),
           }),
           signal: controller.signal,
         });
@@ -198,7 +199,7 @@ export default function ChatPage() {
         abortRef.current = null;
       }
     },
-    [router],
+    [router, messages],
   );
 
   // ─── Send text message ─────────────────────────────────────
@@ -334,14 +335,16 @@ export default function ChatPage() {
             textDecoration: "none",
           }}
         >
-          <Image
-            src="/logo/logo.png"
-            alt="Catetin"
-            width={100}
-            height={32}
-            style={{ width: "auto", height: "auto", objectFit: "contain" }}
-            priority
-          />
+          <div style={{ position: "relative", width: 120, height: 32, overflow: "hidden", display: "flex", alignItems: "center" }}>
+            <Image
+              src="/logo/logo.png"
+              alt="Catetin"
+              width={120}
+              height={120}
+              style={{ objectFit: "contain" }}
+              priority
+            />
+          </div>
         </Link>
         <div
           style={{
@@ -499,23 +502,70 @@ export default function ChatPage() {
                     maxWidth: "85%",
                   }}
                 >
-                  <div className="bubble-bot">
-                    <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                      {msg.text}
-                      {msg.isStreaming && (
-                        <span
-                          style={{
-                            display: "inline-block",
-                            width: 8,
-                            height: 16,
-                            background: "var(--primary)",
-                            marginLeft: 2,
-                            animation: "blink 1s step-end infinite",
-                          }}
-                        />
-                      )}
-                    </p>
-                  </div>
+                  {!msg.isStreaming && msg.type === "bot" && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        width: 70,
+                        height: 70,
+                        margin: "-20px 0 -20px -5px",
+                        opacity: 1,
+                      }}
+                    >
+                      <Image src="/logo/logo.png" alt="Bot" width={70} height={70} style={{ objectFit: "contain" }} priority />
+                    </div>
+                  )}
+                  {(() => {
+                    const askMatch = msg.text.match(/\[ASK_ACCOUNT:(.*?)\]/);
+                    const options = askMatch ? askMatch[1].split(",") : [];
+                    const cleanText = msg.text.replace(/\[ASK_ACCOUNT:.*?\]/g, "").trim();
+
+                    return (
+                      <>
+                        <div className="bubble-bot">
+                          <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                            {cleanText}
+                            {msg.isStreaming && (
+                              <span
+                                style={{
+                                  display: "inline-block",
+                                  width: 8,
+                                  height: 16,
+                                  background: "var(--primary)",
+                                  marginLeft: 2,
+                                  animation: "blink 1s step-end infinite",
+                                }}
+                              />
+                            )}
+                          </p>
+                        </div>
+                        {options.length > 0 && !msg.isStreaming && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8, marginLeft: 8 }}>
+                            {options.map((opt) => (
+                              <button
+                                key={opt}
+                                onClick={() => sendMessage(`Gunakan akun ${opt.trim()}`)}
+                                style={{
+                                  padding: "6px 16px",
+                                  fontSize: 13,
+                                  fontWeight: 500,
+                                  borderRadius: 20,
+                                  border: "1px solid var(--primary)",
+                                  background: "var(--primary-container)",
+                                  color: "var(--on-primary-container)",
+                                  cursor: "pointer",
+                                  boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+                                }}
+                              >
+                                {opt.trim()}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                   <div
                     style={{
                       display: "flex",
@@ -527,24 +577,10 @@ export default function ChatPage() {
                   >
                     <span
                       className="text-label-md"
-                      style={{ color: "rgba(73, 69, 81, 0.6)" }}
+                      style={{ color: "rgba(73, 69, 81, 0.6)", fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px", transform: "translateY(1px)" }}
                     >
                       {msg.time}
                     </span>
-                    {!msg.isStreaming && msg.type === "bot" && (
-                      <span
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          background: "rgba(0,0,0,0.04)",
-                          padding: "2px 6px",
-                          borderRadius: 4,
-                        }}
-                      >
-                        <Image src="/logo/logo.png" alt="Bot" width={16} height={16} style={{ opacity: 0.7, objectFit: "contain" }} priority />
-                      </span>
-                    )}
                   </div>
                 </div>
               )}

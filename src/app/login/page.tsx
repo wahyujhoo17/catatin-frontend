@@ -128,17 +128,16 @@ export default function LoginPage() {
               gap: 16,
             }}
           >
-            <Image
-              src="/logo/logo.png"
-              alt="Catetin"
-              width={80}
-              height={80}
-              style={{
-                objectFit: "contain",
-                marginBottom: 16,
-              }}
-              priority
-            />
+            <div style={{ position: "relative", width: "100%", height: 60, marginBottom: 16, overflow: "hidden", display: "flex", justifyContent: "center", alignItems: "center" }}>
+              <Image
+                src="/logo/logo.png"
+                alt="Catetin"
+                width={240}
+                height={240}
+                style={{ objectFit: "contain" }}
+                priority
+              />
+            </div>
             <h1
               className="text-headline-lg-mobile"
               style={{ color: "var(--on-surface)" }}
@@ -469,14 +468,16 @@ export default function LoginPage() {
         }}
         className="hidden-mobile"
       >
-        <Image
-          src="/logo/logo.png"
-          alt="Catetin Logo"
-          width={40}
-          height={40}
-          style={{ objectFit: "contain" }}
-          priority
-        />
+        <div style={{ position: "relative", width: 100, height: 32, overflow: "hidden", display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+          <Image
+            src="/logo/logo.png"
+            alt="Catetin Logo"
+            width={120}
+            height={120}
+            style={{ objectFit: "contain" }}
+            priority
+          />
+        </div>
         <p
           className="text-label-md"
           style={{ color: "var(--outline)", margin: 0 }}

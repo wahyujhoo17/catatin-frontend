@@ -142,19 +142,16 @@ function ResetForm() {
               gap: 16,
             }}
           >
-            <Image
-              src="/logo/logo.png"
-              alt="Catetin"
-              width={180}
-              height={60}
-              style={{
-                objectFit: "contain",
-                marginBottom: 8,
-                width: "auto",
-                height: "auto",
-              }}
-              priority
-            />
+            <div style={{ position: "relative", width: "100%", height: 60, marginBottom: 16, overflow: "hidden", display: "flex", justifyContent: "center", alignItems: "center" }}>
+              <Image
+                src="/logo/logo.png"
+                alt="Catetin"
+                width={240}
+                height={240}
+                style={{ objectFit: "contain" }}
+                priority
+              />
+            </div>
             <h1
               className="text-headline-lg-mobile"
               style={{ color: "var(--on-surface)" }}

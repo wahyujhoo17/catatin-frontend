@@ -27,14 +27,16 @@ export default function TopAppBar({
           textDecoration: "none",
         }}
       >
-        <Image
-          src="/logo/logo.png"
-          alt="Catetin Logo"
-          width={100}
-          height={32}
-          style={{ width: "auto", height: "auto" }}
-          priority
-        />
+        <div style={{ position: "relative", width: 120, height: 32, overflow: "hidden", display: "flex", alignItems: "center" }}>
+          <Image
+            src="/logo/logo.png"
+            alt="Catetin Logo"
+            width={120}
+            height={120}
+            style={{ objectFit: "contain" }}
+            priority
+          />
+        </div>
       </Link>
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         {showNotification && (
