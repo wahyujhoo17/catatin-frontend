@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
 
@@ -25,43 +25,6 @@ export default function SettingsPage() {
   const [profileName, setProfileName] = useState("Budi Santoso");
   const [profileEmail, setProfileEmail] = useState("budi.santoso@gmail.com");
 
-  // Modals state
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
-  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const [isCustomAIConfigFileOpen, setIsCustomAIConfigFileOpen] = useState(false);
-
-  // Edit Profile Form state
-  const [tempName, setTempName] = useState("Budi Santoso");
-  const [tempEmail, setTempEmail] = useState("budi.santoso@gmail.com");
-
-  // Change Password Form state
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-
-  // Custom AI Config Form state
-  const [customAITab, setCustomAITab] = useState("text"); // 'text' | 'image' | 'voice'
-  
-  // Text AI config
-  const [customTextProvider, setCustomTextProvider] = useState("openai");
-  const [customTextKey, setCustomTextKey] = useState("");
-  const [customTextUrl, setCustomTextUrl] = useState("");
-  
-  // Image AI config
-  const [customImageProvider, setCustomImageProvider] = useState("openai");
-  const [customImageKey, setCustomImageKey] = useState("");
-  const [customImageUrl, setCustomImageUrl] = useState("");
-  
-  // Voice AI config
-  const [customVoiceProvider, setCustomVoiceProvider] = useState("whisper");
-  const [customVoiceKey, setCustomVoiceKey] = useState("");
-  const [customVoiceUrl, setCustomVoiceUrl] = useState("");
-  
-  const [aiConfigSuccess, setAiConfigSuccess] = useState(false);
-
   // Read/Save settings & default workspace to localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -75,36 +38,8 @@ export default function SettingsPage() {
       // Load profile info
       const savedName = localStorage.getItem("profile_name");
       const savedEmail = localStorage.getItem("profile_email");
-      if (savedName) {
-        setProfileName(savedName);
-        setTempName(savedName);
-      }
-      if (savedEmail) {
-        setProfileEmail(savedEmail);
-        setTempEmail(savedEmail);
-      }
-
-      // Load custom AI configs
-      const textProv = localStorage.getItem("custom_text_provider");
-      const textKey = localStorage.getItem("custom_text_key");
-      const textUrl = localStorage.getItem("custom_text_url");
-      if (textProv) setCustomTextProvider(textProv);
-      if (textKey) setCustomTextKey(textKey);
-      if (textUrl) setCustomTextUrl(textUrl);
-      
-      const imgProv = localStorage.getItem("custom_image_provider");
-      const imgKey = localStorage.getItem("custom_image_key");
-      const imgUrl = localStorage.getItem("custom_image_url");
-      if (imgProv) setCustomImageProvider(imgProv);
-      if (imgKey) setCustomImageKey(imgKey);
-      if (imgUrl) setCustomImageUrl(imgUrl);
-      
-      const voiceProv = localStorage.getItem("custom_voice_provider");
-      const voiceKey = localStorage.getItem("custom_voice_key");
-      const voiceUrl = localStorage.getItem("custom_voice_url");
-      if (voiceProv) setCustomVoiceProvider(voiceProv);
-      if (voiceKey) setCustomVoiceKey(voiceKey);
-      if (voiceUrl) setCustomVoiceUrl(voiceUrl);
+      if (savedName) setProfileName(savedName);
+      if (savedEmail) setProfileEmail(savedEmail);
     }
   }, []);
 
@@ -114,62 +49,6 @@ export default function SettingsPage() {
       const path = mode === "pos" ? "/dashboard/pos" : "/dashboard";
       localStorage.setItem("active_dashboard", path);
     }
-  };
-
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    setProfileName(tempName);
-    setProfileEmail(tempEmail);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("profile_name", tempName);
-      localStorage.setItem("profile_email", tempEmail);
-    }
-    setIsEditProfileOpen(false);
-  };
-
-  const handleSavePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      setPasswordError("Password konfirmasi tidak cocok.");
-      setPasswordSuccess(false);
-      return;
-    }
-    if (newPassword.length < 6) {
-      setPasswordError("Password baru harus minimal 6 karakter.");
-      setPasswordSuccess(false);
-      return;
-    }
-    setPasswordError("");
-    setPasswordSuccess(true);
-    setTimeout(() => {
-      setOldPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setPasswordSuccess(false);
-      setIsChangePasswordOpen(false);
-    }, 1200);
-  };
-
-  const handleSaveAIConfig = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (typeof window !== "undefined") {
-      localStorage.setItem("custom_text_provider", customTextProvider);
-      localStorage.setItem("custom_text_key", customTextKey);
-      localStorage.setItem("custom_text_url", customTextUrl);
-      
-      localStorage.setItem("custom_image_provider", customImageProvider);
-      localStorage.setItem("custom_image_key", customImageKey);
-      localStorage.setItem("custom_image_url", customImageUrl);
-      
-      localStorage.setItem("custom_voice_provider", customVoiceProvider);
-      localStorage.setItem("custom_voice_key", customVoiceKey);
-      localStorage.setItem("custom_voice_url", customVoiceUrl);
-    }
-    setAiConfigSuccess(true);
-    setTimeout(() => {
-      setAiConfigSuccess(false);
-      setIsCustomAIConfigFileOpen(false);
-    }, 1200);
   };
 
   const languages = [
@@ -435,7 +314,7 @@ export default function SettingsPage() {
             style={{
               padding: "0 16px",
               position: "relative",
-              zIndex: (isAIOpen || isCustomAIConfigFileOpen) ? 10 : 1
+              zIndex: isAIOpen ? 10 : 1
             }}
           >
             
@@ -511,20 +390,21 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Custom AI Provider Key Setting Row */}
-            <div
-              className="settings-row"
-              onClick={() => setIsCustomAIConfigFileOpen(true)}
-              style={{ cursor: "pointer", borderBottom: "none" }}
+            {/* Custom AI Provider Link Row */}
+            <Link
+              href="/settings/custom-ai"
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", textDecoration: "none", color: "inherit", width: "100%" }}
             >
-              <div>
-                <p className="text-body-md" style={{ fontWeight: 600 }}>Kunci API & Provider Kustom</p>
-                <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>
-                  Atur model Teks Utama, Gambar, dan Voice sendiri
-                </p>
+              <div className="settings-row" style={{ borderBottom: "none", width: "100%" }}>
+                <div>
+                  <p className="text-body-md" style={{ fontWeight: 600 }}>Kunci API & Provider Kustom</p>
+                  <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>
+                    Atur model Teks Utama, Gambar, dan Voice sendiri
+                  </p>
+                </div>
+                <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
               </div>
-              <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
-            </div>
+            </Link>
 
           </section>
 
@@ -535,42 +415,36 @@ export default function SettingsPage() {
             style={{
               padding: "0 16px",
               position: "relative",
-              zIndex: (isEditProfileOpen || isChangePasswordOpen) ? 10 : 1
+              zIndex: 1
             }}
           >
-            {/* Ubah Profil */}
-            <div
-              className="settings-row"
-              onClick={() => {
-                setTempName(profileName);
-                setTempEmail(profileEmail);
-                setIsEditProfileOpen(true);
-              }}
-              style={{ cursor: "pointer" }}
+            {/* Ubah Profil Link */}
+            <Link
+              href="/settings/profile"
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", textDecoration: "none", color: "inherit", width: "100%" }}
             >
-              <div>
-                <p className="text-body-md" style={{ fontWeight: 600 }}>Ubah Informasi Profil</p>
-                <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>Nama, email, dan detail akun Anda</p>
+              <div className="settings-row" style={{ width: "100%" }}>
+                <div>
+                  <p className="text-body-md" style={{ fontWeight: 600 }}>Ubah Informasi Profil</p>
+                  <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>Nama, email, dan detail akun Anda</p>
+                </div>
+                <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
               </div>
-              <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
-            </div>
+            </Link>
 
-            {/* Ganti Password */}
-            <div
-              className="settings-row"
-              onClick={() => {
-                setPasswordError("");
-                setPasswordSuccess(false);
-                setIsChangePasswordOpen(true);
-              }}
-              style={{ cursor: "pointer" }}
+            {/* Ganti Password Link */}
+            <Link
+              href="/settings/password"
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", textDecoration: "none", color: "inherit", width: "100%" }}
             >
-              <div>
-                <p className="text-body-md" style={{ fontWeight: 600 }}>Ganti Kata Sandi</p>
-                <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>Perbarui password untuk keamanan akun</p>
+              <div className="settings-row" style={{ width: "100%" }}>
+                <div>
+                  <p className="text-body-md" style={{ fontWeight: 600 }}>Ganti Kata Sandi</p>
+                  <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>Perbarui password untuk keamanan akun</p>
+                </div>
+                <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
               </div>
-              <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
-            </div>
+            </Link>
 
             {/* Security Toggle */}
             <div className="settings-row" style={{ borderBottom: "none" }}>
@@ -597,18 +471,19 @@ export default function SettingsPage() {
               zIndex: 1
             }}
           >
-            {/* About App */}
-            <div
-              className="settings-row"
-              onClick={() => setIsAboutOpen(true)}
-              style={{ cursor: "pointer" }}
+            {/* About App Link */}
+            <Link
+              href="/settings/about"
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", textDecoration: "none", color: "inherit", width: "100%" }}
             >
-              <div>
-                <p className="text-body-md" style={{ fontWeight: 600 }}>Tentang Aplikasi</p>
-                <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>Catetin v0.1.0 Beta (PWA)</p>
+              <div className="settings-row" style={{ width: "100%" }}>
+                <div>
+                  <p className="text-body-md" style={{ fontWeight: 600 }}>Tentang Aplikasi</p>
+                  <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>Catetin v0.1.0 Beta (PWA)</p>
+                </div>
+                <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
               </div>
-              <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
-            </div>
+            </Link>
 
             {/* Help Support */}
             <div
@@ -644,494 +519,6 @@ export default function SettingsPage() {
       </main>
 
       <BottomNav />
-
-      {/* About Application Modal */}
-      {isAboutOpen && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.35)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-            padding: 24,
-          }}
-        >
-          <div className="glass-card wallet-modal">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 className="text-headline-sm" style={{ fontWeight: 700 }}>Tentang Catetin</h3>
-              <button
-                onClick={() => setIsAboutOpen(false)}
-                style={{ cursor: "pointer", color: "var(--on-surface-variant)", border: "none", background: "none" }}
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, color: "var(--on-surface)", paddingBottom: 16 }}>
-              <div style={{ textAlign: "center", padding: "16px 0", borderBottom: "1px dashed rgba(0,0,0,0.08)" }}>
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
-                  <Image
-                    src="/logo/logo.png"
-                    alt="Catetin Logo"
-                    width={120}
-                    height={38}
-                    style={{ height: "38px", width: "auto", objectFit: "contain" }}
-                    priority
-                  />
-                </div>
-                <p style={{ fontSize: 12, color: "var(--outline)", margin: "4px 0 0 0" }}>Versi 0.1.0 (Beta Build 2026.06)</p>
-              </div>
-              
-              <p className="text-body-sm" style={{ lineHeight: "22px", textAlign: "justify" }}>
-                **Catetin** adalah asisten pencatatan keuangan pintar bertenaga AI yang dirancang untuk membantu Anda memantau pengeluaran pribadi serta mengelola penjualan kasir (POS) bisnis secara simultan dengan bahasa sehari-hari.
-              </p>
-
-              <div style={{ background: "rgba(79, 55, 138, 0.04)", padding: 12, borderRadius: 12, fontSize: 12 }}>
-                <p style={{ margin: 0, fontWeight: 600 }}>Status Progressive Web App (PWA):</p>
-                <ul style={{ margin: "6px 0 0 16px", padding: 0 }}>
-                  <li>Penyimpanan Cache Offline Aktif</li>
-                  <li>Kompatibel dengan Pintasan Home Screen</li>
-                  <li>Push Notification Siap Digunakan</li>
-                </ul>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setIsAboutOpen(false)}
-              className="btn-primary"
-              style={{ padding: 12, fontSize: 16, boxShadow: "none" }}
-            >
-              Tutup
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Profile Modal */}
-      {isEditProfileOpen && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: "rgba(0,0,0,0.35)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-            padding: 24,
-          }}
-        >
-          <div className="glass-card wallet-modal">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 className="text-headline-sm" style={{ fontWeight: 700 }}>Ubah Informasi Profil</h3>
-              <button
-                onClick={() => setIsEditProfileOpen(false)}
-                style={{ cursor: "pointer", color: "var(--on-surface-variant)", border: "none", background: "none" }}
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveProfile} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Nama Lengkap</label>
-                <input
-                  type="text"
-                  className="glass-input"
-                  value={tempName}
-                  onChange={(e) => setTempName(e.target.value)}
-                  required
-                  style={{ width: "100%", boxSizing: "border-box" }}
-                />
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Email</label>
-                <input
-                  type="email"
-                  className="glass-input"
-                  value={tempEmail}
-                  onChange={(e) => setTempEmail(e.target.value)}
-                  required
-                  style={{ width: "100%", boxSizing: "border-box" }}
-                />
-              </div>
-
-              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setIsEditProfileOpen(false)}
-                  className="btn-secondary"
-                  style={{ flex: 1, padding: 12 }}
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  style={{ flex: 1, padding: 12, boxShadow: "none" }}
-                >
-                  Simpan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Change Password Modal */}
-      {isChangePasswordOpen && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: "rgba(0,0,0,0.35)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-            padding: 24,
-          }}
-        >
-          <div className="glass-card wallet-modal">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 className="text-headline-sm" style={{ fontWeight: 700 }}>Ganti Kata Sandi</h3>
-              <button
-                onClick={() => setIsChangePasswordOpen(false)}
-                style={{ cursor: "pointer", color: "var(--on-surface-variant)", border: "none", background: "none" }}
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleSavePassword} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {passwordError && (
-                <div style={{ color: "var(--error)", fontSize: 12, background: "var(--error-container)", padding: "8px 12px", borderRadius: 8 }}>
-                  {passwordError}
-                </div>
-              )}
-              {passwordSuccess && (
-                <div style={{ color: "var(--primary)", fontSize: 12, background: "rgba(79, 55, 138, 0.08)", padding: "8px 12px", borderRadius: 8 }}>
-                  Password berhasil diperbarui!
-                </div>
-              )}
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Kata Sandi Lama</label>
-                <input
-                  type="password"
-                  className="glass-input"
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                  style={{ width: "100%", boxSizing: "border-box" }}
-                />
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Kata Sandi Baru</label>
-                <input
-                  type="password"
-                  className="glass-input"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  placeholder="Minimal 6 karakter"
-                  style={{ width: "100%", boxSizing: "border-box" }}
-                />
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Konfirmasi Kata Sandi Baru</label>
-                <input
-                  type="password"
-                  className="glass-input"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  placeholder="Ulangi kata sandi baru"
-                  style={{ width: "100%", boxSizing: "border-box" }}
-                />
-              </div>
-
-              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setIsChangePasswordOpen(false)}
-                  className="btn-secondary"
-                  style={{ flex: 1, padding: 12 }}
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  style={{ flex: 1, padding: 12, boxShadow: "none" }}
-                  disabled={passwordSuccess}
-                >
-                  {passwordSuccess ? "Menyimpan..." : "Simpan"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Custom AI Provider Configuration Modal */}
-      {isCustomAIConfigFileOpen && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: "rgba(0,0,0,0.35)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-            padding: 24,
-          }}
-        >
-          <div className="glass-card wallet-modal" style={{ maxWidth: 440 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 className="text-headline-sm" style={{ fontWeight: 700 }}>Provider AI Kustom</h3>
-              <button
-                onClick={() => setIsCustomAIConfigFileOpen(false)}
-                style={{ cursor: "pointer", color: "var(--on-surface-variant)", border: "none", background: "none" }}
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            {/* Config Tabs */}
-            <div style={{ display: "flex", borderBottom: "1px solid rgba(0,0,0,0.06)", marginBottom: 16 }}>
-              <button
-                type="button"
-                onClick={() => setCustomAITab("text")}
-                style={{
-                  flex: 1,
-                  padding: "10px 0",
-                  background: "none",
-                  border: "none",
-                  borderBottom: customAITab === "text" ? "2px solid var(--primary)" : "none",
-                  color: customAITab === "text" ? "var(--primary)" : "var(--on-surface-variant)",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  cursor: "pointer"
-                }}
-              >
-                Text Utama
-              </button>
-              <button
-                type="button"
-                onClick={() => setCustomAITab("image")}
-                style={{
-                  flex: 1,
-                  padding: "10px 0",
-                  background: "none",
-                  border: "none",
-                  borderBottom: customAITab === "image" ? "2px solid var(--primary)" : "none",
-                  color: customAITab === "image" ? "var(--primary)" : "var(--on-surface-variant)",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  cursor: "pointer"
-                }}
-              >
-                Gambar
-              </button>
-              <button
-                type="button"
-                onClick={() => setCustomAITab("voice")}
-                style={{
-                  flex: 1,
-                  padding: "10px 0",
-                  background: "none",
-                  border: "none",
-                  borderBottom: customAITab === "voice" ? "2px solid var(--primary)" : "none",
-                  color: customAITab === "voice" ? "var(--primary)" : "var(--on-surface-variant)",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  cursor: "pointer"
-                }}
-              >
-                Voice
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveAIConfig} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {aiConfigSuccess && (
-                <div style={{ color: "var(--primary)", fontSize: 12, background: "rgba(79, 55, 138, 0.08)", padding: "8px 12px", borderRadius: 8 }}>
-                  Kunci API & konfigurasi berhasil disimpan!
-                </div>
-              )}
-
-              {/* Tab: Text Utama */}
-              {customAITab === "text" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Provider Text Utama</label>
-                    <select
-                      className="glass-input"
-                      value={customTextProvider}
-                      onChange={(e) => setCustomTextProvider(e.target.value)}
-                      style={{ width: "100%", background: "white", padding: 12, borderRadius: 12 }}
-                    >
-                      <option value="openai">Custom OpenAI GPT</option>
-                      <option value="gemini">Custom Gemini Pro</option>
-                      <option value="claude">Custom Claude Sonnet</option>
-                      <option value="ollama">Local Ollama / Llama</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>API Key / Kredensial</label>
-                    <input
-                      type="password"
-                      className="glass-input"
-                      value={customTextKey}
-                      onChange={(e) => setCustomTextKey(e.target.value)}
-                      placeholder="sk-..."
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Custom Base URL (Opsional)</label>
-                    <input
-                      type="text"
-                      className="glass-input"
-                      value={customTextUrl}
-                      onChange={(e) => setCustomTextUrl(e.target.value)}
-                      placeholder="https://api.openai.com/v1"
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Tab: Gambar */}
-              {customAITab === "image" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Provider Gambar (OCR Receipt)</label>
-                    <select
-                      className="glass-input"
-                      value={customImageProvider}
-                      onChange={(e) => setCustomImageProvider(e.target.value)}
-                      style={{ width: "100%", background: "white", padding: 12, borderRadius: 12 }}
-                    >
-                      <option value="openai">OpenAI GPT-4o / Vision</option>
-                      <option value="gemini">Gemini Flash / Vision</option>
-                      <option value="custom">Custom OCR Model</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>API Key / Kredensial</label>
-                    <input
-                      type="password"
-                      className="glass-input"
-                      value={customImageKey}
-                      onChange={(e) => setCustomImageKey(e.target.value)}
-                      placeholder="sk-..."
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Custom Base URL (Opsional)</label>
-                    <input
-                      type="text"
-                      className="glass-input"
-                      value={customImageUrl}
-                      onChange={(e) => setCustomImageUrl(e.target.value)}
-                      placeholder="https://api.gemini.com/v1"
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Tab: Voice */}
-              {customAITab === "voice" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Provider Voice (Speech-to-Text)</label>
-                    <select
-                      className="glass-input"
-                      value={customVoiceProvider}
-                      onChange={(e) => setCustomVoiceProvider(e.target.value)}
-                      style={{ width: "100%", background: "white", padding: 12, borderRadius: 12 }}
-                    >
-                      <option value="whisper">OpenAI Whisper API</option>
-                      <option value="google">Google Speech-to-Text</option>
-                      <option value="elevenlabs">ElevenLabs TTS/STT</option>
-                      <option value="custom">Custom Speech API</option>
-                    </select>
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>API Key / Kredensial</label>
-                    <input
-                      type="password"
-                      className="glass-input"
-                      value={customVoiceKey}
-                      onChange={(e) => setCustomVoiceKey(e.target.value)}
-                      placeholder="sk-..."
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Custom Base URL (Opsional)</label>
-                    <input
-                      type="text"
-                      className="glass-input"
-                      value={customVoiceUrl}
-                      onChange={(e) => setCustomVoiceUrl(e.target.value)}
-                      placeholder="https://api.openai.com/v1/audio"
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setIsCustomAIConfigFileOpen(false)}
-                  className="btn-secondary"
-                  style={{ flex: 1, padding: 12 }}
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  style={{ flex: 1, padding: 12, boxShadow: "none" }}
-                  disabled={aiConfigSuccess}
-                >
-                  {aiConfigSuccess ? "Menyimpan..." : "Simpan Konfigurasi"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
