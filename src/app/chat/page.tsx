@@ -127,6 +127,18 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
+  // Handle scanned image from BottomNav
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const scannedImage = localStorage.getItem("scanned_image");
+      if (scannedImage) {
+        localStorage.removeItem("scanned_image");
+        setCapturedImage(scannedImage);
+        setInput("Tolong analisis gambar struk ini dan catat transaksinya.");
+      }
+    }
+  }, []);
+
   // ─── Send message to AI backend with SSE streaming ─────────
   const sendToAI = useCallback(
     async (text: string, imageBase64?: string) => {

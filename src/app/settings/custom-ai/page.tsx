@@ -46,16 +46,11 @@ const providerOptions = [
     baseUrl: "https://openrouter.ai/api/v1",
   },
   {
-    value: "gemini",
-    label: "Google Gemini API",
-    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
-  },
-  {
     value: "ollama",
     label: "Ollama (Local)",
     baseUrl: "http://localhost:11434/v1",
   },
-  { value: "custom", label: "Custom Endpoint", baseUrl: "" },
+  { value: "custom", label: "Lainnya (OpenAI Compatible)", baseUrl: "" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -129,7 +124,7 @@ export default function CustomAIPage() {
         });
         if (res.ok) {
           setConfig(EMPTY_CONFIG);
-          setSuccessMsg("Beralih ke Catetin AI (Default) ✅");
+          setSuccessMsg("Beralih ke Catetin AI (Default)");
           setTimeout(() => setSuccessMsg(""), 2000);
         }
       } catch {
@@ -178,7 +173,7 @@ export default function CustomAIPage() {
       }
 
       setConfig(updated);
-      setSuccessMsg("Konfigurasi AI kustom berhasil disimpan! ✅");
+      setSuccessMsg("Konfigurasi AI kustom berhasil disimpan!");
       setTimeout(() => setSuccessMsg(""), 2000);
     } catch {
       setSuccessMsg("Gagal terhubung ke server.");
@@ -237,15 +232,19 @@ export default function CustomAIPage() {
             style={{
               padding: "12px 16px",
               marginBottom: 16,
-              color: config.enabled ? "var(--primary)" : "var(--tertiary)",
-              background: config.enabled
-                ? "rgba(79,55,138,0.08)"
-                : "rgba(118,91,0,0.08)",
+              color: successMsg.includes("Gagal") || successMsg.includes("wajib") ? "var(--error, #B3261E)" : "var(--primary)",
+              background: successMsg.includes("Gagal") || successMsg.includes("wajib") ? "rgba(179, 38, 30, 0.08)" : "rgba(79,55,138,0.08)",
               fontWeight: 600,
               fontSize: 14,
               borderRadius: 16,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
             }}
           >
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+              {successMsg.includes("Gagal") || successMsg.includes("wajib") ? "error" : "check_circle"}
+            </span>
             {successMsg}
           </div>
         )}
@@ -419,9 +418,13 @@ export default function CustomAIPage() {
                   fontSize: 13,
                   fontWeight: 600,
                   color: "var(--primary)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
-                🔄 3-Layer Auto-Failover
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>sync</span>
+                3-Layer Auto-Failover
               </p>
               <p
                 style={{
@@ -675,9 +678,14 @@ export default function CustomAIPage() {
                   fontSize: 14,
                   fontWeight: 700,
                   boxShadow: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
                 }}
               >
-                💾 Simpan Konfigurasi
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>save</span>
+                Simpan Konfigurasi
               </button>
             </form>
           </div>

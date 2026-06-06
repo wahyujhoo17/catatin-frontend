@@ -10,6 +10,7 @@ export default function EditProfilePage() {
   const { user } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -17,17 +18,20 @@ export default function EditProfilePage() {
   useEffect(() => {
     // First populate from AuthContext
     if (user) {
-      setName(user.name);
-      setEmail(user.email);
+      setName(user.name || "");
+      setEmail(user.email || "");
+      setPhone(user.phone || "");
     }
     // Then override with localStorage if available
     if (typeof window !== "undefined") {
       const savedName = localStorage.getItem("profile_name");
       const savedEmail = localStorage.getItem("profile_email");
+      const savedPhone = localStorage.getItem("profile_phone");
       const savedImage = localStorage.getItem("profile_image");
 
       if (savedName) setName(savedName);
       if (savedEmail) setEmail(savedEmail);
+      if (savedPhone) setPhone(savedPhone);
       if (savedImage) setProfileImage(savedImage);
     }
   }, [user]);
@@ -37,6 +41,7 @@ export default function EditProfilePage() {
     if (typeof window !== "undefined") {
       localStorage.setItem("profile_name", name);
       localStorage.setItem("profile_email", email);
+      localStorage.setItem("profile_phone", phone);
       if (profileImage) {
         localStorage.setItem("profile_image", profileImage);
       }
@@ -265,6 +270,37 @@ export default function EditProfilePage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="budi.santoso@email.com"
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "14px 16px",
+                  fontSize: 14,
+                  height: 48,
+                  borderRadius: 16,
+                  backgroundColor: "rgba(255, 255, 255, 0.6)",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <label
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--on-surface-variant)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  paddingLeft: 4,
+                }}
+              >
+                Nomor Telepon
+              </label>
+              <input
+                type="tel"
+                className="glass-input"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="081234567890"
                 style={{
                   width: "100%",
                   boxSizing: "border-box",

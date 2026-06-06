@@ -16,12 +16,8 @@ export default function SettingsPage() {
   const [notifBudget, setNotifBudget] = useState(false);
   const [biometricSec, setBiometricSec] = useState(true);
 
-  // Custom Dropdown states
   const [activeLang, setActiveLang] = useState("id");
   const [isLangOpen, setIsLangOpen] = useState(false);
-
-  const [activeAI, setActiveAI] = useState("catetin");
-  const [isAIOpen, setIsAIOpen] = useState(false);
 
   const [activeWS, setActiveWS] = useState("personal");
   const [isWSOpen, setIsWSOpen] = useState(false);
@@ -74,30 +70,6 @@ export default function SettingsPage() {
     { value: "en", label: "English (US)" },
   ];
 
-  const aiProviders = [
-    {
-      value: "catetin",
-      label: "Catetin AI (Default)",
-      detail: "Respon cepat, integrasi keuangan pintar",
-    },
-    {
-      value: "gemini",
-      label: "Google Gemini",
-      detail: "Integrasi model Google",
-    },
-    {
-      value: "openai",
-      label: "OpenAI GPT-4o",
-      detail: "Analisis keuangan mendalam",
-    },
-    {
-      value: "claude",
-      label: "Claude 3.5 Sonnet",
-      detail: "Gaya penulisan natural",
-    },
-    { value: "deepseek", label: "DeepSeek-V3", detail: "Efisiensi tinggi" },
-  ];
-
   const workspaces = [
     { value: "personal", label: "Dashboard Personal" },
     { value: "pos", label: "Dashboard POS Usaha" },
@@ -105,8 +77,6 @@ export default function SettingsPage() {
 
   const currentLang =
     languages.find((l) => l.value === activeLang) || languages[0];
-  const currentAI =
-    aiProviders.find((a) => a.value === activeAI) || aiProviders[0];
   const currentWS =
     workspaces.find((w) => w.value === activeWS) || workspaces[0];
 
@@ -464,155 +434,9 @@ export default function SettingsPage() {
             style={{
               padding: "0 16px",
               position: "relative",
-              zIndex: isAIOpen ? 10 : 1,
+              zIndex: 1,
             }}
           >
-            {/* AI Provider Dropdown */}
-            <div className="settings-row" style={{ position: "relative" }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  flex: 1,
-                  marginRight: 12,
-                  minWidth: 0,
-                }}
-              >
-                <AIProviderLogo
-                  provider={activeAI}
-                  containerSize={36}
-                  size={20}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p
-                    className="text-body-md"
-                    style={{ fontWeight: 600, margin: 0 }}
-                  >
-                    Provider AI Aktif
-                  </p>
-                  <p
-                    className="text-body-sm"
-                    style={{
-                      color: "var(--on-surface-variant)",
-                      margin: 0,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {currentAI.label}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAIOpen(!isAIOpen)}
-                style={{
-                  background: "rgba(103, 80, 164, 0.06)",
-                  padding: "8px 12px",
-                  borderRadius: 12,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "var(--primary)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                  flexShrink: 0,
-                }}
-              >
-                Pilih
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: 18 }}
-                >
-                  keyboard_arrow_down
-                </span>
-              </button>
-
-              {isAIOpen && (
-                <div
-                  className="glass-card animate-fade-in"
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: "100%",
-                    zIndex: 100,
-                    marginTop: 6,
-                    padding: 8,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 4,
-                    width: 270,
-                    background: "white",
-                    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
-                    border: "1px solid rgba(203, 196, 210, 0.4)",
-                  }}
-                >
-                  {aiProviders.map((a) => (
-                    <button
-                      key={a.value}
-                      type="button"
-                      onClick={() => {
-                        setActiveAI(a.value);
-                        setIsAIOpen(false);
-                      }}
-                      style={{
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        textAlign: "left",
-                        width: "100%",
-                        border: "none",
-                        background:
-                          activeAI === a.value
-                            ? "rgba(103, 80, 164, 0.08)"
-                            : "transparent",
-                        color:
-                          activeAI === a.value
-                            ? "var(--primary)"
-                            : "var(--on-surface)",
-                        fontWeight: activeAI === a.value ? 600 : 500,
-                        transition: "background 0.2s",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                      }}
-                    >
-                      <AIProviderLogo
-                        provider={a.value}
-                        containerSize={28}
-                        size={15}
-                      />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p
-                          style={{
-                            fontSize: 13,
-                            margin: 0,
-                            fontWeight: activeAI === a.value ? 600 : 500,
-                          }}
-                        >
-                          {a.label}
-                        </p>
-                        <p
-                          style={{
-                            fontSize: 10,
-                            color: "var(--outline)",
-                            margin: "2px 0 0 0",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {a.detail}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Custom AI Provider Link Row */}
             <Link
               href="/settings/custom-ai"
               style={{
@@ -630,13 +454,13 @@ export default function SettingsPage() {
               >
                 <div>
                   <p className="text-body-md" style={{ fontWeight: 600 }}>
-                    Kunci API & Provider Kustom
+                    Konfigurasi Provider AI
                   </p>
                   <p
                     className="text-body-sm"
                     style={{ color: "var(--on-surface-variant)" }}
                   >
-                    Atur model Teks Utama, Gambar, dan Voice sendiri
+                    Gunakan Catetin AI atau pasang API Key Anda sendiri (OpenRouter, Groq, dll)
                   </p>
                 </div>
                 <span

@@ -26,6 +26,7 @@ export default function BottomNav() {
   const [stream, setStream] = useState<MediaStream | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -96,6 +97,18 @@ export default function BottomNav() {
   };
 
   const handleCapture = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement("canvas");
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const base64 = canvas.toDataURL("image/jpeg", 0.7);
+        localStorage.setItem("scanned_image", base64);
+      }
+    }
+
     // 1. Shutter flash effect
     setIsFlashing(true);
     setTimeout(() => {
@@ -111,6 +124,24 @@ export default function BottomNav() {
         router.push("/chat?scan=success");
       }, 2000);
     }, 150);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        localStorage.setItem("scanned_image", reader.result as string);
+        setIsScanning(true);
+        setTimeout(() => {
+          stopCamera();
+          setIsCameraOpen(false);
+          setIsScanning(false);
+          router.push("/chat?scan=success");
+        }, 2000);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   useEffect(() => {
@@ -621,20 +652,62 @@ export default function BottomNav() {
               </div>
             ) : (
               <>
-                <button
-                  onClick={handleCapture}
+                <div
                   style={{
-                    width: 76,
-                    height: 76,
-                    borderRadius: "50%",
-                    background: "white",
-                    border: "6px solid rgba(255,255,255,0.25)",
-                    boxShadow: "0 0 20px rgba(0,0,0,0.4)",
-                    cursor: "pointer",
-                    transition: "transform 0.1s active",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 32,
+                    position: "relative",
                   }}
-                  aria-label="Ambil foto"
-                />
+                >
+                  {/* Upload File Button */}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: "50%",
+                      background: "rgba(255,255,255,0.15)",
+                      border: "none",
+                      color: "white",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      transition: "background 0.2s",
+                    }}
+                    aria-label="Upload dari galeri"
+                  >
+                    <span className="material-symbols-outlined">image</span>
+                  </button>
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept="image/*"
+                    style={{ display: "none" }}
+                  />
+
+                  {/* Camera Capture Button */}
+                  <button
+                    onClick={handleCapture}
+                    style={{
+                      width: 76,
+                      height: 76,
+                      borderRadius: "50%",
+                      background: "white",
+                      border: "6px solid rgba(255,255,255,0.25)",
+                      boxShadow: "0 0 20px rgba(0,0,0,0.4)",
+                      cursor: "pointer",
+                      transition: "transform 0.1s active",
+                    }}
+                    aria-label="Ambil foto"
+                  />
+
+                  {/* Dummy placeholder for layout balance */}
+                  <div style={{ width: 48 }} />
+                </div>
                 <p
                   className="text-label-md"
                   style={{
@@ -642,7 +715,7 @@ export default function BottomNav() {
                     textAlign: "center",
                   }}
                 >
-                  Posisikan struk dalam kotak petunjuk untuk pemindaian otomatis
+                  Posisikan struk dalam kotak petunjuk atau unggah dari galeri
                 </p>
               </>
             )}
