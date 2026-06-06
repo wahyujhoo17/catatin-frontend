@@ -194,36 +194,11 @@ export default function CustomAIPage() {
       }}
     >
       {/* Header */}
-      <header className="top-app-bar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: "var(--container-margin)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-          <Link href="/settings" style={{ display: "flex", alignItems: "center", color: "var(--primary)", textDecoration: "none", flexShrink: 0 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 24 }}>arrow_back</span>
-          </Link>
-          <h2
-            className="text-headline-md"
-            style={{
-              color: "var(--on-surface)",
-              margin: 0,
-              fontSize: 16,
-              fontWeight: 700,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              maxWidth: "calc(100vw - 160px)"
-            }}
-          >
-            Provider AI Kustom
-          </h2>
-        </div>
-        {!isAdding && (
-          <button
-            onClick={() => setIsAdding(true)}
-            className="btn-primary"
-            style={{ padding: "8px 16px", borderRadius: 12, fontSize: 13, boxShadow: "none", flexShrink: 0 }}
-          >
-            Tambah
-          </button>
-        )}
+      <header className="top-app-bar" style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <Link href="/settings" style={{ display: "flex", alignItems: "center", color: "var(--primary)", textDecoration: "none" }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 24 }}>arrow_back</span>
+        </Link>
+        <h2 className="text-headline-md" style={{ color: "var(--on-surface)", margin: 0, fontSize: 18, fontWeight: 700 }}>Provider AI Kustom</h2>
       </header>
 
       <main style={{ marginTop: 72, padding: "20px var(--container-margin)", maxWidth: 672, margin: "72px auto 0" }}>
@@ -413,11 +388,33 @@ export default function CustomAIPage() {
         ) : (
           /* List of custom AI Providers */
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <button
+              onClick={() => setIsAdding(true)}
+              className="btn-primary"
+              style={{
+                width: "100%",
+                padding: "14px",
+                borderRadius: 16,
+                fontSize: 15,
+                fontWeight: 600,
+                boxShadow: "none",
+                marginBottom: 4,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>add_circle</span>
+              Tambah Provider Baru
+            </button>
+
             {providers.length === 0 ? (
               <div className="glass-card" style={{ padding: 32, textAlign: "center" }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 48, color: "var(--outline)", opacity: 0.5 }}>dns</span>
                 <p className="text-body-md" style={{ marginTop: 12, color: "var(--on-surface-variant)", fontWeight: 500 }}>Belum ada provider kustom.</p>
-                <p className="text-body-sm" style={{ color: "var(--outline)", marginTop: 4 }}>Klik tombol Tambah di pojok kanan atas untuk menambahkan provider AI milik sendiri.</p>
+                <p className="text-body-sm" style={{ color: "var(--outline)", marginTop: 4 }}>Klik tombol Tambah Provider Baru di atas untuk menambahkan provider AI milik sendiri.</p>
               </div>
             ) : (
               providers.map(item => (

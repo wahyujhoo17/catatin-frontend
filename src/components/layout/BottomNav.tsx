@@ -128,7 +128,8 @@ export default function BottomNav() {
 
           const isActive =
             pathname === href ||
-            (item.label === "Dashboard" && pathname.startsWith("/dashboard"));
+            (item.label === "Dashboard" && pathname.startsWith("/dashboard")) ||
+            (item.label === "Pengaturan" && pathname.startsWith("/settings"));
 
           return (
             <Link
