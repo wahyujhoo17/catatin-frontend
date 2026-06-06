@@ -58,25 +58,19 @@ export default function EditProfilePage() {
     <div
       style={{
         backgroundColor: "var(--surface)",
-        backgroundImage: `
-          radial-gradient(at 0% 0%, rgba(207, 188, 255, 0.15) 0px, transparent 50%),
-          radial-gradient(at 100% 100%, rgba(231, 195, 101, 0.1) 0px, transparent 50%)
-        `,
-        backgroundAttachment: "fixed",
-        backgroundRepeat: "no-repeat",
         minHeight: "100dvh",
         paddingBottom: 40,
       }}
     >
       {/* Header */}
-      <header className="top-app-bar" style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <header className="top-app-bar" style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 12 }}>
         <button onClick={() => router.push("/settings")} style={{ background: "none", border: "none", padding: 0, display: "flex", alignItems: "center", color: "var(--primary)", cursor: "pointer" }}>
           <span className="material-symbols-outlined" style={{ fontSize: 24 }}>arrow_back</span>
         </button>
-        <h2 className="text-headline-md" style={{ color: "var(--on-surface)", margin: 0, fontSize: 18, fontWeight: 700 }}>Ubah Profil</h2>
+        <h2 className="text-headline-md" style={{ color: "var(--on-surface)", margin: 0, fontSize: 16, fontWeight: 700 }}>Ubah Profil</h2>
       </header>
 
-      <main style={{ marginTop: 72, padding: "20px var(--container-margin)", maxWidth: 672, margin: "72px auto 0" }}>
+      <main className="settings-main-container">
         <div className="glass-card animate-fade-slide-up" style={{ padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           
           {/* Avatar / Profile Picture Section */}

@@ -21,10 +21,6 @@ export default function DashboardPersonalPage() {
     <div
       style={{
         backgroundColor: "var(--surface)",
-        backgroundImage: `
-          radial-gradient(at 0% 0%, rgba(207, 188, 255, 0.15) 0px, transparent 50%),
-          radial-gradient(at 100% 100%, rgba(231, 195, 101, 0.1) 0px, transparent 50%)
-        `,
         minHeight: "100dvh",
         paddingBottom: 128,
       }}

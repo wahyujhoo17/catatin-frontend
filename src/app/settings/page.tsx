@@ -81,19 +81,13 @@ export default function SettingsPage() {
     <div
       style={{
         backgroundColor: "var(--surface)",
-        backgroundImage: `
-          radial-gradient(at 0% 0%, rgba(207, 188, 255, 0.15) 0px, transparent 50%),
-          radial-gradient(at 100% 100%, rgba(231, 195, 101, 0.1) 0px, transparent 50%)
-        `,
-        backgroundAttachment: "fixed",
-        backgroundRepeat: "no-repeat",
         minHeight: "100dvh",
         paddingBottom: 160,
       }}
     >
       <TopAppBar />
 
-      <main style={{ marginTop: 72, padding: "0 var(--container-margin)", maxWidth: 672, margin: "72px auto 0" }}>
+      <main className="settings-home-container">
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--stack-gap-sm)" }}>
           
           {/* Header */}

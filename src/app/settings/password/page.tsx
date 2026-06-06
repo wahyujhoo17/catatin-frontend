@@ -34,25 +34,19 @@ export default function ChangePasswordPage() {
     <div
       style={{
         backgroundColor: "var(--surface)",
-        backgroundImage: `
-          radial-gradient(at 0% 0%, rgba(207, 188, 255, 0.15) 0px, transparent 50%),
-          radial-gradient(at 100% 100%, rgba(231, 195, 101, 0.1) 0px, transparent 50%)
-        `,
-        backgroundAttachment: "fixed",
-        backgroundRepeat: "no-repeat",
         minHeight: "100dvh",
         paddingBottom: 40,
       }}
     >
       {/* Header */}
-      <header className="top-app-bar" style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <header className="top-app-bar" style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 12 }}>
         <Link href="/settings" style={{ display: "flex", alignItems: "center", color: "var(--primary)", textDecoration: "none" }}>
           <span className="material-symbols-outlined" style={{ fontSize: 24 }}>arrow_back</span>
         </Link>
-        <h2 className="text-headline-md" style={{ color: "var(--on-surface)", margin: 0, fontSize: 18, fontWeight: 700 }}>Ganti Kata Sandi</h2>
+        <h2 className="text-headline-md" style={{ color: "var(--on-surface)", margin: 0, fontSize: 16, fontWeight: 700 }}>Ganti Kata Sandi</h2>
       </header>
 
-      <main style={{ marginTop: 72, padding: "20px var(--container-margin)", maxWidth: 672, margin: "72px auto 0" }}>
+      <main className="settings-main-container">
         <div className="glass-card animate-fade-slide-up" style={{ padding: "var(--card-padding)" }}>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {error && (
