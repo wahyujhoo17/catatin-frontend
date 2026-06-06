@@ -21,14 +21,15 @@ function renderMarkdown(text: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>")
+    // Italic: require no space after first * and no space before last *
+    .replace(/(?<!\*)\*(?!\s|\*)(.+?)(?<!\s|\*)\*(?!\*)/g, "<em>$1</em>")
     .replace(/`([^`]+)`/g, "<code style='background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-size:0.9em'>$1</code>")
     .replace(/^### (.+)$/gm, "<strong style='font-size:1em;display:block;margin:6px 0 2px'>$1</strong>")
     .replace(/^## (.+)$/gm, "<strong style='font-size:1.05em;display:block;margin:8px 0 2px'>$1</strong>")
     .replace(/^# (.+)$/gm, "<strong style='font-size:1.1em;display:block;margin:8px 0 4px'>$1</strong>")
     .replace(/\n/g, "<br>");
 
-  html = html.replace(/(?:<br>|^)(?:- |• )(.+?)(?=<br>|$)/g, (_, content) => {
+  html = html.replace(/(?:<br>|^)(?:- |\* |• )(.+?)(?=<br>|$)/g, (_, content) => {
     return `<br><span style="display:flex;gap:6px;align-items:flex-start;margin:2px 0"><span style="flex-shrink:0;margin-top:2px">•</span><span>${content}</span></span>`;
   });
 
@@ -65,6 +66,7 @@ export default function BottomNav() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [isRefining, setIsRefining] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -140,8 +142,12 @@ export default function BottomNav() {
   };
 
   // ─── Process receipt with AI ────────────────────────────────
-  const processReceipt = async (base64Image: string) => {
-    setScanPhase("processing");
+  const processReceipt = async (base64Image: string, extraInstruction?: string) => {
+    if (extraInstruction) {
+      setIsRefining(true);
+    } else {
+      setScanPhase("processing");
+    }
     setScanError(null);
 
     const token = localStorage.getItem("token");
@@ -152,6 +158,11 @@ export default function BottomNav() {
     }
 
     try {
+      let promptMsg = "Tolong baca struk belanja ini dan catat semua item transaksinya sebagai pengeluaran. Berikan ringkasan total belanja.";
+      if (extraInstruction) {
+        promptMsg += " " + extraInstruction;
+      }
+
       const res = await fetch(`${API_BASE}/api/ai/chat/sync`, {
         method: "POST",
         headers: {
@@ -159,8 +170,7 @@ export default function BottomNav() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          message:
-            "Tolong baca struk belanja ini dan catat semua item transaksinya sebagai pengeluaran. Berikan ringkasan total belanja.",
+          message: promptMsg,
           image: base64Image,
         }),
       });
@@ -181,6 +191,8 @@ export default function BottomNav() {
     } catch (err: any) {
       setScanError(err.message || "Terjadi kesalahan saat menghubungi AI.");
       setScanPhase("result");
+    } finally {
+      setIsRefining(false);
     }
   };
 
@@ -551,20 +563,29 @@ export default function BottomNav() {
           {scanPhase === "result" && (
             <div
               style={{
-                width: "100%",
-                maxWidth: 420,
+                width: "calc(100% + 40px)", // counteract the 20px padding of camera-overlay
+                maxWidth: 460,
                 flex: 1,
-                overflowY: "auto",
-                borderRadius: 20,
-                background: "rgba(255,255,255,0.08)",
-                backdropFilter: "blur(12px)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                padding: 20,
                 display: "flex",
                 flexDirection: "column",
-                gap: 16,
+                borderRadius: "24px 24px 0 0",
+                background: "var(--surface)",
+                boxShadow: "0 -8px 32px rgba(0,0,0,0.2)",
+                margin: "16px -20px -24px -20px", // pulls the sheet to bottom and edges
+                overflow: "hidden",
+                zIndex: 10,
               }}
             >
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  padding: "24px 20px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 16,
+                }}
+              >
               {scanError ? (
                 /* Error State */
                 <div
@@ -585,91 +606,148 @@ export default function BottomNav() {
                   </span>
                   <p
                     className="text-body-md"
-                    style={{ color: "rgba(255,255,255,0.9)", lineHeight: 1.5 }}
+                    style={{ color: "var(--on-surface)", lineHeight: 1.5 }}
                   >
                     {scanError}
                   </p>
                 </div>
               ) : scanResult ? (
                 /* Success State */
-                <>
-                  {/* Mini preview of captured receipt */}
-                  {capturedImage && (
-                    <div
-                      style={{
-                        width: "100%",
-                        height: 120,
-                        borderRadius: 12,
-                        overflow: "hidden",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                      }}
-                    >
-                      <img
-                        src={capturedImage}
-                        alt="Scanned receipt"
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          opacity: 0.7,
-                        }}
-                      />
-                    </div>
-                  )}
+                (() => {
+                  const askMatch = scanResult.content.match(/\[ASK_ACCOUNT:(.*?)\]/);
+                  const options = askMatch ? askMatch[1].split(",") : [];
+                  
+                  const cleanText = scanResult.content
+                    .replace(/\[ACTION[\s\S]*?(?:\[\/ACTION\]|$)/g, "")
+                    .replace(/\[ASK_ACCOUNT[\s\S]*?(?:\]|$)/g, "")
+                    .replace(/\[SHOW_CHART[\s\S]*?(?:\]|$)/g, "")
+                    .trim();
 
-                  {/* AI Response */}
-                  <div
-                    style={{
-                      background: "rgba(255,255,255,0.06)",
-                      borderRadius: 16,
-                      padding: 16,
-                      border: "1px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        marginBottom: 12,
-                      }}
-                    >
-                      <span
-                        className="material-symbols-outlined"
+                  return (
+                    <>
+                      {/* Mini preview of captured receipt */}
+                      {capturedImage && (
+                        <div
+                          style={{
+                            width: "100%",
+                            height: 120,
+                            borderRadius: 16,
+                            overflow: "hidden",
+                            border: "1px solid var(--outline-variant)",
+                          }}
+                        >
+                          <img
+                            src={capturedImage}
+                            alt="Scanned receipt"
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* AI Response */}
+                      <div
                         style={{
-                          fontSize: 20,
-                          color: "var(--primary-fixed-dim)",
+                          background: "var(--surface-container-low)",
+                          borderRadius: 20,
+                          padding: 20,
+                          border: "1px solid var(--outline-variant)",
                         }}
                       >
-                        smart_toy
-                      </span>
-                      <span
-                        className="text-label-md"
-                        style={{ color: "var(--primary-fixed-dim)", fontWeight: 600 }}
-                      >
-                        Catatin AI
-                      </span>
-                    </div>
-                    <div
-                      className="chat-md"
-                      style={{
-                        color: "rgba(255,255,255,0.85)",
-                        fontSize: 14,
-                        lineHeight: 1.7,
-                      }}
-                      dangerouslySetInnerHTML={{
-                        __html: renderMarkdown(scanResult.content),
-                      }}
-                    />
-                  </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            marginBottom: 12,
+                          }}
+                        >
+                          <span
+                            className="material-symbols-outlined"
+                            style={{
+                              fontSize: 20,
+                              color: "var(--primary)",
+                            }}
+                          >
+                            smart_toy
+                          </span>
+                          <span
+                            className="text-label-md"
+                            style={{ color: "var(--primary)", fontWeight: 700 }}
+                          >
+                            Catatin AI
+                          </span>
+                        </div>
+                        <div
+                          className="chat-md"
+                          style={{
+                            color: "var(--on-surface)",
+                            fontSize: 14,
+                            lineHeight: 1.7,
+                          }}
+                          dangerouslySetInnerHTML={{
+                            __html: renderMarkdown(cleanText),
+                          }}
+                        />
+                        
+                        {/* Account Selection Options or Refining Loader */}
+                        {isRefining ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 20 }}>
+                            <div
+                              style={{
+                                width: 24,
+                                height: 24,
+                                borderRadius: "50%",
+                                border: "3px solid var(--outline-variant)",
+                                borderTopColor: "var(--primary)",
+                                animation: "spin 1s linear infinite",
+                              }}
+                            />
+                            <span className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>
+                              Mencatat transaksi...
+                            </span>
+                          </div>
+                        ) : (
+                          options.length > 0 && capturedImage && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 20 }}>
+                              {options.map((opt) => (
+                                <button
+                                  key={opt}
+                                  onClick={() => processReceipt(capturedImage, `Gunakan akun ${opt.trim()}`)}
+                                  disabled={isRefining}
+                                  style={{
+                                    padding: "10px 20px",
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    borderRadius: 24,
+                                    border: "1px solid var(--primary)",
+                                    background: "var(--primary-container)",
+                                    color: "var(--on-primary-container)",
+                                    cursor: "pointer",
+                                    transition: "transform 0.1s, opacity 0.2s",
+                                    opacity: isRefining ? 0.5 : 1,
+                                  }}
+                                  onMouseEnter={(e) => { if (!isRefining) e.currentTarget.style.opacity = "0.9" }}
+                                  onMouseLeave={(e) => { if (!isRefining) e.currentTarget.style.opacity = "1" }}
+                                >
+                                  Pakai {opt.trim()}
+                                </button>
+                              ))}
+                            </div>
+                          )
+                        )}
+                      </div>
 
                   {/* Transactions created */}
                   {scanResult.transactions && scanResult.transactions.length > 0 && (
                     <div
                       style={{
                         background: "rgba(76, 175, 80, 0.1)",
-                        borderRadius: 12,
-                        padding: 12,
+                        borderRadius: 16,
+                        padding: 16,
                         border: "1px solid rgba(76, 175, 80, 0.2)",
                       }}
                     >
@@ -678,18 +756,18 @@ export default function BottomNav() {
                           display: "flex",
                           alignItems: "center",
                           gap: 8,
-                          marginBottom: 8,
+                          marginBottom: 12,
                         }}
                       >
                         <span
                           className="material-symbols-outlined"
-                          style={{ fontSize: 18, color: "#66BB6A" }}
+                          style={{ fontSize: 20, color: "#66BB6A" }}
                         >
                           check_circle
                         </span>
                         <span
                           className="text-label-md"
-                          style={{ color: "#66BB6A", fontWeight: 600 }}
+                          style={{ color: "#66BB6A", fontWeight: 700 }}
                         >
                           {scanResult.transactions.length} transaksi tercatat
                         </span>
@@ -700,16 +778,16 @@ export default function BottomNav() {
                           style={{
                             display: "flex",
                             justifyContent: "space-between",
-                            padding: "6px 0",
+                            padding: "8px 0",
                             borderTop:
                               i > 0
-                                ? "1px solid rgba(255,255,255,0.06)"
+                                ? "1px solid rgba(102, 187, 106, 0.2)"
                                 : "none",
                           }}
                         >
                           <span
                             className="text-body-sm"
-                            style={{ color: "rgba(255,255,255,0.7)" }}
+                            style={{ color: "var(--on-surface-variant)" }}
                           >
                             {tx.description}
                           </span>
@@ -728,7 +806,72 @@ export default function BottomNav() {
                     </div>
                   )}
                 </>
+                );
+              })()
               ) : null}
+              </div>
+
+              {/* Bottom Action Bar inside the sheet */}
+              <div
+                style={{
+                  padding: "16px 20px 32px",
+                  background: "var(--surface)",
+                  borderTop: "1px solid var(--outline-variant)",
+                  display: "flex",
+                  gap: 16,
+                  width: "100%",
+                }}
+              >
+                <button
+                  onClick={handleRetake}
+                  style={{
+                    flex: 1,
+                    padding: "16px 20px",
+                    borderRadius: 24,
+                    background: "var(--surface-container-highest)",
+                    border: "none",
+                    color: "var(--on-surface)",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    transition: "opacity 0.2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>photo_camera</span>
+                  Scan Lagi
+                </button>
+                <button
+                  onClick={handleCloseScan}
+                  style={{
+                    flex: 1,
+                    padding: "16px 20px",
+                    borderRadius: 24,
+                    background: "var(--primary)",
+                    border: "none",
+                    color: "var(--on-primary)",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    boxShadow: "0 4px 16px rgba(79, 55, 138, 0.4)",
+                    transition: "opacity 0.2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check</span>
+                  Selesai
+                </button>
+              </div>
             </div>
           )}
 
@@ -883,65 +1026,6 @@ export default function BottomNav() {
               >
                 Sedang menganalisa struk dengan AI Vision...
               </p>
-            )}
-
-            {/* Result Phase: Close / Scan Again */}
-            {scanPhase === "result" && (
-              <div style={{ display: "flex", gap: 12, width: "100%", maxWidth: 420 }}>
-                <button
-                  onClick={handleRetake}
-                  style={{
-                    flex: 1,
-                    padding: "14px 20px",
-                    borderRadius: 16,
-                    background: "rgba(255,255,255,0.1)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    color: "white",
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                  }}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: 20 }}
-                  >
-                    photo_camera
-                  </span>
-                  Scan Lagi
-                </button>
-                <button
-                  onClick={handleCloseScan}
-                  style={{
-                    flex: 1,
-                    padding: "14px 20px",
-                    borderRadius: 16,
-                    background: "var(--primary)",
-                    border: "none",
-                    color: "white",
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    boxShadow: "0 4px 16px rgba(79, 55, 138, 0.4)",
-                  }}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: 20 }}
-                  >
-                    check
-                  </span>
-                  Selesai
-                </button>
-              </div>
             )}
           </div>
         </div>

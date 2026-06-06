@@ -17,8 +17,8 @@ function renderMarkdown(text: string): string {
     .replace(/>/g, "&gt;")
     // Bold: **text**
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    // Italic: *text* (but not inside bold)
-    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>")
+    // Italic: *text* (but not inside bold, require no space after first * and no space before last *)
+    .replace(/(?<!\*)\*(?!\s|\*)(.+?)(?<!\s|\*)\*(?!\*)/g, "<em>$1</em>")
     // Inline code: `code`
     .replace(/`([^`]+)`/g, "<code style='background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-size:0.9em'>$1</code>")
     // Horizontal rule: ---
@@ -30,8 +30,8 @@ function renderMarkdown(text: string): string {
     // Newlines to <br>
     .replace(/\n/g, "<br>");
 
-  // Unordered list items: - item or • item (after br conversion)
-  html = html.replace(/(?:<br>|^)(?:- |• )(.+?)(?=<br>|$)/g, (_, content) => {
+  // Unordered list items: - item or • item or * item
+  html = html.replace(/(?:<br>|^)(?:- |\* |• )(.+?)(?=<br>|$)/g, (_, content) => {
     return `<br><span style="display:flex;gap:6px;align-items:flex-start;margin:2px 0"><span style="flex-shrink:0;margin-top:2px">•</span><span>${content}</span></span>`;
   });
 
