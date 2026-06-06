@@ -519,23 +519,24 @@ export default function DashboardPersonalPage() {
                   )}
                 </div>
               </div>
-              <Link
-                href="/chat"
-                style={{
-                  background: "var(--primary)",
-                  color: "var(--on-primary)",
-                  padding: "12px 24px",
-                  borderRadius: 9999,
-                  fontSize: 16,
-                  fontWeight: 600,
-                  textAlign: "center",
-                  textDecoration: "none",
-                  transition: "opacity 0.2s",
-                  alignSelf: "flex-start",
-                }}
-              >
-                Tanya AI Catetin
-              </Link>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <Link
+                  href="/chat"
+                  style={{
+                    background: "var(--primary)",
+                    color: "var(--on-primary)",
+                    padding: "8px 16px",
+                    borderRadius: 9999,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textAlign: "center",
+                    textDecoration: "none",
+                    transition: "opacity 0.2s",
+                  }}
+                >
+                  Tanya AI Catetin
+                </Link>
+              </div>
             </div>
 
             {/* Recent Transactions */}
@@ -556,7 +557,7 @@ export default function DashboardPersonalPage() {
               >
                 <h3 className="text-headline-sm">Transaksi Terbaru</h3>
                 <Link
-                  href="/wallet"
+                  href="/transactions"
                   className="text-label-md"
                   style={{ color: "var(--primary)" }}
                 >
@@ -602,8 +603,8 @@ export default function DashboardPersonalPage() {
                             width: 48,
                             height: 48,
                             background: tx.isExpense
-                              ? "var(--secondary-container)"
-                              : "var(--primary-container)",
+                              ? "rgba(244, 67, 54, 0.1)" // Lighter Red for expense
+                              : "rgba(76, 175, 80, 0.1)", // Lighter Green for income
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -615,11 +616,23 @@ export default function DashboardPersonalPage() {
                             className="material-symbols-outlined dashboard-tx-icon"
                             style={{
                               color: tx.isExpense
-                                ? "var(--secondary)"
-                                : "var(--primary)",
+                                ? "rgba(229, 57, 53, 1)" // Red for expense
+                                : "rgba(67, 160, 71, 1)", // Green for income
                             }}
                           >
-                            {tx.categoryIcon || "receipt_long"}
+                            {(() => {
+                              if (tx.categoryIcon && tx.categoryIcon !== "receipt_long" && tx.categoryIcon !== "category") return tx.categoryIcon;
+                              const desc = (tx.description || "").toLowerCase();
+                              const cat = (tx.category || "").toLowerCase();
+                              if (desc.includes("makan") || desc.includes("minum") || cat.includes("makanan")) return "restaurant";
+                              if (desc.includes("gaji") || cat.includes("gaji")) return "payments";
+                              if (desc.includes("belanja") || desc.includes("beli") || desc.includes("casing") || cat.includes("belanja")) return "shopping_bag";
+                              if (desc.includes("pulsa") || desc.includes("listrik") || desc.includes("token")) return "bolt";
+                              if (desc.includes("transport") || desc.includes("gojek") || desc.includes("grab") || desc.includes("bensin")) return "local_taxi";
+                              if (desc.includes("kesehatan") || desc.includes("obat")) return "medical_services";
+                              if (desc.includes("hutang") || desc.includes("bayar")) return "handshake";
+                              return tx.isExpense ? "shopping_cart" : "account_balance_wallet";
+                            })()}
                           </span>
                         </div>
                         <div style={{ minWidth: 0 }}>
@@ -645,7 +658,7 @@ export default function DashboardPersonalPage() {
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {tx.category} • {timeAgo(tx.date)}
+                            {new Date(tx.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} • {tx.category} • {timeAgo(tx.date)}
                           </p>
                         </div>
                       </div>

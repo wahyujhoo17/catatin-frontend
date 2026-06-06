@@ -56,16 +56,16 @@ export default function WorkspacePage() {
   }, [user?.mode, router]);
 
   const handleSelect = async (ws: (typeof workspaces)[0]) => {
+    if (saving !== null) return;
     setSaving(ws.id);
     try {
       const mode = ws.id === "pos" ? "POS" : "PERSONAL";
       await updateMode(mode);
-      router.push(ws.href);
+      // Navigation happens automatically via useEffect
     } catch {
       // fallback: tetap navigasi meski API gagal
       router.push(ws.href);
-    } finally {
-      setSaving(null);
+      setSaving(null); // only reset on fallback error
     }
   };
 
@@ -184,10 +184,10 @@ export default function WorkspacePage() {
           </h1>
           <p
             className="text-body-lg"
-            style={{ color: "var(--on-surface-variant)" }}
+            style={{ color: "var(--on-surface-variant)", opacity: 0.8 }}
           >
-            Pilih konteks workspace untuk personalisasi pengalamanmu dan
-            optimalkan alur kerja hari ini.
+            Pilih konteks workspace untuk menyesuaikan pengalaman Anda dan
+            mengoptimalkan alur kerja.
           </p>
         </div>
 
@@ -211,30 +211,36 @@ export default function WorkspacePage() {
               disabled={saving !== null}
               className="glass-card"
               style={{
-                padding: "var(--card-padding)",
+                padding: "32px",
                 textAlign: "left",
                 display: "flex",
                 flexDirection: "column",
-                transition: "all 0.5s ease",
-                cursor: "pointer",
+                transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                cursor: saving !== null ? "wait" : "pointer",
                 position: "relative",
                 overflow: "hidden",
+                border: "1px solid rgba(255,255,255,0.6)",
+                background: "rgba(255,255,255,0.4)",
+                opacity: saving !== null && saving !== ws.id ? 0.5 : 1,
+                transform: saving === ws.id ? "scale(0.98)" : "scale(1)",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.transform =
-                  "translateY(-8px)";
-                (e.currentTarget as HTMLElement).style.boxShadow =
-                  `0 20px 40px rgba(0,0,0,0.08), 0 0 20px ${ws.id === "pos" ? "rgba(33,150,243,0.15)" : "rgba(79,55,138,0.15)"}`;
+                if (saving !== null) return;
+                (e.currentTarget as HTMLElement).style.transform = "translateY(-12px) scale(1.02)";
+                (e.currentTarget as HTMLElement).style.boxShadow = `0 30px 60px rgba(0,0,0,0.1), 0 0 40px ${ws.id === "pos" ? "rgba(33,150,243,0.2)" : "rgba(79,55,138,0.2)"}`;
+                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.7)";
+                (e.currentTarget.querySelector(".accent-bar") as HTMLElement).style.opacity = "1";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform =
-                  "translateY(0)";
-                (e.currentTarget as HTMLElement).style.boxShadow =
-                  "0 10px 30px rgba(0,0,0,0.04)";
+                if (saving !== null) return;
+                (e.currentTarget as HTMLElement).style.transform = "translateY(0) scale(1)";
+                (e.currentTarget as HTMLElement).style.boxShadow = "0 10px 30px rgba(0,0,0,0.04)";
+                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.4)";
+                (e.currentTarget.querySelector(".accent-bar") as HTMLElement).style.opacity = "0";
               }}
               id={`workspace-${ws.id}`}
             >
-              {/* Left accent bar on hover - CSS handled */}
+              {/* Left accent bar on hover */}
               <div
                 style={{
                   position: "absolute",
@@ -260,20 +266,21 @@ export default function WorkspacePage() {
               >
                 <div
                   style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 16,
+                    width: 72,
+                    height: 72,
+                    borderRadius: 20,
                     background: ws.bgLight,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     color: ws.color,
                     transition: "all 0.3s",
+                    boxShadow: `0 8px 24px ${ws.bgLight}`,
                   }}
                 >
                   <span
                     className="material-symbols-outlined"
-                    style={{ fontSize: 32 }}
+                    style={{ fontSize: 36 }}
                   >
                     {ws.icon}
                   </span>
@@ -293,16 +300,17 @@ export default function WorkspacePage() {
 
               <div style={{ marginTop: "auto" }}>
                 <h3
-                  className="text-headline-md"
-                  style={{ color: "var(--on-surface)", marginBottom: 8 }}
+                  className="text-headline-lg-mobile"
+                  style={{ color: "var(--on-surface)", marginBottom: 12, fontWeight: 700 }}
                 >
                   {ws.title}
                 </h3>
                 <p
-                  className="text-body-md"
+                  className="text-body-lg"
                   style={{
                     color: "var(--on-surface-variant)",
-                    marginBottom: 24,
+                    marginBottom: 32,
+                    lineHeight: 1.6,
                   }}
                 >
                   {ws.subtitle}
@@ -344,18 +352,28 @@ export default function WorkspacePage() {
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    color: ws.color,
-                    gap: 4,
+                    color: saving === ws.id ? "var(--on-surface)" : ws.color,
+                    gap: 8,
+                    fontSize: 16,
+                    fontWeight: 700,
+                    background: saving === ws.id ? "var(--surface-dim)" : "transparent",
+                    padding: saving === ws.id ? "8px 16px" : "0",
+                    borderRadius: 12,
+                    width: "fit-content",
+                    transition: "all 0.3s",
                   }}
                 >
                   {saving === ws.id ? (
-                    "Menyimpan..."
+                    <>
+                      <div className="dot-typing" style={{ transform: "scale(0.8)", margin: "0 8px 0 -8px" }} />
+                      Membuka Workspace...
+                    </>
                   ) : (
                     <>
                       {ws.cta}
                       <span
                         className="material-symbols-outlined"
-                        style={{ marginLeft: 4 }}
+                        style={{ marginLeft: 4, transition: "transform 0.3s" }}
                       >
                         arrow_forward
                       </span>
@@ -365,30 +383,6 @@ export default function WorkspacePage() {
               </div>
             </button>
           ))}
-        </div>
-
-        {/* Secondary Actions */}
-        <div
-          className="animate-fade-slide-up"
-          style={{
-            marginTop: "var(--stack-gap-lg)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 16,
-            animationDelay: "0.2s",
-          }}
-        >
-          <button
-            className="btn-secondary"
-            style={{ borderRadius: 9999, padding: "12px 24px" }}
-          >
-            <span className="material-symbols-outlined">add_circle</span>
-            Buat Workspace Baru
-          </button>
-          <p className="text-label-md" style={{ color: "var(--outline)" }}>
-            Terakhir digunakan: Personal Workspace (2 jam lalu)
-          </p>
         </div>
       </main>
 
