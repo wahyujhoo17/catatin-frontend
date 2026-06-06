@@ -145,7 +145,7 @@ function ResetForm() {
             <div style={{ position: "relative", width: "100%", height: 60, marginBottom: 16, overflow: "hidden", display: "flex", justifyContent: "center", alignItems: "center" }}>
               <Image
                 src="/logo/logo.png"
-                alt="Catetin"
+                alt="Catatin"
                 width={240}
                 height={240}
                 style={{ objectFit: "contain" }}

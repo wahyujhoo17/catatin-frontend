@@ -104,14 +104,14 @@ export default function CustomAIPage() {
     if (opt?.baseUrl) setFormBaseUrl(opt.baseUrl);
   };
 
-  // ─── Toggle Catetin AI / Custom AI (simpan ke backend) ────
+  // ─── Toggle Catatin AI / Custom AI (simpan ke backend) ────
   const handleToggleMode = async (useCustom: boolean) => {
     const token = getToken();
     if (!token) return;
 
     const updated = { ...config, enabled: useCustom };
 
-    // Jika switch ke Catetin AI — langsung reset
+    // Jika switch ke Catatin AI — langsung reset
     if (!useCustom) {
       try {
         const res = await fetch(`${API_BASE}/api/settings/ai-config`, {
@@ -124,7 +124,7 @@ export default function CustomAIPage() {
         });
         if (res.ok) {
           setConfig(EMPTY_CONFIG);
-          setSuccessMsg("Beralih ke Catetin AI (Default)");
+          setSuccessMsg("Beralih ke Catatin AI (Default)");
           setTimeout(() => setSuccessMsg(""), 2000);
         }
       } catch {
@@ -268,7 +268,7 @@ export default function CustomAIPage() {
           </p>
 
           <div style={{ display: "flex", gap: 10 }}>
-            {/* Catetin AI (Default) */}
+            {/* Catatin AI (Default) */}
             <button
               onClick={() => handleToggleMode(false)}
               style={{
@@ -305,7 +305,7 @@ export default function CustomAIPage() {
                   color: "var(--on-surface)",
                 }}
               >
-                Catetin AI
+                Catatin AI
               </p>
               <p
                 style={{
@@ -401,7 +401,7 @@ export default function CustomAIPage() {
             </button>
           </div>
 
-          {/* Info Catetin AI */}
+          {/* Info Catatin AI */}
           {!config.enabled && (
             <div
               style={{

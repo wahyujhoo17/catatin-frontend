@@ -4,14 +4,14 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
-  title: "Catetin — Asisten Keuangan AI",
+  title: "Catatin — Asisten Keuangan AI",
   description:
     "Catat keuangan bisnis dan pribadi semudah mengirim pesan chat. Powered by AI.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Catetin",
+    title: "Catatin",
   },
   icons: {
     icon: "/logo/emblem.png",

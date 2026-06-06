@@ -105,7 +105,7 @@ export default function ChatPage() {
     {
       id: "welcome",
       type: "bot",
-      text: 'Hai! 👋 Aku Catetin AI, asisten keuangan pribadimu.\n\nKamu bisa:\n• Catat pengeluaran: "Makan siang 50rb"\n• Catat pemasukan: "Gaji 5jt masuk"\n• Tanya saldo: "Berapa sisa saldo saya?"\n• Minta analisis keuangan\n\n⚠️ Aku hanya bisa bantu urusan keuangan dan aplikasi Catetin ya!',
+      text: 'Hai! 👋 Aku Catatin AI, asisten keuangan pribadimu.\n\nKamu bisa:\n• Catat pengeluaran: "Makan siang 50rb"\n• Catat pemasukan: "Gaji 5jt masuk"\n• Tanya saldo: "Berapa sisa saldo saya?"\n• Minta analisis keuangan\n\n⚠️ Aku hanya bisa bantu urusan keuangan dan aplikasi Catatin ya!',
       time: new Date().toLocaleTimeString("id-ID", {
         hour: "2-digit",
         minute: "2-digit",
@@ -418,7 +418,7 @@ export default function ChatPage() {
           <div style={{ position: "relative", width: 120, height: 32, overflow: "hidden", display: "flex", alignItems: "center" }}>
             <Image
               src="/logo/logo.png"
-              alt="Catetin"
+              alt="Catatin"
               width={120}
               height={120}
               style={{ objectFit: "contain" }}
@@ -530,7 +530,7 @@ export default function ChatPage() {
               className="text-headline-md"
               style={{ color: "var(--on-surface)", marginBottom: 8 }}
             >
-              Halo, Saya Catetin AI
+              Halo, Saya Catatin AI
             </h1>
             <p
               className="text-body-md"

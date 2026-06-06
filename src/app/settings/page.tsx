@@ -460,7 +460,7 @@ export default function SettingsPage() {
                     className="text-body-sm"
                     style={{ color: "var(--on-surface-variant)" }}
                   >
-                    Gunakan Catetin AI atau pasang API Key Anda sendiri (OpenRouter, Groq, dll)
+                    Gunakan Catatin AI atau pasang API Key Anda sendiri (OpenRouter, Groq, dll)
                   </p>
                 </div>
                 <span
@@ -606,7 +606,7 @@ export default function SettingsPage() {
                     className="text-body-sm"
                     style={{ color: "var(--on-surface-variant)" }}
                   >
-                    Catetin v0.1.0 Beta (PWA)
+                    Catatin v0.1.0 Beta (PWA)
                   </p>
                 </div>
                 <span

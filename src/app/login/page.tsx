@@ -131,7 +131,7 @@ export default function LoginPage() {
             <div style={{ position: "relative", width: "100%", height: 60, marginBottom: 16, overflow: "hidden", display: "flex", justifyContent: "center", alignItems: "center" }}>
               <Image
                 src="/logo/logo.png"
-                alt="Catetin"
+                alt="Catatin"
                 width={240}
                 height={240}
                 style={{ objectFit: "contain" }}
@@ -471,7 +471,7 @@ export default function LoginPage() {
         <div style={{ position: "relative", width: 100, height: 32, overflow: "hidden", display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
           <Image
             src="/logo/logo.png"
-            alt="Catetin Logo"
+            alt="Catatin Logo"
             width={120}
             height={120}
             style={{ objectFit: "contain" }}

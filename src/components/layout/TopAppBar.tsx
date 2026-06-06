@@ -30,7 +30,7 @@ export default function TopAppBar({
         <div style={{ position: "relative", width: 120, height: 32, overflow: "hidden", display: "flex", alignItems: "center" }}>
           <Image
             src="/logo/logo.png"
-            alt="Catetin Logo"
+            alt="Catatin Logo"
             width={120}
             height={120}
             style={{ objectFit: "contain" }}

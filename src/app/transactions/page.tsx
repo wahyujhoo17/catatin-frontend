@@ -186,7 +186,7 @@ export default function TransactionsPage() {
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `transaksi_catetin_${new Date().getTime()}.csv`);
+      link.setAttribute("download", `transaksi_catatin_${new Date().getTime()}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

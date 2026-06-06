@@ -78,7 +78,7 @@ export default function AboutAppPage() {
               >
                 <Image
                   src="/logo/logo.png"
-                  alt="Catetin Logo"
+                  alt="Catatin Logo"
                   width={160}
                   height={50}
                   style={{
@@ -106,7 +106,7 @@ export default function AboutAppPage() {
               className="text-body-md"
               style={{ lineHeight: "24px", textAlign: "justify", margin: 0 }}
             >
-              **Catetin** adalah asisten pencatatan keuangan pintar bertenaga AI
+              **Catatin** adalah asisten pencatatan keuangan pintar bertenaga AI
               yang dirancang untuk membantu Anda memantau pengeluaran pribadi
               serta mengelola penjualan kasir (POS) bisnis secara simultan
               dengan bahasa sehari-hari.

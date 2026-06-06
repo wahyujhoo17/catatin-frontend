@@ -42,7 +42,7 @@ export default function AIProviderLogo({
     logoSrc = "/logo/providers/google.png";
   } else if (normProvider.includes("openrouter")) {
     logoSrc = "/logo/providers/openrouter.png";
-  } else if (normProvider === "catetin" || normProvider === "custom") {
+  } else if (normProvider === "catatin" || normProvider === "custom") {
     logoSrc = "/favicon.ico";
   }
 

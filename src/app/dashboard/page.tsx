@@ -534,7 +534,7 @@ export default function DashboardPersonalPage() {
                     transition: "opacity 0.2s",
                   }}
                 >
-                  Tanya AI Catetin
+                  Tanya AI Catatin
                 </Link>
               </div>
             </div>
