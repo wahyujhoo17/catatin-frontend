@@ -49,19 +49,13 @@ export default function WorkspacePage() {
   const displayName = user?.name || "Pengguna";
   const [saving, setSaving] = useState<string | null>(null);
 
-  // Redirect if mode already set
-  useEffect(() => {
-    if (user?.mode === "POS") router.replace("/dashboard/pos");
-    else if (user?.mode === "PERSONAL") router.replace("/dashboard");
-  }, [user?.mode, router]);
-
   const handleSelect = async (ws: (typeof workspaces)[0]) => {
     if (saving !== null) return;
     setSaving(ws.id);
     try {
       const mode = ws.id === "pos" ? "POS" : "PERSONAL";
       await updateMode(mode);
-      // Navigation happens automatically via useEffect
+      router.push(ws.href);
     } catch {
       // fallback: tetap navigasi meski API gagal
       router.push(ws.href);
