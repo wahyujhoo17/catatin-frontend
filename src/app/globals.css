@@ -129,7 +129,8 @@ button {
   font-family: inherit;
 }
 
-input, textarea {
+input,
+textarea {
   font-family: inherit;
   font-size: inherit;
 }
@@ -251,6 +252,11 @@ img {
   border-color: var(--primary);
   box-shadow: 0 0 0 4px rgba(79, 55, 138, 0.1);
   background: rgba(255, 255, 255, 1);
+}
+
+.focus-ring:focus-visible {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 4px rgba(79, 55, 138, 0.15) !important;
 }
 
 /* ================================================================
@@ -517,9 +523,17 @@ img {
    ANIMATIONS
    ================================================================ */
 @keyframes meshFlow {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 @keyframes fadeSlideUp {
@@ -527,6 +541,7 @@ img {
     opacity: 0;
     transform: translateY(16px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -534,18 +549,40 @@ img {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes pulse-soft {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.3; }
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
 }
 
 @keyframes typing-dot {
-  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-  40% { transform: scale(1); opacity: 1; }
+
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .animate-fade-slide-up {
@@ -566,17 +603,45 @@ img {
   padding-right: var(--container-margin);
 }
 
-.text-primary { color: var(--primary); }
-.text-secondary { color: var(--secondary); }
-.text-tertiary { color: var(--tertiary); }
-.text-error { color: var(--error); }
-.text-on-surface { color: var(--on-surface); }
-.text-on-surface-variant { color: var(--on-surface-variant); }
-.text-outline { color: var(--outline); }
+.text-primary {
+  color: var(--primary);
+}
 
-.bg-primary { background-color: var(--primary); }
-.bg-surface { background-color: var(--surface); }
-.bg-surface-container { background-color: var(--surface-container); }
+.text-secondary {
+  color: var(--secondary);
+}
+
+.text-tertiary {
+  color: var(--tertiary);
+}
+
+.text-error {
+  color: var(--error);
+}
+
+.text-on-surface {
+  color: var(--on-surface);
+}
+
+.text-on-surface-variant {
+  color: var(--on-surface-variant);
+}
+
+.text-outline {
+  color: var(--outline);
+}
+
+.bg-primary {
+  background-color: var(--primary);
+}
+
+.bg-surface {
+  background-color: var(--surface);
+}
+
+.bg-surface-container {
+  background-color: var(--surface-container);
+}
 
 /* ================================================================
    RESPONSIVE
@@ -634,17 +699,21 @@ img {
   .dashboard-tx-item {
     padding: 12px !important;
   }
+
   .dashboard-tx-avatar {
     width: 40px !important;
     height: 40px !important;
   }
+
   .dashboard-tx-icon {
     font-size: 20px !important;
   }
+
   .insight-icon-container {
     padding: 12px !important;
     border-radius: 12px !important;
   }
+
   .auto-awesome-icon {
     font-size: 24px !important;
   }
@@ -654,6 +723,7 @@ img {
 .col-span-8-desktop {
   grid-column: span 12;
 }
+
 .col-span-4-desktop {
   grid-column: span 12;
 }
@@ -662,6 +732,7 @@ img {
   .col-span-8-desktop {
     grid-column: span 8;
   }
+
   .col-span-4-desktop {
     grid-column: span 4;
   }
@@ -691,14 +762,27 @@ img {
    CAMERA & SCAN ANIMATIONS
    ================================================================ */
 @keyframes laser-scan {
-  0% { top: 0%; }
-  50% { top: 100%; }
-  100% { top: 0%; }
+  0% {
+    top: 0%;
+  }
+
+  50% {
+    top: 100%;
+  }
+
+  100% {
+    top: 0%;
+  }
 }
 
 @keyframes camera-flash {
-  0% { opacity: 1; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
 }
 
 /* ================================================================
@@ -743,6 +827,7 @@ img {
   .camera-overlay {
     padding: 40px 24px;
   }
+
   .camera-viewfinder {
     max-width: 340px;
     height: 440px;
@@ -780,7 +865,7 @@ img {
   width: 100%;
   max-width: 400px;
   padding: 24px;
-  box-shadow: 0 24px 48px rgba(0,0,0,0.15);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
   background: white;
 }
 
@@ -808,22 +893,28 @@ img {
   .wallet-balance-card {
     padding: 24px 16px;
   }
+
   .wallet-balance-amount {
     font-size: 26px;
     line-height: 34px;
   }
+
   .wallet-account-item {
     padding: 12px;
   }
+
   .wallet-modal {
     padding: 16px;
   }
+
   .wallet-account-name {
     font-size: 14px;
   }
+
   .wallet-account-type {
     font-size: 11px;
   }
+
   .wallet-account-balance {
     font-size: 14px;
   }

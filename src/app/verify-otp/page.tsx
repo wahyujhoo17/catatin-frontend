@@ -8,7 +8,11 @@ import { useRouter } from "next/navigation";
 export default function VerifyOtpPage() {
   const router = useRouter();
   const [otp, setOtp] = useState(["", "", "", ""]);
+  const [attempts, setAttempts] = useState(0);
+  const [error, setError] = useState("");
+  const [isLocked, setIsLocked] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const MAX_ATTEMPTS = 3;
 
   useEffect(() => {
     // Auto focus first input on load
@@ -21,6 +25,9 @@ export default function VerifyOtpPage() {
     // Only allow numbers
     if (!/^\d*$/.test(value)) return;
 
+    // Clear error when user starts typing again
+    if (error) setError("");
+
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
@@ -31,7 +38,10 @@ export default function VerifyOtpPage() {
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
     // Handle backspace to focus previous input
     if (e.key === "Backspace" && index > 0 && otp[index] === "") {
       inputRefs.current[index - 1]?.focus();
@@ -41,27 +51,81 @@ export default function VerifyOtpPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const code = otp.join("");
+
+    if (isLocked) return;
+
     if (code.length === 4) {
-      // Logic for verifying OTP here
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
+
+      if (newAttempts >= MAX_ATTEMPTS) {
+        setIsLocked(true);
+        setError(
+          `Anda telah mencapai ${MAX_ATTEMPTS}x percobaan. Akun Anda terkunci sementara. Silakan coba lagi nanti.`,
+        );
+        return;
+      }
+
+      // Simulasi verifikasi gagal — ganti dengan logika nyata
+      if (code !== "1234") {
+        const remaining = MAX_ATTEMPTS - newAttempts;
+        setError(`Kode OTP salah. Sisa percobaan: ${remaining}x`);
+        setOtp(["", "", "", ""]);
+        inputRefs.current[0]?.focus();
+        return;
+      }
+
+      // Success — ganti dengan logika verifikasi nyata
       router.push("/workspace");
     }
   };
 
   return (
-    <div className="mesh-bg" style={{ minHeight: "100dvh", position: "relative", overflow: "hidden" }}>
+    <div
+      className="mesh-bg"
+      style={{ minHeight: "100dvh", position: "relative", overflow: "hidden" }}
+    >
       {/* Ambient Background Spheres */}
-      <div style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          overflow: "hidden",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      >
         <div
           className="ambient-sphere"
-          style={{ width: 500, height: 500, background: "rgba(79, 55, 138, 0.1)", top: -100, left: -100 }}
+          style={{
+            width: 500,
+            height: 500,
+            background: "rgba(79, 55, 138, 0.1)",
+            top: -100,
+            left: -100,
+          }}
         />
         <div
           className="ambient-sphere"
-          style={{ width: 600, height: 600, background: "rgba(99, 89, 124, 0.1)", bottom: -150, right: -150, animationDelay: "1s" }}
+          style={{
+            width: 600,
+            height: 600,
+            background: "rgba(99, 89, 124, 0.1)",
+            bottom: -150,
+            right: -150,
+            animationDelay: "1s",
+          }}
         />
         <div
           className="ambient-sphere"
-          style={{ width: 300, height: 300, background: "rgba(118, 91, 0, 0.08)", top: "20%", right: "10%", animationDelay: "2s" }}
+          style={{
+            width: 300,
+            height: 300,
+            background: "rgba(118, 91, 0, 0.08)",
+            top: "20%",
+            right: "10%",
+            animationDelay: "2s",
+          }}
         />
       </div>
 
@@ -79,31 +143,47 @@ export default function VerifyOtpPage() {
       >
         <div
           className="animate-fade-slide-up"
-          style={{ width: "100%", maxWidth: 448, display: "flex", flexDirection: "column", gap: 32 }}
+          style={{
+            width: "100%",
+            maxWidth: 448,
+            display: "flex",
+            flexDirection: "column",
+            gap: 32,
+          }}
         >
           {/* Header */}
-          <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+          <div
+            style={{
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
+            }}
+          >
             <Image
               src="/logo/logo.png"
               alt="Catetin"
               width={180}
               height={60}
-              style={{ objectFit: "contain", marginBottom: 8, width: "auto", height: "auto" }}
+              style={{
+                objectFit: "contain",
+                marginBottom: 8,
+                width: "auto",
+                height: "auto",
+              }}
               priority
             />
-            <div style={{
-              width: 64, height: 64, borderRadius: "50%", background: "var(--surface-container-high)", 
-              display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8,
-              border: "1px solid rgba(203, 196, 210, 0.3)"
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 32, color: "var(--primary)" }}>
-                mark_email_read
-              </span>
-            </div>
-            <h1 className="text-headline-lg-mobile" style={{ color: "var(--on-surface)" }}>
+            <h1
+              className="text-headline-lg-mobile"
+              style={{ color: "var(--on-surface)" }}
+            >
               Verifikasi Email
             </h1>
-            <p className="text-body-lg" style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}>
+            <p
+              className="text-body-lg"
+              style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}
+            >
               Masukkan 4 digit kode OTP yang telah kami kirimkan ke email Anda.
             </p>
           </div>
@@ -112,13 +192,48 @@ export default function VerifyOtpPage() {
           <form
             onSubmit={handleSubmit}
             className="glass-card-elevated"
-            style={{ padding: "var(--card-padding)", display: "flex", flexDirection: "column", gap: 32 }}
+            style={{
+              padding: "var(--card-padding)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 32,
+            }}
           >
+            {/* Error Message */}
+            {error && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "12px 16px",
+                  borderRadius: 12,
+                  background: "var(--error-container)",
+                  border: "1px solid rgba(186, 26, 26, 0.15)",
+                }}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 20, color: "var(--error)", flexShrink: 0 }}
+                >
+                  {isLocked ? "lock" : "warning"}
+                </span>
+                <p
+                  className="text-body-sm"
+                  style={{ color: "var(--on-error-container)", margin: 0 }}
+                >
+                  {error}
+                </p>
+              </div>
+            )}
+
             <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
               {otp.map((digit, index) => (
                 <input
                   key={index}
-                  ref={(el) => { inputRefs.current[index] = el; }}
+                  ref={(el) => {
+                    inputRefs.current[index] = el;
+                  }}
                   type="text"
                   maxLength={1}
                   value={digit}
@@ -131,33 +246,56 @@ export default function VerifyOtpPage() {
                     fontWeight: 700,
                     textAlign: "center",
                     borderRadius: 16,
-                    border: "1px solid var(--glass-border)",
-                    background: "rgba(255, 255, 255, 0.5)",
+                    border: error
+                      ? "2px solid var(--error)"
+                      : "2px solid var(--outline-variant)",
+                    background: "var(--surface-container-lowest)",
                     color: "var(--on-surface)",
-                    boxShadow: "inset 0 2px 4px rgba(0,0,0,0.02)"
+                    boxShadow: error
+                      ? "0 0 0 4px rgba(186, 26, 26, 0.08)"
+                      : "0 2px 8px rgba(0,0,0,0.04)",
+                    outline: "none",
+                    transition:
+                      "border-color 0.2s, box-shadow 0.2s, background 0.2s",
                   }}
                   className="focus-ring"
+                  disabled={isLocked}
                 />
               ))}
             </div>
 
-            <button 
-              type="submit" 
-              className="btn-primary" 
-              disabled={otp.join("").length < 4}
-              style={{ opacity: otp.join("").length < 4 ? 0.7 : 1 }}
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={otp.join("").length < 4 || isLocked}
+              style={{
+                opacity: otp.join("").length < 4 || isLocked ? 0.7 : 1,
+                cursor: isLocked ? "not-allowed" : undefined,
+              }}
             >
               Verifikasi Kode
               <span className="material-symbols-outlined">check_circle</span>
             </button>
-            
+
             {/* Resend Code */}
             <div style={{ textAlign: "center", marginTop: -8 }}>
-              <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>
+              <p
+                className="text-body-sm"
+                style={{ color: "var(--on-surface-variant)" }}
+              >
                 Belum menerima kode?{" "}
-                <button 
+                <button
                   type="button"
-                  style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: 600, cursor: "pointer", padding: 0 }}
+                  disabled={isLocked}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: isLocked ? "var(--outline)" : "var(--primary)",
+                    fontWeight: 600,
+                    cursor: isLocked ? "not-allowed" : "pointer",
+                    padding: 0,
+                    opacity: isLocked ? 0.5 : 1,
+                  }}
                   onClick={() => alert("Kode OTP baru telah dikirim!")}
                 >
                   Kirim ulang
@@ -167,9 +305,27 @@ export default function VerifyOtpPage() {
           </form>
 
           {/* Footer */}
-          <p className="text-body-md" style={{ textAlign: "center", color: "var(--on-surface-variant)" }}>
-            <Link href="/login" style={{ color: "var(--outline)", fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_back</span>
+          <p
+            className="text-body-md"
+            style={{ textAlign: "center", color: "var(--on-surface-variant)" }}
+          >
+            <Link
+              href="/login"
+              style={{
+                color: "var(--outline)",
+                fontWeight: 500,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 4,
+              }}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 18 }}
+              >
+                arrow_back
+              </span>
               Kembali ke Login
             </Link>
           </p>
@@ -198,7 +354,12 @@ export default function VerifyOtpPage() {
           style={{ width: "auto", height: "auto" }}
           priority
         />
-        <p className="text-label-md" style={{ color: "var(--outline)", margin: 0 }}>Financial Intelligence</p>
+        <p
+          className="text-label-md"
+          style={{ color: "var(--outline)", margin: 0 }}
+        >
+          Financial Intelligence
+        </p>
       </div>
     </div>
   );

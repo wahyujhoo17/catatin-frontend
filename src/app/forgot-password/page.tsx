@@ -21,20 +21,51 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="mesh-bg" style={{ minHeight: "100dvh", position: "relative", overflow: "hidden" }}>
+    <div
+      className="mesh-bg"
+      style={{ minHeight: "100dvh", position: "relative", overflow: "hidden" }}
+    >
       {/* Ambient Background Spheres */}
-      <div style={{ position: "fixed", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          overflow: "hidden",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      >
         <div
           className="ambient-sphere"
-          style={{ width: 500, height: 500, background: "rgba(79, 55, 138, 0.1)", top: -100, left: -100 }}
+          style={{
+            width: 500,
+            height: 500,
+            background: "rgba(79, 55, 138, 0.1)",
+            top: -100,
+            left: -100,
+          }}
         />
         <div
           className="ambient-sphere"
-          style={{ width: 600, height: 600, background: "rgba(99, 89, 124, 0.1)", bottom: -150, right: -150, animationDelay: "1s" }}
+          style={{
+            width: 600,
+            height: 600,
+            background: "rgba(99, 89, 124, 0.1)",
+            bottom: -150,
+            right: -150,
+            animationDelay: "1s",
+          }}
         />
         <div
           className="ambient-sphere"
-          style={{ width: 300, height: 300, background: "rgba(118, 91, 0, 0.08)", top: "20%", right: "10%", animationDelay: "2s" }}
+          style={{
+            width: 300,
+            height: 300,
+            background: "rgba(118, 91, 0, 0.08)",
+            top: "20%",
+            right: "10%",
+            animationDelay: "2s",
+          }}
         />
       </div>
 
@@ -52,48 +83,91 @@ export default function ForgotPasswordPage() {
       >
         <div
           className="animate-fade-slide-up"
-          style={{ width: "100%", maxWidth: 480, display: "flex", flexDirection: "column", gap: 32 }}
+          style={{
+            width: "100%",
+            maxWidth: 480,
+            display: "flex",
+            flexDirection: "column",
+            gap: 32,
+          }}
         >
           {/* Header */}
-          <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+          <div
+            style={{
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
+            }}
+          >
             <Image
               src="/logo/logo.png"
               alt="Catetin"
               width={180}
               height={60}
-              style={{ objectFit: "contain", marginBottom: 8, width: "auto", height: "auto" }}
+              style={{
+                objectFit: "contain",
+                marginBottom: 8,
+                width: "auto",
+                height: "auto",
+              }}
               priority
             />
-            <div style={{
-              width: 64, height: 64, borderRadius: "50%", background: "var(--surface-container-high)", 
-              display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8,
-              border: "1px solid rgba(203, 196, 210, 0.3)"
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 32, color: "var(--primary)" }}>
-                lock_reset
-              </span>
-            </div>
-            <h1 className="text-headline-lg-mobile" style={{ color: "var(--on-surface)" }}>
+            <h1
+              className="text-headline-lg-mobile"
+              style={{ color: "var(--on-surface)" }}
+            >
               Lupa Kata Sandi
             </h1>
-            <p className="text-body-lg" style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}>
-              Masukkan email yang terdaftar untuk menerima tautan pemulihan kata sandi.
+            <p
+              className="text-body-lg"
+              style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}
+            >
+              Masukkan email yang terdaftar untuk menerima tautan pemulihan kata
+              sandi.
             </p>
           </div>
 
           {/* Form Card */}
-          <div className="glass-card-elevated" style={{ padding: 32, display: "flex", flexDirection: "column", gap: 24 }}>
+          <div
+            className="glass-card-elevated"
+            style={{
+              padding: 32,
+              display: "flex",
+              flexDirection: "column",
+              gap: 24,
+            }}
+          >
             {!submitted ? (
-              <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              <form
+                onSubmit={handleSubmit}
+                style={{ display: "flex", flexDirection: "column", gap: 24 }}
+              >
                 {/* Email Field */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <label className="text-label-md" style={{ color: "var(--on-surface-variant)", textTransform: "uppercase", marginLeft: 4 }}>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                >
+                  <label
+                    className="text-label-md"
+                    style={{
+                      color: "var(--on-surface-variant)",
+                      textTransform: "uppercase",
+                      marginLeft: 4,
+                    }}
+                  >
                     Alamat Email
                   </label>
                   <div style={{ position: "relative" }}>
                     <span
                       className="material-symbols-outlined"
-                      style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", color: "var(--outline)" }}
+                      style={{
+                        position: "absolute",
+                        left: 16,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "var(--outline)",
+                      }}
                     >
                       mail
                     </span>
@@ -111,20 +185,42 @@ export default function ForgotPasswordPage() {
                 {/* Submit Button */}
                 <button type="submit" className="btn-primary">
                   Kirim Tautan Reset
-                  <span className="material-symbols-outlined" style={{ transition: "transform 0.2s" }}>
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ transition: "transform 0.2s" }}
+                  >
                     send
                   </span>
                 </button>
               </form>
             ) : (
-              <div className="animate-fade-in" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center", padding: "16px 0" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 48, color: "#34A853" }}>
+              <div
+                className="animate-fade-in"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 16,
+                  textAlign: "center",
+                  padding: "16px 0",
+                }}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 48, color: "#34A853" }}
+                >
                   check_circle
                 </span>
-                <p className="text-body-lg" style={{ color: "var(--on-surface)" }}>
+                <p
+                  className="text-body-lg"
+                  style={{ color: "var(--on-surface)" }}
+                >
                   Tautan pemulihan telah dikirim ke <strong>{email}</strong>.
                 </p>
-                <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>
+                <p
+                  className="text-body-sm"
+                  style={{ color: "var(--on-surface-variant)" }}
+                >
                   Anda akan dialihkan ke halaman Login dalam beberapa saat...
                 </p>
               </div>
@@ -133,8 +229,24 @@ export default function ForgotPasswordPage() {
 
           {/* Footer */}
           <div style={{ textAlign: "center" }}>
-            <Link href="/login" className="text-body-md" style={{ color: "var(--outline)", fontWeight: 500, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_back</span>
+            <Link
+              href="/login"
+              className="text-body-md"
+              style={{
+                color: "var(--outline)",
+                fontWeight: 500,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+              }}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 18 }}
+              >
+                arrow_back
+              </span>
               Kembali ke Halaman Login
             </Link>
           </div>
@@ -163,7 +275,12 @@ export default function ForgotPasswordPage() {
           style={{ width: "auto", height: "auto" }}
           priority
         />
-        <p className="text-label-md" style={{ color: "var(--outline)", margin: 0 }}>Financial Intelligence</p>
+        <p
+          className="text-label-md"
+          style={{ color: "var(--outline)", margin: 0 }}
+        >
+          Financial Intelligence
+        </p>
       </div>
     </div>
   );
