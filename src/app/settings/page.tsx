@@ -15,16 +15,54 @@ export default function SettingsPage() {
   const [activeLang, setActiveLang] = useState("id");
   const [isLangOpen, setIsLangOpen] = useState(false);
   
-  const [activeAI, setActiveAI] = useState("gemini");
+  const [activeAI, setActiveAI] = useState("catetin");
   const [isAIOpen, setIsAIOpen] = useState(false);
 
   const [activeWS, setActiveWS] = useState("personal");
   const [isWSOpen, setIsWSOpen] = useState(false);
 
-  // About Modal state
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  // Profile states
+  const [profileName, setProfileName] = useState("Budi Santoso");
+  const [profileEmail, setProfileEmail] = useState("budi.santoso@gmail.com");
 
-  // Read/Save default workspace to localStorage if on client
+  // Modals state
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isCustomAIConfigFileOpen, setIsCustomAIConfigFileOpen] = useState(false);
+
+  // Edit Profile Form state
+  const [tempName, setTempName] = useState("Budi Santoso");
+  const [tempEmail, setTempEmail] = useState("budi.santoso@gmail.com");
+
+  // Change Password Form state
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  // Custom AI Config Form state
+  const [customAITab, setCustomAITab] = useState("text"); // 'text' | 'image' | 'voice'
+  
+  // Text AI config
+  const [customTextProvider, setCustomTextProvider] = useState("openai");
+  const [customTextKey, setCustomTextKey] = useState("");
+  const [customTextUrl, setCustomTextUrl] = useState("");
+  
+  // Image AI config
+  const [customImageProvider, setCustomImageProvider] = useState("openai");
+  const [customImageKey, setCustomImageKey] = useState("");
+  const [customImageUrl, setCustomImageUrl] = useState("");
+  
+  // Voice AI config
+  const [customVoiceProvider, setCustomVoiceProvider] = useState("whisper");
+  const [customVoiceKey, setCustomVoiceKey] = useState("");
+  const [customVoiceUrl, setCustomVoiceUrl] = useState("");
+  
+  const [aiConfigSuccess, setAiConfigSuccess] = useState(false);
+
+  // Read/Save settings & default workspace to localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedWS = localStorage.getItem("active_dashboard");
@@ -33,6 +71,40 @@ export default function SettingsPage() {
       } else {
         setActiveWS("personal");
       }
+
+      // Load profile info
+      const savedName = localStorage.getItem("profile_name");
+      const savedEmail = localStorage.getItem("profile_email");
+      if (savedName) {
+        setProfileName(savedName);
+        setTempName(savedName);
+      }
+      if (savedEmail) {
+        setProfileEmail(savedEmail);
+        setTempEmail(savedEmail);
+      }
+
+      // Load custom AI configs
+      const textProv = localStorage.getItem("custom_text_provider");
+      const textKey = localStorage.getItem("custom_text_key");
+      const textUrl = localStorage.getItem("custom_text_url");
+      if (textProv) setCustomTextProvider(textProv);
+      if (textKey) setCustomTextKey(textKey);
+      if (textUrl) setCustomTextUrl(textUrl);
+      
+      const imgProv = localStorage.getItem("custom_image_provider");
+      const imgKey = localStorage.getItem("custom_image_key");
+      const imgUrl = localStorage.getItem("custom_image_url");
+      if (imgProv) setCustomImageProvider(imgProv);
+      if (imgKey) setCustomImageKey(imgKey);
+      if (imgUrl) setCustomImageUrl(imgUrl);
+      
+      const voiceProv = localStorage.getItem("custom_voice_provider");
+      const voiceKey = localStorage.getItem("custom_voice_key");
+      const voiceUrl = localStorage.getItem("custom_voice_url");
+      if (voiceProv) setCustomVoiceProvider(voiceProv);
+      if (voiceKey) setCustomVoiceKey(voiceKey);
+      if (voiceUrl) setCustomVoiceUrl(voiceUrl);
     }
   }, []);
 
@@ -44,13 +116,70 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileName(tempName);
+    setProfileEmail(tempEmail);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("profile_name", tempName);
+      localStorage.setItem("profile_email", tempEmail);
+    }
+    setIsEditProfileOpen(false);
+  };
+
+  const handleSavePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Password konfirmasi tidak cocok.");
+      setPasswordSuccess(false);
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError("Password baru harus minimal 6 karakter.");
+      setPasswordSuccess(false);
+      return;
+    }
+    setPasswordError("");
+    setPasswordSuccess(true);
+    setTimeout(() => {
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordSuccess(false);
+      setIsChangePasswordOpen(false);
+    }, 1200);
+  };
+
+  const handleSaveAIConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (typeof window !== "undefined") {
+      localStorage.setItem("custom_text_provider", customTextProvider);
+      localStorage.setItem("custom_text_key", customTextKey);
+      localStorage.setItem("custom_text_url", customTextUrl);
+      
+      localStorage.setItem("custom_image_provider", customImageProvider);
+      localStorage.setItem("custom_image_key", customImageKey);
+      localStorage.setItem("custom_image_url", customImageUrl);
+      
+      localStorage.setItem("custom_voice_provider", customVoiceProvider);
+      localStorage.setItem("custom_voice_key", customVoiceKey);
+      localStorage.setItem("custom_voice_url", customVoiceUrl);
+    }
+    setAiConfigSuccess(true);
+    setTimeout(() => {
+      setAiConfigSuccess(false);
+      setIsCustomAIConfigFileOpen(false);
+    }, 1200);
+  };
+
   const languages = [
     { value: "id", label: "Bahasa Indonesia" },
     { value: "en", label: "English (US)" }
   ];
 
   const aiProviders = [
-    { value: "gemini", label: "Google Gemini (Default)", detail: "Respon cepat, integrasi pintar" },
+    { value: "catetin", label: "Catetin AI (Default)", detail: "Respon cepat, integrasi keuangan pintar" },
+    { value: "gemini", label: "Google Gemini", detail: "Integrasi model Google" },
     { value: "openai", label: "OpenAI GPT-4o", detail: "Analisis keuangan mendalam" },
     { value: "claude", label: "Claude 3.5 Sonnet", detail: "Gaya penulisan natural" },
     { value: "deepseek", label: "DeepSeek-V3", detail: "Efisiensi tinggi" }
@@ -107,11 +236,11 @@ export default function SettingsPage() {
                 boxShadow: "0 4px 15px rgba(79, 55, 138, 0.15)"
               }}
             >
-              B
+              {profileName.charAt(0).toUpperCase()}
             </div>
             <div style={{ flex: 1 }}>
-              <h3 className="text-headline-sm" style={{ fontSize: 16, color: "var(--on-surface)", margin: 0, fontWeight: 700 }}>Budi Santoso</h3>
-              <p className="text-body-sm" style={{ color: "var(--on-surface-variant)", margin: "2px 0 6px 0" }}>budi.santoso@gmail.com</p>
+              <h3 className="text-headline-sm" style={{ fontSize: 16, color: "var(--on-surface)", margin: 0, fontWeight: 700 }}>{profileName}</h3>
+              <p className="text-body-sm" style={{ color: "var(--on-surface-variant)", margin: "2px 0 6px 0" }}>{profileEmail}</p>
               <span className="text-label-md" style={{ background: "rgba(79, 55, 138, 0.1)", color: "var(--primary)", padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600 }}>Premium User</span>
             </div>
           </section>
@@ -284,7 +413,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Notification Toggle 2 */}
-            <div className="settings-row">
+            <div className="settings-row" style={{ borderBottom: "none" }}>
               <div>
                 <p className="text-body-md" style={{ fontWeight: 600 }}>Pengingat Budgeting</p>
                 <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>Peringatan jika melebihi batas bulanan</p>
@@ -306,7 +435,7 @@ export default function SettingsPage() {
             style={{
               padding: "0 16px",
               position: "relative",
-              zIndex: isAIOpen ? 10 : 1
+              zIndex: (isAIOpen || isCustomAIConfigFileOpen) ? 10 : 1
             }}
           >
             
@@ -382,21 +511,69 @@ export default function SettingsPage() {
               )}
             </div>
 
+            {/* Custom AI Provider Key Setting Row */}
+            <div
+              className="settings-row"
+              onClick={() => setIsCustomAIConfigFileOpen(true)}
+              style={{ cursor: "pointer", borderBottom: "none" }}
+            >
+              <div>
+                <p className="text-body-md" style={{ fontWeight: 600 }}>Kunci API & Provider Kustom</p>
+                <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>
+                  Atur model Teks Utama, Gambar, dan Voice sendiri
+                </p>
+              </div>
+              <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
+            </div>
+
           </section>
 
-          {/* Section: Keamanan & Info */}
-          <h4 className="settings-section-title animate-fade-slide-up">Keamanan & Informasi</h4>
+          {/* Section: Akun & Keamanan */}
+          <h4 className="settings-section-title animate-fade-slide-up">Akun & Keamanan</h4>
           <section
             className="glass-card animate-fade-slide-up"
             style={{
               padding: "0 16px",
               position: "relative",
-              zIndex: 1
+              zIndex: (isEditProfileOpen || isChangePasswordOpen) ? 10 : 1
             }}
           >
-            
+            {/* Ubah Profil */}
+            <div
+              className="settings-row"
+              onClick={() => {
+                setTempName(profileName);
+                setTempEmail(profileEmail);
+                setIsEditProfileOpen(true);
+              }}
+              style={{ cursor: "pointer" }}
+            >
+              <div>
+                <p className="text-body-md" style={{ fontWeight: 600 }}>Ubah Informasi Profil</p>
+                <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>Nama, email, dan detail akun Anda</p>
+              </div>
+              <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
+            </div>
+
+            {/* Ganti Password */}
+            <div
+              className="settings-row"
+              onClick={() => {
+                setPasswordError("");
+                setPasswordSuccess(false);
+                setIsChangePasswordOpen(true);
+              }}
+              style={{ cursor: "pointer" }}
+            >
+              <div>
+                <p className="text-body-md" style={{ fontWeight: 600 }}>Ganti Kata Sandi</p>
+                <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>Perbarui password untuk keamanan akun</p>
+              </div>
+              <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
+            </div>
+
             {/* Security Toggle */}
-            <div className="settings-row">
+            <div className="settings-row" style={{ borderBottom: "none" }}>
               <div>
                 <p className="text-body-md" style={{ fontWeight: 600 }}>Keamanan Biometrik</p>
                 <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>Gunakan FaceID / Sidik Jari untuk membuka PWA</p>
@@ -408,7 +585,18 @@ export default function SettingsPage() {
                 aria-label="Toggle keamanan biometrik"
               />
             </div>
+          </section>
 
+          {/* Section: Informasi & Bantuan */}
+          <h4 className="settings-section-title animate-fade-slide-up">Informasi & Bantuan</h4>
+          <section
+            className="glass-card animate-fade-slide-up"
+            style={{
+              padding: "0 16px",
+              position: "relative",
+              zIndex: 1
+            }}
+          >
             {/* About App */}
             <div
               className="settings-row"
@@ -422,6 +610,17 @@ export default function SettingsPage() {
               <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
             </div>
 
+            {/* Help Support */}
+            <div
+              className="settings-row"
+              style={{ cursor: "pointer", borderBottom: "none" }}
+            >
+              <div>
+                <p className="text-body-md" style={{ fontWeight: 600 }}>Hubungi Bantuan</p>
+                <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>Pusat bantuan dan FAQ pengguna</p>
+              </div>
+              <span className="material-symbols-outlined" style={{ color: "var(--primary)" }}>chevron_right</span>
+            </div>
           </section>
 
           {/* Log Out Button */}
@@ -512,6 +711,424 @@ export default function SettingsPage() {
             >
               Tutup
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Profile Modal */}
+      {isEditProfileOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.35)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: 24,
+          }}
+        >
+          <div className="glass-card wallet-modal">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 className="text-headline-sm" style={{ fontWeight: 700 }}>Ubah Informasi Profil</h3>
+              <button
+                onClick={() => setIsEditProfileOpen(false)}
+                style={{ cursor: "pointer", color: "var(--on-surface-variant)", border: "none", background: "none" }}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Nama Lengkap</label>
+                <input
+                  type="text"
+                  className="glass-input"
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  required
+                  style={{ width: "100%", boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Email</label>
+                <input
+                  type="email"
+                  className="glass-input"
+                  value={tempEmail}
+                  onChange={(e) => setTempEmail(e.target.value)}
+                  required
+                  style={{ width: "100%", boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsEditProfileOpen(false)}
+                  className="btn-secondary"
+                  style={{ flex: 1, padding: 12 }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ flex: 1, padding: 12, boxShadow: "none" }}
+                >
+                  Simpan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {isChangePasswordOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.35)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: 24,
+          }}
+        >
+          <div className="glass-card wallet-modal">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 className="text-headline-sm" style={{ fontWeight: 700 }}>Ganti Kata Sandi</h3>
+              <button
+                onClick={() => setIsChangePasswordOpen(false)}
+                style={{ cursor: "pointer", color: "var(--on-surface-variant)", border: "none", background: "none" }}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePassword} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {passwordError && (
+                <div style={{ color: "var(--error)", fontSize: 12, background: "var(--error-container)", padding: "8px 12px", borderRadius: 8 }}>
+                  {passwordError}
+                </div>
+              )}
+              {passwordSuccess && (
+                <div style={{ color: "var(--primary)", fontSize: 12, background: "rgba(79, 55, 138, 0.08)", padding: "8px 12px", borderRadius: 8 }}>
+                  Password berhasil diperbarui!
+                </div>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Kata Sandi Lama</label>
+                <input
+                  type="password"
+                  className="glass-input"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  style={{ width: "100%", boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Kata Sandi Baru</label>
+                <input
+                  type="password"
+                  className="glass-input"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  placeholder="Minimal 6 karakter"
+                  style={{ width: "100%", boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Konfirmasi Kata Sandi Baru</label>
+                <input
+                  type="password"
+                  className="glass-input"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  placeholder="Ulangi kata sandi baru"
+                  style={{ width: "100%", boxSizing: "border-box" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsChangePasswordOpen(false)}
+                  className="btn-secondary"
+                  style={{ flex: 1, padding: 12 }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ flex: 1, padding: 12, boxShadow: "none" }}
+                  disabled={passwordSuccess}
+                >
+                  {passwordSuccess ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom AI Provider Configuration Modal */}
+      {isCustomAIConfigFileOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.35)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: 24,
+          }}
+        >
+          <div className="glass-card wallet-modal" style={{ maxWidth: 440 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 className="text-headline-sm" style={{ fontWeight: 700 }}>Provider AI Kustom</h3>
+              <button
+                onClick={() => setIsCustomAIConfigFileOpen(false)}
+                style={{ cursor: "pointer", color: "var(--on-surface-variant)", border: "none", background: "none" }}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Config Tabs */}
+            <div style={{ display: "flex", borderBottom: "1px solid rgba(0,0,0,0.06)", marginBottom: 16 }}>
+              <button
+                type="button"
+                onClick={() => setCustomAITab("text")}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "none",
+                  border: "none",
+                  borderBottom: customAITab === "text" ? "2px solid var(--primary)" : "none",
+                  color: customAITab === "text" ? "var(--primary)" : "var(--on-surface-variant)",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer"
+                }}
+              >
+                Text Utama
+              </button>
+              <button
+                type="button"
+                onClick={() => setCustomAITab("image")}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "none",
+                  border: "none",
+                  borderBottom: customAITab === "image" ? "2px solid var(--primary)" : "none",
+                  color: customAITab === "image" ? "var(--primary)" : "var(--on-surface-variant)",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer"
+                }}
+              >
+                Gambar
+              </button>
+              <button
+                type="button"
+                onClick={() => setCustomAITab("voice")}
+                style={{
+                  flex: 1,
+                  padding: "10px 0",
+                  background: "none",
+                  border: "none",
+                  borderBottom: customAITab === "voice" ? "2px solid var(--primary)" : "none",
+                  color: customAITab === "voice" ? "var(--primary)" : "var(--on-surface-variant)",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer"
+                }}
+              >
+                Voice
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAIConfig} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {aiConfigSuccess && (
+                <div style={{ color: "var(--primary)", fontSize: 12, background: "rgba(79, 55, 138, 0.08)", padding: "8px 12px", borderRadius: 8 }}>
+                  Kunci API & konfigurasi berhasil disimpan!
+                </div>
+              )}
+
+              {/* Tab: Text Utama */}
+              {customAITab === "text" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Provider Text Utama</label>
+                    <select
+                      className="glass-input"
+                      value={customTextProvider}
+                      onChange={(e) => setCustomTextProvider(e.target.value)}
+                      style={{ width: "100%", background: "white", padding: 12, borderRadius: 12 }}
+                    >
+                      <option value="openai">Custom OpenAI GPT</option>
+                      <option value="gemini">Custom Gemini Pro</option>
+                      <option value="claude">Custom Claude Sonnet</option>
+                      <option value="ollama">Local Ollama / Llama</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>API Key / Kredensial</label>
+                    <input
+                      type="password"
+                      className="glass-input"
+                      value={customTextKey}
+                      onChange={(e) => setCustomTextKey(e.target.value)}
+                      placeholder="sk-..."
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Custom Base URL (Opsional)</label>
+                    <input
+                      type="text"
+                      className="glass-input"
+                      value={customTextUrl}
+                      onChange={(e) => setCustomTextUrl(e.target.value)}
+                      placeholder="https://api.openai.com/v1"
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: Gambar */}
+              {customAITab === "image" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Provider Gambar (OCR Receipt)</label>
+                    <select
+                      className="glass-input"
+                      value={customImageProvider}
+                      onChange={(e) => setCustomImageProvider(e.target.value)}
+                      style={{ width: "100%", background: "white", padding: 12, borderRadius: 12 }}
+                    >
+                      <option value="openai">OpenAI GPT-4o / Vision</option>
+                      <option value="gemini">Gemini Flash / Vision</option>
+                      <option value="custom">Custom OCR Model</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>API Key / Kredensial</label>
+                    <input
+                      type="password"
+                      className="glass-input"
+                      value={customImageKey}
+                      onChange={(e) => setCustomImageKey(e.target.value)}
+                      placeholder="sk-..."
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Custom Base URL (Opsional)</label>
+                    <input
+                      type="text"
+                      className="glass-input"
+                      value={customImageUrl}
+                      onChange={(e) => setCustomImageUrl(e.target.value)}
+                      placeholder="https://api.gemini.com/v1"
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Tab: Voice */}
+              {customAITab === "voice" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Provider Voice (Speech-to-Text)</label>
+                    <select
+                      className="glass-input"
+                      value={customVoiceProvider}
+                      onChange={(e) => setCustomVoiceProvider(e.target.value)}
+                      style={{ width: "100%", background: "white", padding: 12, borderRadius: 12 }}
+                    >
+                      <option value="whisper">OpenAI Whisper API</option>
+                      <option value="google">Google Speech-to-Text</option>
+                      <option value="elevenlabs">ElevenLabs TTS/STT</option>
+                      <option value="custom">Custom Speech API</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>API Key / Kredensial</label>
+                    <input
+                      type="password"
+                      className="glass-input"
+                      value={customVoiceKey}
+                      onChange={(e) => setCustomVoiceKey(e.target.value)}
+                      placeholder="sk-..."
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Custom Base URL (Opsional)</label>
+                    <input
+                      type="text"
+                      className="glass-input"
+                      value={customVoiceUrl}
+                      onChange={(e) => setCustomVoiceUrl(e.target.value)}
+                      placeholder="https://api.openai.com/v1/audio"
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomAIConfigFileOpen(false)}
+                  className="btn-secondary"
+                  style={{ flex: 1, padding: 12 }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  style={{ flex: 1, padding: 12, boxShadow: "none" }}
+                  disabled={aiConfigSuccess}
+                >
+                  {aiConfigSuccess ? "Menyimpan..." : "Simpan Konfigurasi"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
