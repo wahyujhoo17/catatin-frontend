@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
 const navItems = [
   { icon: "dashboard", href: "/dashboard", label: "Dashboard" },
   { icon: "chat_bubble", href: "/chat", label: "Chat" },
@@ -12,6 +14,42 @@ const navItems = [
   { icon: "settings", href: "/settings", label: "Pengaturan" },
 ];
 
+// ─── Lightweight Markdown → HTML (reused from chat) ──────────
+function renderMarkdown(text: string): string {
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code style='background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-size:0.9em'>$1</code>")
+    .replace(/^### (.+)$/gm, "<strong style='font-size:1em;display:block;margin:6px 0 2px'>$1</strong>")
+    .replace(/^## (.+)$/gm, "<strong style='font-size:1.05em;display:block;margin:8px 0 2px'>$1</strong>")
+    .replace(/^# (.+)$/gm, "<strong style='font-size:1.1em;display:block;margin:8px 0 4px'>$1</strong>")
+    .replace(/\n/g, "<br>");
+
+  html = html.replace(/(?:<br>|^)(?:- |• )(.+?)(?=<br>|$)/g, (_, content) => {
+    return `<br><span style="display:flex;gap:6px;align-items:flex-start;margin:2px 0"><span style="flex-shrink:0;margin-top:2px">•</span><span>${content}</span></span>`;
+  });
+
+  return html;
+}
+
+// ─── Types ────────────────────────────────────────────────────
+interface ScanResult {
+  content: string;
+  transactions?: {
+    id: string;
+    type: string;
+    amount: number;
+    description: string;
+    category?: string;
+  }[];
+  error?: string;
+}
+
+type ScanPhase = "camera" | "preview" | "processing" | "result";
+
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
@@ -19,11 +57,14 @@ export default function BottomNav() {
   // Dynamic dashboard path based on workspace selection
   const [dashboardHref, setDashboardHref] = useState("/dashboard");
 
-  // Camera Modal state
+  // Camera/Scanner state
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
+  const [scanPhase, setScanPhase] = useState<ScanPhase>("camera");
   const [isFlashing, setIsFlashing] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +90,6 @@ export default function BottomNav() {
 
   const startCamera = async () => {
     try {
-      // Check permission state first to avoid re-prompting
       if (!permissionChecked.current && "permissions" in navigator) {
         permissionChecked.current = true;
         const result = await navigator.permissions.query({
@@ -57,7 +97,6 @@ export default function BottomNav() {
         });
         setCameraPermission(result.state as "prompt" | "granted" | "denied");
         if (result.state === "denied") {
-          console.warn("Camera permission was denied previously.");
           return;
         }
       }
@@ -68,10 +107,7 @@ export default function BottomNav() {
       setStream(mediaStream);
       setCameraPermission("granted");
     } catch (err) {
-      console.warn(
-        "Camera access denied or unavailable. Running in simulation mode.",
-        err,
-      );
+      console.warn("Camera access denied or unavailable.", err);
       setCameraPermission("unavailable");
     }
   };
@@ -86,43 +122,89 @@ export default function BottomNav() {
   const handleOpenScan = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsCameraOpen(true);
+    setScanPhase("camera");
+    setCapturedImage(null);
+    setScanResult(null);
+    setScanError(null);
     startCamera();
   };
 
   const handleCloseScan = () => {
     stopCamera();
     setIsCameraOpen(false);
-    setIsScanning(false);
+    setScanPhase("camera");
+    setCapturedImage(null);
+    setScanResult(null);
+    setScanError(null);
     setIsFlashing(false);
   };
 
-  const handleCapture = () => {
-    if (videoRef.current) {
-      const canvas = document.createElement("canvas");
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const base64 = canvas.toDataURL("image/jpeg", 0.7);
-        localStorage.setItem("scanned_image", base64);
-      }
+  // ─── Process receipt with AI ────────────────────────────────
+  const processReceipt = async (base64Image: string) => {
+    setScanPhase("processing");
+    setScanError(null);
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setScanError("Anda harus login terlebih dahulu.");
+      setScanPhase("result");
+      return;
     }
 
-    // 1. Shutter flash effect
+    try {
+      const res = await fetch(`${API_BASE}/api/ai/chat/sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          message:
+            "Tolong baca struk belanja ini dan catat semua item transaksinya sebagai pengeluaran. Berikan ringkasan total belanja.",
+          image: base64Image,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setScanError(data.error || "Gagal memproses struk.");
+        setScanPhase("result");
+        return;
+      }
+
+      setScanResult({
+        content: data.content,
+        transactions: data.transactions,
+      });
+      setScanPhase("result");
+    } catch (err: any) {
+      setScanError(err.message || "Terjadi kesalahan saat menghubungi AI.");
+      setScanPhase("result");
+    }
+  };
+
+  const handleCapture = () => {
+    if (!videoRef.current) return;
+
+    // 1. Capture the frame
+    const canvas = document.createElement("canvas");
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      const base64 = canvas.toDataURL("image/jpeg", 0.8);
+      setCapturedImage(base64);
+    }
+
+    // 2. Flash effect
     setIsFlashing(true);
     setTimeout(() => {
       setIsFlashing(false);
-      // 2. Start laser scanning animation
-      setIsScanning(true);
-
-      // 3. After scan finishes, redirect to chat with query parameters
-      setTimeout(() => {
-        stopCamera();
-        setIsCameraOpen(false);
-        setIsScanning(false);
-        router.push("/chat?scan=success");
-      }, 2000);
+      // 3. Freeze: stop camera stream and show preview
+      stopCamera();
+      setScanPhase("preview");
     }, 150);
   };
 
@@ -131,16 +213,26 @@ export default function BottomNav() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        localStorage.setItem("scanned_image", reader.result as string);
-        setIsScanning(true);
-        setTimeout(() => {
-          stopCamera();
-          setIsCameraOpen(false);
-          setIsScanning(false);
-          router.push("/chat?scan=success");
-        }, 2000);
+        const base64 = reader.result as string;
+        setCapturedImage(base64);
+        stopCamera();
+        setScanPhase("preview");
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRetake = () => {
+    setCapturedImage(null);
+    setScanResult(null);
+    setScanError(null);
+    setScanPhase("camera");
+    startCamera();
+  };
+
+  const handleConfirmCapture = () => {
+    if (capturedImage) {
+      processReceipt(capturedImage);
     }
   };
 
@@ -230,7 +322,10 @@ export default function BottomNav() {
                 className="text-body-sm"
                 style={{ color: "rgba(255,255,255,0.6)", marginTop: 2 }}
               >
-                Ambil foto struk belanja Anda
+                {scanPhase === "camera" && "Ambil foto struk belanja Anda"}
+                {scanPhase === "preview" && "Periksa foto struk Anda"}
+                {scanPhase === "processing" && "AI sedang membaca struk..."}
+                {scanPhase === "result" && "Hasil pemindaian"}
               </p>
             </div>
             <button
@@ -248,362 +343,396 @@ export default function BottomNav() {
                 border: "none",
                 transition: "background 0.2s",
               }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor =
-                  "rgba(255,255,255,0.2)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.backgroundColor =
-                  "rgba(255,255,255,0.1)")
-              }
             >
               <span className="material-symbols-outlined">close</span>
             </button>
           </div>
 
-          {/* Viewfinder Target Container */}
-          <div className="camera-viewfinder">
-            {/* Real Camera Video Feed */}
-            {stream ? (
-              <video
-                ref={(el) => {
-                  if (el) {
-                    el.srcObject = stream;
-                  }
-                  videoRef.current = el;
-                }}
-                autoPlay
-                playsInline
-                muted
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              <div
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  padding: 24,
-                }}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{
-                    fontSize: 64,
-                    color: "var(--primary-fixed-dim)",
-                    opacity: 0.6,
+          {/* ─── PHASE: Camera / Preview / Processing ─── */}
+          {(scanPhase === "camera" || scanPhase === "preview" || scanPhase === "processing") && (
+            <div className="camera-viewfinder">
+              {/* Live Camera Feed */}
+              {scanPhase === "camera" && stream ? (
+                <video
+                  ref={(el) => {
+                    if (el) {
+                      el.srcObject = stream;
+                    }
+                    videoRef.current = el;
                   }}
-                >
-                  receipt_long
-                </span>
-                {cameraPermission === "denied" ? (
-                  <p
-                    className="text-body-sm"
-                    style={{
-                      textAlign: "center",
-                      color: "rgba(255,255,255,0.5)",
-                      marginTop: 12,
-                      lineHeight: "20px",
-                    }}
-                  >
-                    Izin kamera ditolak.
-                    <br />
-                    Buka Pengaturan &gt; Kamera untuk mengizinkan akses.
-                  </p>
-                ) : (
-                  <p
-                    className="text-body-sm"
-                    style={{
-                      textAlign: "center",
-                      color: "rgba(255,255,255,0.5)",
-                      marginTop: 12,
-                      lineHeight: "20px",
-                    }}
-                  >
-                    Kamera tidak aktif/tersedia.
-                    <br />
-                    Menggunakan demonstrasi struk belanja.
-                  </p>
-                )}
-
-                {/* Simulated Receipt Preview Image */}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : scanPhase === "camera" && !stream ? (
+                /* Camera Unavailable Fallback */
                 <div
                   style={{
-                    width: "90%",
-                    maxWidth: 240,
-                    marginTop: 12,
-                    borderRadius: 16,
-                    overflow: "hidden",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    aspectRatio: "3/4",
                     position: "relative",
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    padding: 24,
                   }}
                 >
-                  <svg
-                    viewBox="0 0 240 320"
-                    style={{ width: "100%", height: "100%", display: "block" }}
+                  <span
+                    className="material-symbols-outlined"
+                    style={{
+                      fontSize: 64,
+                      color: "var(--primary-fixed-dim)",
+                      opacity: 0.6,
+                    }}
                   >
-                    {/* Receipt Background */}
-                    <rect width="240" height="320" fill="#1a1a2e" rx="8" />
-                    {/* Dotted cut line */}
-                    <line
-                      x1="20"
-                      y1="48"
-                      x2="220"
-                      y2="48"
-                      stroke="rgba(255,255,255,0.15)"
-                      strokeWidth="1"
-                      strokeDasharray="4,4"
-                    />
-                    {/* Header */}
-                    <text
-                      x="120"
-                      y="28"
-                      textAnchor="middle"
-                      fill="white"
-                      fontSize="12"
-                      fontWeight="bold"
-                      fontFamily="monospace"
-                    >
-                      TOKO KOPI SEJAHTERA
-                    </text>
-                    <text
-                      x="120"
-                      y="40"
-                      textAnchor="middle"
-                      fill="rgba(255,255,255,0.4)"
-                      fontSize="8"
-                      fontFamily="monospace"
-                    >
-                      Mampang Prapatan, Jakarta
-                    </text>
-                    {/* Items */}
-                    <text
-                      x="20"
-                      y="72"
-                      fill="rgba(255,255,255,0.7)"
-                      fontSize="9"
-                      fontFamily="monospace"
-                    >
-                      2x Ice Latte Premium
-                    </text>
-                    <text
-                      x="220"
-                      y="72"
-                      textAnchor="end"
-                      fill="rgba(255,255,255,0.7)"
-                      fontSize="9"
-                      fontFamily="monospace"
-                    >
-                      Rp70.000
-                    </text>
-                    <text
-                      x="20"
-                      y="90"
-                      fill="rgba(255,255,255,0.7)"
-                      fontSize="9"
-                      fontFamily="monospace"
-                    >
-                      1x Croissant Coklat
-                    </text>
-                    <text
-                      x="220"
-                      y="90"
-                      textAnchor="end"
-                      fill="rgba(255,255,255,0.7)"
-                      fontSize="9"
-                      fontFamily="monospace"
-                    >
-                      Rp28.000
-                    </text>
-                    <text
-                      x="20"
-                      y="108"
-                      fill="rgba(255,255,255,0.7)"
-                      fontSize="9"
-                      fontFamily="monospace"
-                    >
-                      1x Matcha Latte
-                    </text>
-                    <text
-                      x="220"
-                      y="108"
-                      textAnchor="end"
-                      fill="rgba(255,255,255,0.7)"
-                      fontSize="9"
-                      fontFamily="monospace"
-                    >
-                      Rp32.000
-                    </text>
-                    {/* Separator */}
-                    <line
-                      x1="20"
-                      y1="120"
-                      x2="220"
-                      y2="120"
-                      stroke="rgba(255,255,255,0.15)"
-                      strokeWidth="1"
-                      strokeDasharray="2,3"
-                    />
-                    {/* Total */}
-                    <text
-                      x="20"
-                      y="140"
-                      fill="white"
-                      fontSize="11"
-                      fontWeight="bold"
-                      fontFamily="monospace"
-                    >
-                      TOTAL
-                    </text>
-                    <text
-                      x="220"
-                      y="140"
-                      textAnchor="end"
-                      fill="#cfbcff"
-                      fontSize="11"
-                      fontWeight="bold"
-                      fontFamily="monospace"
-                    >
-                      Rp130.000
-                    </text>
-                    {/* Decorative bottom */}
-                    <line
-                      x1="20"
-                      y1="160"
-                      x2="220"
-                      y2="160"
-                      stroke="rgba(255,255,255,0.15)"
-                      strokeWidth="1"
-                      strokeDasharray="4,4"
-                    />
-                    <text
-                      x="120"
-                      y="178"
-                      textAnchor="middle"
-                      fill="rgba(255,255,255,0.3)"
-                      fontSize="7"
-                      fontFamily="monospace"
-                    >
-                      Terima kasih!
-                    </text>
-                    {/* Scan indicator glow */}
-                    <rect
-                      x="10"
-                      y="200"
-                      width="220"
-                      height="100"
-                      fill="none"
-                      stroke="rgba(207,188,255,0.2)"
-                      strokeWidth="1"
-                      rx="4"
-                    />
-                    <text
-                      x="120"
-                      y="250"
-                      textAnchor="middle"
-                      fill="rgba(207,188,255,0.4)"
-                      fontSize="9"
-                      fontFamily="monospace"
-                    >
-                      DEMO STRUK
-                    </text>
-                  </svg>
+                    receipt_long
+                  </span>
+                  <p
+                    className="text-body-sm"
+                    style={{
+                      textAlign: "center",
+                      color: "rgba(255,255,255,0.5)",
+                      marginTop: 12,
+                      lineHeight: "20px",
+                    }}
+                  >
+                    {cameraPermission === "denied"
+                      ? "Izin kamera ditolak. Buka Pengaturan > Kamera untuk mengizinkan akses."
+                      : "Kamera tidak tersedia. Silakan unggah foto struk dari galeri."}
+                  </p>
                 </div>
-              </div>
-            )}
+              ) : (scanPhase === "preview" || scanPhase === "processing") && capturedImage ? (
+                /* Frozen Captured Image */
+                <img
+                  src={capturedImage}
+                  alt="Captured receipt"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : null}
 
-            {/* Target Alignment Guide Corners */}
+              {/* Processing overlay on frozen image */}
+              {scanPhase === "processing" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "rgba(0,0,0,0.6)",
+                    backdropFilter: "blur(4px)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 16,
+                    zIndex: 30,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: "50%",
+                      border: "4px solid rgba(207,188,255,0.3)",
+                      borderTopColor: "var(--primary-fixed-dim)",
+                      animation: "spin 1s linear infinite",
+                    }}
+                  />
+                  <p
+                    className="text-body-md"
+                    style={{ color: "white", fontWeight: 600 }}
+                  >
+                    AI sedang membaca struk...
+                  </p>
+                  <p
+                    className="text-body-sm"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
+                  >
+                    Harap tunggu beberapa detik
+                  </p>
+                </div>
+              )}
+
+              {/* Scanning laser line during processing */}
+              {scanPhase === "processing" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    width: "100%",
+                    height: 4,
+                    background:
+                      "linear-gradient(90deg, transparent, rgba(207, 188, 255, 0.9), transparent)",
+                    boxShadow:
+                      "0 0 15px rgba(207, 188, 255, 0.9), 0 0 30px var(--primary)",
+                    zIndex: 31,
+                    animation: "laser-scan 1.5s ease-in-out infinite",
+                  }}
+                />
+              )}
+
+              {/* Target Alignment Guide Corners (camera phase only) */}
+              {scanPhase === "camera" && (
+                <>
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 20,
+                      left: 20,
+                      width: 24,
+                      height: 24,
+                      borderTop: "4px solid white",
+                      borderLeft: "4px solid white",
+                      borderRadius: "6px 0 0 0",
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 20,
+                      right: 20,
+                      width: 24,
+                      height: 24,
+                      borderTop: "4px solid white",
+                      borderRight: "4px solid white",
+                      borderRadius: "0 6px 0 0",
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 20,
+                      left: 20,
+                      width: 24,
+                      height: 24,
+                      borderBottom: "4px solid white",
+                      borderLeft: "4px solid white",
+                      borderRadius: "0 0 0 6px",
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 20,
+                      right: 20,
+                      width: 24,
+                      height: 24,
+                      borderBottom: "4px solid white",
+                      borderRight: "4px solid white",
+                      borderRadius: "0 0 6px 0",
+                    }}
+                  />
+                </>
+              )}
+
+              {/* Flash Effect on Capture */}
+              {isFlashing && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    background: "white",
+                    zIndex: 20,
+                    animation: "camera-flash 0.15s ease-out forwards",
+                  }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* ─── PHASE: Result ─── */}
+          {scanPhase === "result" && (
             <div
               style={{
-                position: "absolute",
-                top: 20,
-                left: 20,
-                width: 24,
-                height: 24,
-                borderTop: "4px solid white",
-                borderLeft: "4px solid white",
-                borderRadius: "6px 0 0 0",
+                width: "100%",
+                maxWidth: 420,
+                flex: 1,
+                overflowY: "auto",
+                borderRadius: 20,
+                background: "rgba(255,255,255,0.08)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                padding: 20,
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
               }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                top: 20,
-                right: 20,
-                width: 24,
-                height: 24,
-                borderTop: "4px solid white",
-                borderRight: "4px solid white",
-                borderRadius: "0 6px 0 0",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: 20,
-                left: 20,
-                width: 24,
-                height: 24,
-                borderBottom: "4px solid white",
-                borderLeft: "4px solid white",
-                borderRadius: "0 0 0 6px",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: 20,
-                right: 20,
-                width: 24,
-                height: 24,
-                borderBottom: "4px solid white",
-                borderRight: "4px solid white",
-                borderRadius: "0 0 6px 0",
-              }}
-            />
+            >
+              {scanError ? (
+                /* Error State */
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "32px 16px",
+                    textAlign: "center",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 48, color: "#ef5350" }}
+                  >
+                    error_outline
+                  </span>
+                  <p
+                    className="text-body-md"
+                    style={{ color: "rgba(255,255,255,0.9)", lineHeight: 1.5 }}
+                  >
+                    {scanError}
+                  </p>
+                </div>
+              ) : scanResult ? (
+                /* Success State */
+                <>
+                  {/* Mini preview of captured receipt */}
+                  {capturedImage && (
+                    <div
+                      style={{
+                        width: "100%",
+                        height: 120,
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                    >
+                      <img
+                        src={capturedImage}
+                        alt="Scanned receipt"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          opacity: 0.7,
+                        }}
+                      />
+                    </div>
+                  )}
 
-            {/* Scanning Line Laser effect */}
-            {isScanning && (
-              <div
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  width: "100%",
-                  height: 4,
-                  background:
-                    "linear-gradient(90deg, transparent, rgba(207, 188, 255, 0.9), transparent)",
-                  boxShadow:
-                    "0 0 15px rgba(207, 188, 255, 0.9), 0 0 30px var(--primary)",
-                  zIndex: 10,
-                  animation: "laser-scan 1.5s ease-in-out infinite",
-                }}
-              />
-            )}
+                  {/* AI Response */}
+                  <div
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      borderRadius: 16,
+                      padding: 16,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 12,
+                      }}
+                    >
+                      <span
+                        className="material-symbols-outlined"
+                        style={{
+                          fontSize: 20,
+                          color: "var(--primary-fixed-dim)",
+                        }}
+                      >
+                        smart_toy
+                      </span>
+                      <span
+                        className="text-label-md"
+                        style={{ color: "var(--primary-fixed-dim)", fontWeight: 600 }}
+                      >
+                        Catatin AI
+                      </span>
+                    </div>
+                    <div
+                      className="chat-md"
+                      style={{
+                        color: "rgba(255,255,255,0.85)",
+                        fontSize: 14,
+                        lineHeight: 1.7,
+                      }}
+                      dangerouslySetInnerHTML={{
+                        __html: renderMarkdown(scanResult.content),
+                      }}
+                    />
+                  </div>
 
-            {/* Flash Effect on Capture */}
-            {isFlashing && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  background: "white",
-                  zIndex: 20,
-                  animation: "camera-flash 0.15s ease-out forwards",
-                }}
-              />
-            )}
-          </div>
+                  {/* Transactions created */}
+                  {scanResult.transactions && scanResult.transactions.length > 0 && (
+                    <div
+                      style={{
+                        background: "rgba(76, 175, 80, 0.1)",
+                        borderRadius: 12,
+                        padding: 12,
+                        border: "1px solid rgba(76, 175, 80, 0.2)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <span
+                          className="material-symbols-outlined"
+                          style={{ fontSize: 18, color: "#66BB6A" }}
+                        >
+                          check_circle
+                        </span>
+                        <span
+                          className="text-label-md"
+                          style={{ color: "#66BB6A", fontWeight: 600 }}
+                        >
+                          {scanResult.transactions.length} transaksi tercatat
+                        </span>
+                      </div>
+                      {scanResult.transactions.map((tx, i) => (
+                        <div
+                          key={tx.id || i}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            padding: "6px 0",
+                            borderTop:
+                              i > 0
+                                ? "1px solid rgba(255,255,255,0.06)"
+                                : "none",
+                          }}
+                        >
+                          <span
+                            className="text-body-sm"
+                            style={{ color: "rgba(255,255,255,0.7)" }}
+                          >
+                            {tx.description}
+                          </span>
+                          <span
+                            className="text-body-sm"
+                            style={{
+                              color: tx.type === "INCOME" ? "#66BB6A" : "#ef5350",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {tx.type === "INCOME" ? "+" : "-"}Rp
+                            {tx.amount.toLocaleString("id-ID")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
 
-          {/* Controls */}
+          {/* ─── Controls ─── */}
           <div
             style={{
               display: "flex",
@@ -613,44 +742,8 @@ export default function BottomNav() {
               width: "100%",
             }}
           >
-            {isScanning ? (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 6,
-                    alignItems: "center",
-                    margin: "8px 0",
-                  }}
-                >
-                  {[0, 1, 2].map((i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: "var(--primary-fixed-dim)",
-                        animation: `typing-dot 1s ease-in-out ${i * 0.15}s infinite`,
-                      }}
-                    />
-                  ))}
-                </div>
-                <p
-                  className="text-body-md"
-                  style={{ color: "rgba(255,255,255,0.8)", fontWeight: 500 }}
-                >
-                  AI sedang memproses struk...
-                </p>
-              </div>
-            ) : (
+            {/* Camera Phase: Capture + Upload buttons */}
+            {scanPhase === "camera" && (
               <>
                 <div
                   style={{
@@ -660,7 +753,7 @@ export default function BottomNav() {
                     position: "relative",
                   }}
                 >
-                  {/* Upload File Button */}
+                  {/* Upload from Gallery */}
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     style={{
@@ -692,20 +785,21 @@ export default function BottomNav() {
                   {/* Camera Capture Button */}
                   <button
                     onClick={handleCapture}
+                    disabled={!stream}
                     style={{
                       width: 76,
                       height: 76,
                       borderRadius: "50%",
-                      background: "white",
+                      background: stream ? "white" : "rgba(255,255,255,0.3)",
                       border: "6px solid rgba(255,255,255,0.25)",
-                      boxShadow: "0 0 20px rgba(0,0,0,0.4)",
-                      cursor: "pointer",
-                      transition: "transform 0.1s active",
+                      boxShadow: stream ? "0 0 20px rgba(0,0,0,0.4)" : "none",
+                      cursor: stream ? "pointer" : "not-allowed",
+                      transition: "transform 0.1s, background 0.2s",
                     }}
                     aria-label="Ambil foto"
                   />
 
-                  {/* Dummy placeholder for layout balance */}
+                  {/* Placeholder for layout balance */}
                   <div style={{ width: 48 }} />
                 </div>
                 <p
@@ -718,6 +812,136 @@ export default function BottomNav() {
                   Posisikan struk dalam kotak petunjuk atau unggah dari galeri
                 </p>
               </>
+            )}
+
+            {/* Preview Phase: Retake + Confirm buttons */}
+            {scanPhase === "preview" && (
+              <div style={{ display: "flex", gap: 16, width: "100%", maxWidth: 420 }}>
+                <button
+                  onClick={handleRetake}
+                  style={{
+                    flex: 1,
+                    padding: "14px 20px",
+                    borderRadius: 16,
+                    background: "rgba(255,255,255,0.1)",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    color: "white",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    transition: "background 0.2s",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 20 }}
+                  >
+                    refresh
+                  </span>
+                  Ulangi
+                </button>
+                <button
+                  onClick={handleConfirmCapture}
+                  style={{
+                    flex: 2,
+                    padding: "14px 20px",
+                    borderRadius: 16,
+                    background: "var(--primary)",
+                    border: "none",
+                    color: "white",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    boxShadow: "0 4px 16px rgba(79, 55, 138, 0.4)",
+                    transition: "transform 0.1s",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 20 }}
+                  >
+                    document_scanner
+                  </span>
+                  Proses Struk
+                </button>
+              </div>
+            )}
+
+            {/* Processing Phase: just a subtle hint */}
+            {scanPhase === "processing" && (
+              <p
+                className="text-body-sm"
+                style={{ color: "rgba(255,255,255,0.5)", textAlign: "center" }}
+              >
+                Sedang menganalisa struk dengan AI Vision...
+              </p>
+            )}
+
+            {/* Result Phase: Close / Scan Again */}
+            {scanPhase === "result" && (
+              <div style={{ display: "flex", gap: 12, width: "100%", maxWidth: 420 }}>
+                <button
+                  onClick={handleRetake}
+                  style={{
+                    flex: 1,
+                    padding: "14px 20px",
+                    borderRadius: 16,
+                    background: "rgba(255,255,255,0.1)",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    color: "white",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 20 }}
+                  >
+                    photo_camera
+                  </span>
+                  Scan Lagi
+                </button>
+                <button
+                  onClick={handleCloseScan}
+                  style={{
+                    flex: 1,
+                    padding: "14px 20px",
+                    borderRadius: 16,
+                    background: "var(--primary)",
+                    border: "none",
+                    color: "white",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    boxShadow: "0 4px 16px rgba(79, 55, 138, 0.4)",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 20 }}
+                  >
+                    check
+                  </span>
+                  Selesai
+                </button>
+              </div>
             )}
           </div>
         </div>
