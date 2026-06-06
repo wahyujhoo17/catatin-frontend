@@ -584,14 +584,88 @@ img {
    RESPONSIVE
    ================================================================ */
 @media (max-width: 768px) {
+  :root {
+    --container-margin: 16px;
+    --stack-gap-lg: 20px;
+    --stack-gap-md: 16px;
+    --stack-gap-sm: 12px;
+    --card-padding: 16px;
+  }
+
   .text-display-lg {
-    font-size: 36px;
-    line-height: 44px;
+    font-size: 32px;
+    line-height: 40px;
   }
 
   .text-headline-lg {
-    font-size: 28px;
-    line-height: 36px;
+    font-size: 22px;
+    line-height: 30px;
+  }
+
+  .text-headline-md {
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  .text-headline-sm {
+    font-size: 15px;
+    line-height: 20px;
+  }
+
+  .text-body-lg {
+    font-size: 15px;
+    line-height: 22px;
+  }
+
+  .text-body-md {
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  .text-body-sm {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .text-label-md {
+    font-size: 10px;
+    line-height: 14px;
+  }
+
+  /* Dashboard mobile overrides */
+  .dashboard-tx-item {
+    padding: 12px !important;
+  }
+  .dashboard-tx-avatar {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  .dashboard-tx-icon {
+    font-size: 20px !important;
+  }
+  .insight-icon-container {
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+  .auto-awesome-icon {
+    font-size: 24px !important;
+  }
+}
+
+/* Grid system desktop helpers */
+.col-span-8-desktop {
+  grid-column: span 12;
+}
+.col-span-4-desktop {
+  grid-column: span 12;
+}
+
+@media (min-width: 769px) {
+  .col-span-8-desktop {
+    grid-column: span 8;
+  }
+  .col-span-4-desktop {
+    grid-column: span 4;
   }
 }
 

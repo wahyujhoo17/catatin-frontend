@@ -53,9 +53,8 @@ export default function DashboardPersonalPage() {
           >
             {/* Budget Health Gauge */}
             <div
-              className="glass-card"
+              className="glass-card col-span-8-desktop"
               style={{
-                gridColumn: "span 12",
                 padding: "var(--card-padding)",
                 display: "flex",
                 flexDirection: "column",
@@ -129,9 +128,8 @@ export default function DashboardPersonalPage() {
 
             {/* Top Categories */}
             <div
-              className="glass-card"
+              className="glass-card col-span-4-desktop"
               style={{
-                gridColumn: "span 12",
                 padding: "var(--card-padding)",
               }}
             >
@@ -181,8 +179,8 @@ export default function DashboardPersonalPage() {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                <div style={{ background: "rgba(79, 55, 138, 0.1)", padding: 16, borderRadius: 16 }}>
-                  <span className="material-symbols-outlined filled" style={{ color: "var(--primary)", fontSize: 32 }}>
+                <div className="insight-icon-container" style={{ background: "rgba(79, 55, 138, 0.1)", padding: 16, borderRadius: 16 }}>
+                  <span className="material-symbols-outlined filled auto-awesome-icon" style={{ color: "var(--primary)", fontSize: 32 }}>
                     auto_awesome
                   </span>
                 </div>
@@ -228,6 +226,7 @@ export default function DashboardPersonalPage() {
                 {transactions.map((tx) => (
                   <div
                     key={tx.name}
+                    className="dashboard-tx-item"
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -236,10 +235,12 @@ export default function DashboardPersonalPage() {
                       background: "rgba(255, 255, 255, 0.4)",
                       borderRadius: 16,
                       border: "1px solid rgba(255, 255, 255, 0.2)",
+                      gap: 12,
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
                       <div
+                        className="dashboard-tx-avatar"
                         style={{
                           width: 48,
                           height: 48,
@@ -248,20 +249,26 @@ export default function DashboardPersonalPage() {
                           alignItems: "center",
                           justifyContent: "center",
                           borderRadius: 12,
+                          flexShrink: 0,
                         }}
                       >
-                        <span className="material-symbols-outlined" style={{ color: tx.color }}>{tx.icon}</span>
+                        <span className="material-symbols-outlined dashboard-tx-icon" style={{ color: tx.color }}>{tx.icon}</span>
                       </div>
-                      <div>
-                        <p className="text-body-md" style={{ fontWeight: 700 }}>{tx.name}</p>
-                        <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <p className="text-body-md" style={{ fontWeight: 700, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.name}</p>
+                        <p className="text-body-sm" style={{ color: "var(--on-surface-variant)", margin: "2px 0 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {tx.category} • {tx.time}
                         </p>
                       </div>
                     </div>
                     <span
-                      className="text-headline-sm"
-                      style={{ color: tx.isExpense ? "var(--error)" : "var(--primary)" }}
+                      style={{
+                        color: tx.isExpense ? "var(--error)" : "var(--primary)",
+                        fontWeight: 600,
+                        fontSize: "15px",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                      }}
                     >
                       {tx.amount}
                     </span>
