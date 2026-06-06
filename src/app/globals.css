@@ -347,6 +347,21 @@ img {
   align-self: flex-start;
 }
 
+/* Markdown styling inside chat bubbles */
+.chat-md {
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.chat-md strong {
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.chat-md em {
+  font-style: italic;
+}
+
 /* ================================================================
    BACKGROUNDS
    ================================================================ */

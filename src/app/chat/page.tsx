@@ -8,6 +8,36 @@ import Link from "next/link";
 // ─── Config ──────────────────────────────────────────────────
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
+// ─── Lightweight Markdown → HTML parser ──────────────────────
+function renderMarkdown(text: string): string {
+  let html = text
+    // Escape HTML entities first
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    // Bold: **text**
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    // Italic: *text* (but not inside bold)
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>")
+    // Inline code: `code`
+    .replace(/`([^`]+)`/g, "<code style='background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-size:0.9em'>$1</code>")
+    // Horizontal rule: ---
+    .replace(/^---$/gm, "<hr style='border:none;border-top:1px solid rgba(0,0,0,0.1);margin:8px 0'>")
+    // Headers: ### h3, ## h2, # h1
+    .replace(/^### (.+)$/gm, "<strong style='font-size:1em;display:block;margin:6px 0 2px'>$1</strong>")
+    .replace(/^## (.+)$/gm, "<strong style='font-size:1.05em;display:block;margin:8px 0 2px'>$1</strong>")
+    .replace(/^# (.+)$/gm, "<strong style='font-size:1.1em;display:block;margin:8px 0 4px'>$1</strong>")
+    // Newlines to <br>
+    .replace(/\n/g, "<br>");
+
+  // Unordered list items: - item or • item (after br conversion)
+  html = html.replace(/(?:<br>|^)(?:- |• )(.+?)(?=<br>|$)/g, (_, content) => {
+    return `<br><span style="display:flex;gap:6px;align-items:flex-start;margin:2px 0"><span style="flex-shrink:0;margin-top:2px">•</span><span>${content}</span></span>`;
+  });
+
+  return html;
+}
+
 interface Message {
   id: string;
   type: "user" | "bot" | "error";
@@ -614,25 +644,27 @@ export default function ChatPage() {
                     return (
                       <>
                         <div className="bubble-bot">
-                          <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                            {isProcessing ? (
-                              <span style={{ fontStyle: "italic", opacity: 0.7 }}>Memproses...</span>
-                            ) : (
-                              cleanText
-                            )}
-                            {msg.isStreaming && !isProcessing && (
-                              <span
-                                style={{
-                                  display: "inline-block",
-                                  width: 8,
-                                  height: 16,
-                                  background: "var(--primary)",
-                                  marginLeft: 2,
-                                  animation: "blink 1s step-end infinite",
-                                }}
-                              />
-                            )}
-                          </p>
+                          {isProcessing ? (
+                            <p style={{ margin: 0, fontStyle: "italic", opacity: 0.7 }}>Memproses...</p>
+                          ) : (
+                            <div
+                              className="chat-md"
+                              style={{ margin: 0 }}
+                              dangerouslySetInnerHTML={{ __html: renderMarkdown(cleanText) }}
+                            />
+                          )}
+                          {msg.isStreaming && !isProcessing && (
+                            <span
+                              style={{
+                                display: "inline-block",
+                                width: 8,
+                                height: 16,
+                                background: "var(--primary)",
+                                marginLeft: 2,
+                                animation: "blink 1s step-end infinite",
+                              }}
+                            />
+                          )}
                           {chartType && !msg.isStreaming && <ChartWidget type={chartType} />}
                         </div>
                         {options.length > 0 && !msg.isStreaming && (

@@ -126,9 +126,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!res.ok) {
-        clearTokens();
-        setUser(null);
-        setToken(null);
+        // Only clear tokens if unauthorized or forbidden
+        if (res.status === 401 || res.status === 403) {
+          clearTokens();
+          setUser(null);
+          setToken(null);
+        }
         setIsLoading(false);
         return;
       }
@@ -136,10 +139,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       setUser(data.user);
       setToken(stored);
-    } catch {
-      clearTokens();
-      setUser(null);
-      setToken(null);
+    } catch (err) {
+      // PWA Fix: Do NOT clear tokens on network error (user might be offline)
+      console.warn("[Auth] Network error during session refresh, keeping tokens:", err);
     } finally {
       setIsLoading(false);
     }
