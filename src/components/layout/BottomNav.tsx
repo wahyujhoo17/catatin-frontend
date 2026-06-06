@@ -23,15 +23,30 @@ function renderMarkdown(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     // Italic: require no space after first * and no space before last *
     .replace(/(?<!\*)\*(?!\s|\*)(.+?)(?<!\s|\*)\*(?!\*)/g, "<em>$1</em>")
-    .replace(/`([^`]+)`/g, "<code style='background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-size:0.9em'>$1</code>")
-    .replace(/^### (.+)$/gm, "<strong style='font-size:1em;display:block;margin:6px 0 2px'>$1</strong>")
-    .replace(/^## (.+)$/gm, "<strong style='font-size:1.05em;display:block;margin:8px 0 2px'>$1</strong>")
-    .replace(/^# (.+)$/gm, "<strong style='font-size:1.1em;display:block;margin:8px 0 4px'>$1</strong>")
+    .replace(
+      /`([^`]+)`/g,
+      "<code style='background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-size:0.9em'>$1</code>",
+    )
+    .replace(
+      /^### (.+)$/gm,
+      "<strong style='font-size:1em;display:block;margin:6px 0 2px'>$1</strong>",
+    )
+    .replace(
+      /^## (.+)$/gm,
+      "<strong style='font-size:1.05em;display:block;margin:8px 0 2px'>$1</strong>",
+    )
+    .replace(
+      /^# (.+)$/gm,
+      "<strong style='font-size:1.1em;display:block;margin:8px 0 4px'>$1</strong>",
+    )
     .replace(/\n/g, "<br>");
 
-  html = html.replace(/(?:<br>|^)(?:- |\* |• )(.+?)(?=<br>|$)/g, (_, content) => {
-    return `<br><span style="display:flex;gap:6px;align-items:flex-start;margin:2px 0"><span style="flex-shrink:0;margin-top:2px">•</span><span>${content}</span></span>`;
-  });
+  html = html.replace(
+    /(?:<br>|^)(?:- |\* |• )(.+?)(?=<br>|$)/g,
+    (_, content) => {
+      return `<br><span style="display:flex;gap:6px;align-items:flex-start;margin:2px 0"><span style="flex-shrink:0;margin-top:2px">•</span><span>${content}</span></span>`;
+    },
+  );
 
   return html;
 }
@@ -67,6 +82,7 @@ export default function BottomNav() {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [isRefining, setIsRefining] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -128,6 +144,7 @@ export default function BottomNav() {
     setCapturedImage(null);
     setScanResult(null);
     setScanError(null);
+    setSelectedAccount(null);
     startCamera();
   };
 
@@ -138,11 +155,15 @@ export default function BottomNav() {
     setCapturedImage(null);
     setScanResult(null);
     setScanError(null);
+    setSelectedAccount(null);
     setIsFlashing(false);
   };
 
   // ─── Process receipt with AI ────────────────────────────────
-  const processReceipt = async (base64Image: string, extraInstruction?: string) => {
+  const processReceipt = async (
+    base64Image: string,
+    extraInstruction?: string,
+  ) => {
     if (extraInstruction) {
       setIsRefining(true);
     } else {
@@ -158,10 +179,14 @@ export default function BottomNav() {
     }
 
     try {
-      let promptMsg = "Tolong baca struk belanja ini dan catat semua item transaksinya sebagai pengeluaran. Berikan ringkasan total belanja.";
+      let promptMsg =
+        "Tolong baca struk belanja ini dan catat semua item transaksinya sebagai pengeluaran. Berikan ringkasan total belanja.";
       if (extraInstruction) {
         promptMsg += " " + extraInstruction;
       }
+
+      // Reset account selection before processing
+      setSelectedAccount(null);
 
       const res = await fetch(`${API_BASE}/api/ai/chat/sync`, {
         method: "POST",
@@ -361,7 +386,9 @@ export default function BottomNav() {
           </div>
 
           {/* ─── PHASE: Camera / Preview / Processing ─── */}
-          {(scanPhase === "camera" || scanPhase === "preview" || scanPhase === "processing") && (
+          {(scanPhase === "camera" ||
+            scanPhase === "preview" ||
+            scanPhase === "processing") && (
             <div className="camera-viewfinder">
               {/* Live Camera Feed */}
               {scanPhase === "camera" && stream ? (
@@ -415,7 +442,8 @@ export default function BottomNav() {
                       : "Kamera tidak tersedia. Silakan unggah foto struk dari galeri."}
                   </p>
                 </div>
-              ) : (scanPhase === "preview" || scanPhase === "processing") && capturedImage ? (
+              ) : (scanPhase === "preview" || scanPhase === "processing") &&
+                capturedImage ? (
                 /* Frozen Captured Image */
                 <img
                   src={capturedImage}
@@ -589,239 +617,263 @@ export default function BottomNav() {
                   gap: 16,
                 }}
               >
-              {scanError ? (
-                /* Error State */
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "32px 16px",
-                    textAlign: "center",
-                  }}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: 48, color: "#ef5350" }}
+                {scanError ? (
+                  /* Error State */
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "32px 16px",
+                      textAlign: "center",
+                    }}
                   >
-                    error_outline
-                  </span>
-                  <p
-                    className="text-body-md"
-                    style={{ color: "var(--on-surface)", lineHeight: 1.5 }}
-                  >
-                    {scanError}
-                  </p>
-                </div>
-              ) : scanResult ? (
-                /* Success State */
-                (() => {
-                  const askMatch = scanResult.content.match(/\[ASK_ACCOUNT:(.*?)\]/);
-                  const options = askMatch ? askMatch[1].split(",") : [];
-                  
-                  const cleanText = scanResult.content
-                    .replace(/\[ACTION[\s\S]*?(?:\[\/ACTION\]|$)/g, "")
-                    .replace(/\[ASK_ACCOUNT[\s\S]*?(?:\]|$)/g, "")
-                    .replace(/\[SHOW_CHART[\s\S]*?(?:\]|$)/g, "")
-                    .trim();
+                    <span
+                      className="material-symbols-outlined"
+                      style={{ fontSize: 48, color: "#ef5350" }}
+                    >
+                      error_outline
+                    </span>
+                    <p
+                      className="text-body-md"
+                      style={{ color: "var(--on-surface)", lineHeight: 1.5 }}
+                    >
+                      {scanError}
+                    </p>
+                  </div>
+                ) : scanResult ? (
+                  /* Success State */
+                  (() => {
+                    const askMatch = scanResult.content.match(
+                      /\[ASK_ACCOUNT:(.*?)\]/,
+                    );
+                    const options = askMatch ? askMatch[1].split(",") : [];
 
-                  return (
-                    <>
-                      {/* Mini preview of captured receipt */}
-                      {capturedImage && (
+                    const cleanText = scanResult.content
+                      .replace(/\[ACTION[\s\S]*?(?:\[\/ACTION\]|$)/g, "")
+                      .replace(/\[ASK_ACCOUNT[\s\S]*?(?:\]|$)/g, "")
+                      .replace(/\[SHOW_CHART[\s\S]*?(?:\]|$)/g, "")
+                      .trim();
+
+                    return (
+                      <>
+                        {/* AI Response */}
                         <div
                           style={{
-                            width: "100%",
-                            height: 120,
-                            borderRadius: 16,
-                            overflow: "hidden",
+                            background: "var(--surface-container-low)",
+                            borderRadius: 20,
+                            padding: 20,
                             border: "1px solid var(--outline-variant)",
                           }}
                         >
-                          <img
-                            src={capturedImage}
-                            alt="Scanned receipt"
+                          <div
                             style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      {/* AI Response */}
-                      <div
-                        style={{
-                          background: "var(--surface-container-low)",
-                          borderRadius: 20,
-                          padding: 20,
-                          border: "1px solid var(--outline-variant)",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            marginBottom: 12,
-                          }}
-                        >
-                          <span
-                            className="material-symbols-outlined"
-                            style={{
-                              fontSize: 20,
-                              color: "var(--primary)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              marginBottom: 12,
                             }}
                           >
-                            smart_toy
-                          </span>
-                          <span
-                            className="text-label-md"
-                            style={{ color: "var(--primary)", fontWeight: 700 }}
-                          >
-                            Catatin AI
-                          </span>
-                        </div>
-                        <div
-                          className="chat-md"
-                          style={{
-                            color: "var(--on-surface)",
-                            fontSize: 14,
-                            lineHeight: 1.7,
-                          }}
-                          dangerouslySetInnerHTML={{
-                            __html: renderMarkdown(cleanText),
-                          }}
-                        />
-                        
-                        {/* Account Selection Options or Refining Loader */}
-                        {isRefining ? (
-                          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 20 }}>
-                            <div
+                            <span
+                              className="material-symbols-outlined"
                               style={{
-                                width: 24,
-                                height: 24,
-                                borderRadius: "50%",
-                                border: "3px solid var(--outline-variant)",
-                                borderTopColor: "var(--primary)",
-                                animation: "spin 1s linear infinite",
+                                fontSize: 20,
+                                color: "var(--primary)",
                               }}
-                            />
-                            <span className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>
-                              Mencatat transaksi...
+                            >
+                              smart_toy
+                            </span>
+                            <span
+                              className="text-label-md"
+                              style={{
+                                color: "var(--primary)",
+                                fontWeight: 700,
+                              }}
+                            >
+                              Catatin AI
                             </span>
                           </div>
-                        ) : (
-                          options.length > 0 && capturedImage && (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 20 }}>
-                              {options.map((opt) => (
-                                <button
-                                  key={opt}
-                                  onClick={() => processReceipt(capturedImage, `Gunakan akun ${opt.trim()}`)}
-                                  disabled={isRefining}
+                          <div
+                            className="chat-md"
+                            style={{
+                              color: "var(--on-surface)",
+                              fontSize: 14,
+                              lineHeight: 1.7,
+                            }}
+                            dangerouslySetInnerHTML={{
+                              __html: renderMarkdown(cleanText),
+                            }}
+                          />
+
+                          {/* Account Selection Options or Refining Loader */}
+                          {isRefining ? (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 12,
+                                marginTop: 20,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: 24,
+                                  height: 24,
+                                  borderRadius: "50%",
+                                  border: "3px solid var(--outline-variant)",
+                                  borderTopColor: "var(--primary)",
+                                  animation: "spin 1s linear infinite",
+                                }}
+                              />
+                              <span
+                                className="text-body-sm"
+                                style={{ color: "var(--on-surface-variant)" }}
+                              >
+                                Mencatat transaksi...
+                              </span>
+                            </div>
+                          ) : (
+                            options.length > 0 &&
+                            capturedImage && (
+                              <>
+                                <div
                                   style={{
-                                    padding: "10px 20px",
-                                    fontSize: 14,
-                                    fontWeight: 600,
-                                    borderRadius: 24,
-                                    border: "1px solid var(--primary)",
-                                    background: "var(--primary-container)",
-                                    color: "var(--on-primary-container)",
-                                    cursor: "pointer",
-                                    transition: "transform 0.1s, opacity 0.2s",
-                                    opacity: isRefining ? 0.5 : 1,
+                                    display: "flex",
+                                    flexWrap: "wrap",
+                                    gap: 12,
+                                    marginTop: 20,
                                   }}
-                                  onMouseEnter={(e) => { if (!isRefining) e.currentTarget.style.opacity = "0.9" }}
-                                  onMouseLeave={(e) => { if (!isRefining) e.currentTarget.style.opacity = "1" }}
                                 >
-                                  Pakai {opt.trim()}
-                                </button>
+                                  {options.map((opt) => {
+                                    const isSelected =
+                                      selectedAccount === opt.trim();
+                                    return (
+                                      <button
+                                        key={opt}
+                                        onClick={() =>
+                                          setSelectedAccount(
+                                            isSelected ? null : opt.trim(),
+                                          )
+                                        }
+                                        disabled={isRefining}
+                                        style={{
+                                          padding: "10px 20px",
+                                          fontSize: 14,
+                                          fontWeight: isSelected ? 600 : 500,
+                                          borderRadius: 24,
+                                          border: isSelected
+                                            ? "2px solid var(--primary)"
+                                            : "1px solid var(--outline-variant)",
+                                          background: isSelected
+                                            ? "var(--primary-container)"
+                                            : "rgba(255,255,255,0.7)",
+                                          color: isSelected
+                                            ? "var(--on-primary-container)"
+                                            : "var(--on-surface-variant)",
+                                          cursor: "pointer",
+                                          boxShadow: isSelected
+                                            ? "0 2px 8px rgba(79,55,138,0.2)"
+                                            : "none",
+                                          transition: "all 0.15s ease",
+                                          opacity: isRefining ? 0.5 : 1,
+                                        }}
+                                      >
+                                        Pakai {opt.trim()}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            )
+                          )}
+                        </div>
+
+                        {/* Transactions created */}
+                        {scanResult.transactions &&
+                          scanResult.transactions.length > 0 && (
+                            <div
+                              style={{
+                                background: "rgba(76, 175, 80, 0.1)",
+                                borderRadius: 16,
+                                padding: 16,
+                                border: "1px solid rgba(76, 175, 80, 0.2)",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  marginBottom: 12,
+                                }}
+                              >
+                                <span
+                                  className="material-symbols-outlined"
+                                  style={{ fontSize: 20, color: "#66BB6A" }}
+                                >
+                                  check_circle
+                                </span>
+                                <span
+                                  className="text-label-md"
+                                  style={{ color: "#66BB6A", fontWeight: 700 }}
+                                >
+                                  {scanResult.transactions.length} transaksi
+                                  tercatat
+                                </span>
+                              </div>
+                              {scanResult.transactions.map((tx, i) => (
+                                <div
+                                  key={tx.id || i}
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    padding: "8px 0",
+                                    borderTop:
+                                      i > 0
+                                        ? "1px solid rgba(102, 187, 106, 0.2)"
+                                        : "none",
+                                  }}
+                                >
+                                  <span
+                                    className="text-body-sm"
+                                    style={{
+                                      color: "var(--on-surface-variant)",
+                                    }}
+                                  >
+                                    {tx.description}
+                                  </span>
+                                  <span
+                                    className="text-body-sm"
+                                    style={{
+                                      color:
+                                        tx.type === "INCOME"
+                                          ? "#66BB6A"
+                                          : "#ef5350",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {tx.type === "INCOME" ? "+" : "-"}Rp
+                                    {tx.amount.toLocaleString("id-ID")}
+                                  </span>
+                                </div>
                               ))}
                             </div>
-                          )
-                        )}
-                      </div>
-
-                  {/* Transactions created */}
-                  {scanResult.transactions && scanResult.transactions.length > 0 && (
-                    <div
-                      style={{
-                        background: "rgba(76, 175, 80, 0.1)",
-                        borderRadius: 16,
-                        padding: 16,
-                        border: "1px solid rgba(76, 175, 80, 0.2)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          marginBottom: 12,
-                        }}
-                      >
-                        <span
-                          className="material-symbols-outlined"
-                          style={{ fontSize: 20, color: "#66BB6A" }}
-                        >
-                          check_circle
-                        </span>
-                        <span
-                          className="text-label-md"
-                          style={{ color: "#66BB6A", fontWeight: 700 }}
-                        >
-                          {scanResult.transactions.length} transaksi tercatat
-                        </span>
-                      </div>
-                      {scanResult.transactions.map((tx, i) => (
-                        <div
-                          key={tx.id || i}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            padding: "8px 0",
-                            borderTop:
-                              i > 0
-                                ? "1px solid rgba(102, 187, 106, 0.2)"
-                                : "none",
-                          }}
-                        >
-                          <span
-                            className="text-body-sm"
-                            style={{ color: "var(--on-surface-variant)" }}
-                          >
-                            {tx.description}
-                          </span>
-                          <span
-                            className="text-body-sm"
-                            style={{
-                              color: tx.type === "INCOME" ? "#66BB6A" : "#ef5350",
-                              fontWeight: 600,
-                            }}
-                          >
-                            {tx.type === "INCOME" ? "+" : "-"}Rp
-                            {tx.amount.toLocaleString("id-ID")}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-                );
-              })()
-              ) : null}
+                          )}
+                      </>
+                    );
+                  })()
+                ) : null}
               </div>
 
               {/* Bottom Action Bar inside the sheet */}
               <div
                 style={{
-                  padding: "16px 20px 32px",
+                  padding: "12px 16px 24px",
                   background: "var(--surface)",
                   borderTop: "1px solid var(--outline-variant)",
                   display: "flex",
-                  gap: 16,
+                  gap: 10,
                   width: "100%",
                 }}
               >
@@ -829,50 +881,72 @@ export default function BottomNav() {
                   onClick={handleRetake}
                   style={{
                     flex: 1,
-                    padding: "16px 20px",
-                    borderRadius: 24,
+                    padding: "12px 16px",
+                    borderRadius: 20,
                     background: "var(--surface-container-highest)",
                     border: "none",
                     color: "var(--on-surface)",
-                    fontSize: 15,
+                    fontSize: 13,
                     fontWeight: 600,
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 8,
+                    gap: 6,
                     transition: "opacity 0.2s",
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
                   onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>photo_camera</span>
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 18 }}
+                  >
+                    photo_camera
+                  </span>
                   Scan Lagi
                 </button>
                 <button
-                  onClick={handleCloseScan}
+                  onClick={() => {
+                    if (selectedAccount && capturedImage) {
+                      processReceipt(
+                        capturedImage,
+                        `Gunakan akun ${selectedAccount}`,
+                      );
+                      setSelectedAccount(null);
+                    } else {
+                      handleCloseScan();
+                    }
+                  }}
                   style={{
                     flex: 1,
-                    padding: "16px 20px",
-                    borderRadius: 24,
+                    padding: "12px 16px",
+                    borderRadius: 20,
                     background: "var(--primary)",
                     border: "none",
                     color: "var(--on-primary)",
-                    fontSize: 15,
+                    fontSize: 13,
                     fontWeight: 600,
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    gap: 8,
+                    gap: 6,
                     boxShadow: "0 4px 16px rgba(79, 55, 138, 0.4)",
                     transition: "opacity 0.2s",
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
                   onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check</span>
-                  Selesai
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 18 }}
+                  >
+                    check
+                  </span>
+                  {selectedAccount
+                    ? `Selesai — Pakai ${selectedAccount}`
+                    : "Selesai"}
                 </button>
               </div>
             </div>
@@ -962,7 +1036,14 @@ export default function BottomNav() {
 
             {/* Preview Phase: Retake + Confirm buttons */}
             {scanPhase === "preview" && (
-              <div style={{ display: "flex", gap: 16, width: "100%", maxWidth: 420 }}>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 16,
+                  width: "100%",
+                  maxWidth: 420,
+                }}
+              >
                 <button
                   onClick={handleRetake}
                   style={{

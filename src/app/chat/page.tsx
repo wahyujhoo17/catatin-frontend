@@ -223,6 +223,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -270,6 +271,7 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, botMsg]);
       setIsTyping(false);
       setInput("");
+      setSelectedAccount(null);
 
       const controller = new AbortController();
       abortRef.current = controller;
@@ -786,29 +788,78 @@ export default function ChatPage() {
                               marginLeft: 8,
                             }}
                           >
-                            {options.map((opt) => (
-                              <button
-                                key={opt}
-                                onClick={() =>
-                                  sendMessage(`Gunakan akun ${opt.trim()}`)
-                                }
-                                style={{
-                                  padding: "6px 16px",
-                                  fontSize: 13,
-                                  fontWeight: 500,
-                                  borderRadius: 20,
-                                  border: "1px solid var(--primary)",
-                                  background: "var(--primary-container)",
-                                  color: "var(--on-primary-container)",
-                                  cursor: "pointer",
-                                  boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-                                }}
-                              >
-                                {opt.trim()}
-                              </button>
-                            ))}
+                            {options.map((opt) => {
+                              const isSelected = selectedAccount === opt.trim();
+                              return (
+                                <button
+                                  key={opt}
+                                  onClick={() =>
+                                    setSelectedAccount(
+                                      isSelected ? null : opt.trim(),
+                                    )
+                                  }
+                                  style={{
+                                    padding: "6px 16px",
+                                    fontSize: 13,
+                                    fontWeight: isSelected ? 600 : 500,
+                                    borderRadius: 20,
+                                    border: isSelected
+                                      ? "2px solid var(--primary)"
+                                      : "1px solid var(--outline-variant)",
+                                    background: isSelected
+                                      ? "var(--primary-container)"
+                                      : "rgba(255,255,255,0.7)",
+                                    color: isSelected
+                                      ? "var(--on-primary-container)"
+                                      : "var(--on-surface-variant)",
+                                    cursor: "pointer",
+                                    boxShadow: isSelected
+                                      ? "0 2px 8px rgba(79,55,138,0.2)"
+                                      : "none",
+                                    transition: "all 0.15s ease",
+                                  }}
+                                >
+                                  {opt.trim()}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
+                        {options.length > 0 &&
+                          !msg.isStreaming &&
+                          selectedAccount && (
+                            <button
+                              onClick={() => {
+                                sendMessage(`Gunakan akun ${selectedAccount}`);
+                                setSelectedAccount(null);
+                              }}
+                              style={{
+                                marginTop: 12,
+                                marginLeft: 8,
+                                padding: "10px 32px",
+                                fontSize: 14,
+                                fontWeight: 600,
+                                borderRadius: 24,
+                                border: "none",
+                                background:
+                                  "linear-gradient(135deg, var(--primary), var(--primary-container))",
+                                color: "white",
+                                cursor: "pointer",
+                                boxShadow: "0 4px 12px rgba(79,55,138,0.3)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                              }}
+                            >
+                              <span
+                                className="material-symbols-outlined"
+                                style={{ fontSize: 18 }}
+                              >
+                                check
+                              </span>
+                              Selesai — Pakai {selectedAccount}
+                            </button>
+                          )}
                       </>
                     );
                   })()}
