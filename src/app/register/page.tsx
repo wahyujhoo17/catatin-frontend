@@ -126,13 +126,11 @@ export default function RegisterPage() {
             <Image
               src="/logo/logo.png"
               alt="Catetin"
-              width={180}
-              height={60}
+              width={80}
+              height={80}
               style={{
                 objectFit: "contain",
-                marginBottom: 8,
-                width: "auto",
-                height: "auto",
+                marginBottom: 16,
               }}
               priority
             />
@@ -486,9 +484,9 @@ export default function RegisterPage() {
         <Image
           src="/logo/logo.png"
           alt="Catetin Logo"
-          width={100}
-          height={32}
-          style={{ width: "auto", height: "auto" }}
+          width={40}
+          height={40}
+          style={{ objectFit: "contain" }}
           priority
         />
         <p

@@ -152,21 +152,19 @@ export default function ChatPage() {
                   ),
                 );
               } else if (event.type === "transaction_created") {
-                // Transaksi berhasil tercatat — tampilkan notifikasi inline
+                // Transaksi berhasil tercatat — gabungkan ke dalam bubble AI
                 const tx = event.transaction;
-                const formatted = `✅ Transaksi tercatat: ${tx.type === "INCOME" ? "+" : "-"}Rp ${tx.amount.toLocaleString("id-ID")} — ${tx.description} (${tx.category})`;
-                setMessages((prev) => [
-                  ...prev,
-                  {
-                    id: `tx-${Date.now()}`,
-                    type: "bot",
-                    text: formatted,
-                    time: new Date().toLocaleTimeString("id-ID", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }),
-                  },
-                ]);
+                const formatted = `✅ Transaksi tercatat: ${tx.type === "INCOME" ? "+" : "-"}Rp ${tx.amount.toLocaleString("id-ID")} — ${tx.description} (${tx.category})\n`;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === botId
+                      ? {
+                          ...m,
+                          text: m.text + formatted,
+                        }
+                      : m,
+                  ),
+                );
               } else if (event.type === "error") {
                 throw new Error(event.error);
               }
@@ -535,15 +533,16 @@ export default function ChatPage() {
                     </span>
                     {!msg.isStreaming && msg.type === "bot" && (
                       <span
-                        className="text-label-sm"
                         style={{
-                          color: "rgba(73, 69, 81, 0.4)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                           background: "rgba(0,0,0,0.04)",
-                          padding: "1px 6px",
+                          padding: "2px 6px",
                           borderRadius: 4,
                         }}
                       >
-                        Catatin AI
+                        <Image src="/logo/logo.png" alt="Bot" width={16} height={16} style={{ opacity: 0.7, objectFit: "contain" }} priority />
                       </span>
                     )}
                   </div>
