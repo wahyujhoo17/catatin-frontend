@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 interface DashboardData {
+  aiInsight: string;
   balance: number;
   incomeThisMonth: number;
   expenseThisMonth: number;
@@ -503,13 +504,7 @@ export default function DashboardPersonalPage() {
                         marginTop: 8,
                       }}
                     >
-                      {data.expenseThisMonth === 0
-                        ? "Kamu belum mencatat pengeluaran bulan ini. Yuk mulai catat biar keuangan makin terpantau! 💪"
-                        : data.budgetHealth >= 70
-                          ? `Keuanganmu sehat! Pengeluaran ${formatRupiah(data.expenseThisMonth)} dari pemasukan ${formatRupiah(data.incomeThisMonth)}. Tetap konsisten menabung ya! 🎉`
-                          : data.budgetHealth >= 50
-                            ? `Pengeluaranmu ${formatRupiah(data.expenseThisMonth)} bulan ini. Masih aman, tapi mulai perhatikan pengeluaran di kategori teratas. ⚠️`
-                            : `Waspada! Pengeluaranmu sudah ${formatRupiah(data.expenseThisMonth)} dari pemasukan ${formatRupiah(data.incomeThisMonth)}. Saatnya hemat! 🔴`}
+                      {data.aiInsight}
                     </p>
                   ) : (
                     <p

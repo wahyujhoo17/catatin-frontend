@@ -35,9 +35,68 @@ function getToken(): string | null {
 // ─── Strip [ACTION] blocks from AI response ──────────────────
 function stripActions(text: string): string {
   return text
-    .replace(/\[ACTION:record_transaction\][\s\S]*?\[\/ACTION\]/g, "")
+    .replace(/\[ACTION:(record_transaction|update_transaction|delete_transaction)\][\s\S]*?\[\/ACTION\]/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+// ─── Chart Widget (Inline) ────────────────────────────────────
+const CATEGORY_COLORS: Record<string, string> = {
+  primary: "var(--primary)",
+  secondary: "var(--secondary)",
+  tertiary: "var(--tertiary)",
+};
+
+function ChartWidget({ type }: { type: string }) {
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    fetch(`${API_BASE}/api/dashboard/summary`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then(setData)
+      .catch(console.error);
+  }, [type]);
+
+  if (!data) return <div style={{ fontStyle: "italic", opacity: 0.6 }}>Memuat grafik...</div>;
+  if (!data.topCategories || data.topCategories.length === 0) return <div>Belum ada pengeluaran bulan ini.</div>;
+
+  return (
+    <div style={{ marginTop: 12, padding: 16, background: "var(--surface)", borderRadius: 16, border: "1px solid var(--outline-variant)" }}>
+      <h4 style={{ margin: "0 0 16px 0", fontSize: 14 }}>Kategori Pengeluaran Bulan Ini</h4>
+      <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+        <div
+          style={{
+            position: "relative",
+            width: 80,
+            height: 80,
+            borderRadius: "50%",
+            borderWidth: "10px",
+            borderStyle: "solid",
+            borderTopColor: data.topCategories.length ? "var(--primary)" : "var(--secondary-container)",
+            borderRightColor: data.topCategories.length > 1 ? "var(--tertiary)" : "transparent",
+            borderBottomColor: data.topCategories.length > 2 ? "var(--secondary-fixed-dim)" : "transparent",
+            borderLeftColor: data.topCategories.length ? "var(--primary)" : "var(--secondary-container)",
+            flexShrink: 0
+          }}
+        />
+        <ul style={{ margin: 0, padding: 0, listStyle: "none", flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+          {data.topCategories.map((cat: any, i: number) => (
+            <li key={cat.name} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: CATEGORY_COLORS[i === 0 ? "primary" : i === 1 ? "tertiary" : "secondary"] || "var(--secondary)" }} />
+                <span>{cat.name}</span>
+              </div>
+              <span style={{ fontWeight: 600 }}>{cat.percentage}%</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
 }
 
 export default function ChatPage() {
@@ -153,17 +212,26 @@ export default function ChatPage() {
                   ),
                 );
               } else if (event.type === "transaction_created") {
-                // Transaksi berhasil tercatat — gabungkan ke dalam bubble AI
                 const tx = event.transaction;
-                const formatted = `✅ Transaksi tercatat: ${tx.type === "INCOME" ? "+" : "-"}Rp ${tx.amount.toLocaleString("id-ID")} — ${tx.description} (${tx.category})\n`;
+                const formatted = `✅ Transaksi tercatat: ${tx.type === "INCOME" ? "+" : "-"}Rp ${tx.amount.toLocaleString("id-ID")} — ${tx.description} (${tx.category}) berhasil ditambahkan ke ${tx.account}\n`;
                 setMessages((prev) =>
                   prev.map((m) =>
-                    m.id === botId
-                      ? {
-                          ...m,
-                          text: m.text + formatted,
-                        }
-                      : m,
+                    m.id === botId ? { ...m, text: m.text + formatted } : m,
+                  ),
+                );
+              } else if (event.type === "transaction_updated") {
+                const tx = event.transaction;
+                const formatted = `✅ Transaksi diubah: menjadi ${tx.type === "INCOME" ? "+" : "-"}Rp ${tx.amount.toLocaleString("id-ID")} — ${tx.description}\n`;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === botId ? { ...m, text: m.text + formatted } : m,
+                  ),
+                );
+              } else if (event.type === "transaction_deleted") {
+                const formatted = `🗑️ Transaksi berhasil dihapus dan saldo telah dikembalikan.\n`;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === botId ? { ...m, text: m.text + formatted } : m,
                   ),
                 );
               } else if (event.type === "error") {
@@ -519,14 +587,28 @@ export default function ChatPage() {
                   {(() => {
                     const askMatch = msg.text.match(/\[ASK_ACCOUNT:(.*?)\]/);
                     const options = askMatch ? askMatch[1].split(",") : [];
-                    const cleanText = msg.text.replace(/\[ASK_ACCOUNT:.*?\]/g, "").trim();
+                    
+                    const chartMatch = msg.text.match(/\[SHOW_CHART:(.*?)\]/);
+                    const chartType = chartMatch ? chartMatch[1] : null;
+
+                    let cleanText = msg.text
+                      .replace(/\[ACTION[\s\S]*?(?:\[\/ACTION\]|$)/g, "")
+                      .replace(/\[ASK_ACCOUNT[\s\S]*?(?:\]|$)/g, "")
+                      .replace(/\[SHOW_CHART[\s\S]*?(?:\]|$)/g, "")
+                      .trim();
+                      
+                    const isProcessing = msg.isStreaming && cleanText.length === 0 && !chartType;
 
                     return (
                       <>
                         <div className="bubble-bot">
                           <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                            {cleanText}
-                            {msg.isStreaming && (
+                            {isProcessing ? (
+                              <span style={{ fontStyle: "italic", opacity: 0.7 }}>Memproses...</span>
+                            ) : (
+                              cleanText
+                            )}
+                            {msg.isStreaming && !isProcessing && (
                               <span
                                 style={{
                                   display: "inline-block",
@@ -539,6 +621,7 @@ export default function ChatPage() {
                               />
                             )}
                           </p>
+                          {chartType && !msg.isStreaming && <ChartWidget type={chartType} />}
                         </div>
                         {options.length > 0 && !msg.isStreaming && (
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8, marginLeft: 8 }}>
