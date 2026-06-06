@@ -329,8 +329,8 @@ img {
 .bubble-user {
   background: linear-gradient(135deg, #6750a4 0%, #4f378a 100%);
   color: white;
-  padding: 20px;
-  border-radius: 24px 24px 4px 24px;
+  padding: 12px 16px;
+  border-radius: 18px 18px 4px 18px;
   box-shadow: 0 4px 15px rgba(79, 55, 138, 0.25);
   max-width: 85%;
   align-self: flex-end;
@@ -340,8 +340,8 @@ img {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.4);
-  padding: 20px;
-  border-radius: 24px 24px 24px 4px;
+  padding: 12px 16px;
+  border-radius: 18px 18px 18px 4px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
   max-width: 85%;
   align-self: flex-start;
@@ -349,7 +349,8 @@ img {
 
 /* Markdown styling inside chat bubbles */
 .chat-md {
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.3;
   word-wrap: break-word;
 }
 
@@ -1040,6 +1041,7 @@ img {
 .settings-toggle.active::after {
   transform: translateX(20px);
 }
+
 /* ================================================================
    REACT DAY PICKER OVERRIDES
    ================================================================ */
@@ -1053,16 +1055,23 @@ img {
   --rdp-outline-selected: 2px solid var(--primary) !important;
   margin: 0 !important;
 }
-.rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover {
-  background-color: #0070f3 !important; /* Blue from screenshot */
+
+.rdp-day_selected,
+.rdp-day_selected:focus-visible,
+.rdp-day_selected:hover {
+  background-color: #0070f3 !important;
+  /* Blue from screenshot */
   color: white !important;
   font-weight: bold;
 }
+
 .rdp-day_range_middle {
   background-color: rgba(0, 112, 243, 0.2) !important;
   color: var(--on-surface) !important;
 }
-.rdp-day_range_start, .rdp-day_range_end {
+
+.rdp-day_range_start,
+.rdp-day_range_end {
   background-color: #0070f3 !important;
   color: white !important;
 }
@@ -1073,7 +1082,8 @@ img {
   top: 100%;
   left: 0;
   margin-top: 8px;
-  background-color: #1e1e1e; /* Dark theme to match screenshot */
+  background-color: #1e1e1e;
+  /* Dark theme to match screenshot */
   color: #e0e0e0;
   border-radius: 16px;
   padding: 16px;
@@ -1081,25 +1091,31 @@ img {
   z-index: 1000;
   border: 1px solid #333;
 }
+
 .date-picker-popover-content .rdp-caption_label {
   font-size: 16px;
   font-weight: 600;
   color: #fff;
 }
+
 .date-picker-popover-content .rdp-head_cell {
   color: #888;
   font-size: 13px;
   font-weight: 500;
 }
+
 .date-picker-popover-content .rdp-day {
   color: #e0e0e0;
 }
+
 .date-picker-popover-content .rdp-day_outside {
   color: #555;
 }
+
 .date-picker-popover-content .rdp-nav_button {
   color: #0070f3;
 }
+
 .date-picker-popover-content .rdp-nav_button:hover {
   background-color: rgba(0, 112, 243, 0.1);
 }
@@ -1155,7 +1171,8 @@ img {
 /* --- HeroUI / Premium Day Picker Styling --- */
 .custom-day-picker {
   background: transparent;
-  --rdp-cell-size: 44px; /* Slightly reduced to fit better without scrolling */
+  --rdp-cell-size: 44px;
+  /* Slightly reduced to fit better without scrolling */
   --rdp-accent-color: var(--primary);
   --rdp-background-color: transparent;
   color: var(--on-surface);
@@ -1165,7 +1182,8 @@ img {
 
 /* Header & Navigation */
 .custom-day-picker .rdp-caption_label {
-  font-size: 18px; /* Larger month title */
+  font-size: 18px;
+  /* Larger month title */
   font-weight: 700;
   text-transform: capitalize;
   color: var(--on-surface);
@@ -1187,7 +1205,8 @@ img {
 
 /* Days Headers (Sun, Mon, etc) */
 .custom-day-picker .rdp-head_cell {
-  font-size: 14px; /* Slightly larger header */
+  font-size: 14px;
+  /* Slightly larger header */
   font-weight: 600;
   color: var(--on-surface-variant);
   text-transform: uppercase;
@@ -1202,7 +1221,8 @@ img {
   color: var(--on-surface);
   position: relative;
   z-index: 1;
-  font-size: 16px; /* Larger day numbers */
+  font-size: 16px;
+  /* Larger day numbers */
 }
 
 .custom-day-picker .rdp-button:hover:not([disabled]):not(.rdp-day_selected) {
@@ -1278,18 +1298,35 @@ img {
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes zoomIn {
-  from { opacity: 0; transform: translate(-50%, -40%) scale(0.95); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, -40%) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 /* Header margin for pages with top floating back button on mobile */

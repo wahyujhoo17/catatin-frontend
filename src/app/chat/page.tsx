@@ -20,20 +20,46 @@ function renderMarkdown(text: string): string {
     // Italic: *text* (but not inside bold, require no space after first * and no space before last *)
     .replace(/(?<!\*)\*(?!\s|\*)(.+?)(?<!\s|\*)\*(?!\*)/g, "<em>$1</em>")
     // Inline code: `code`
-    .replace(/`([^`]+)`/g, "<code style='background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-size:0.9em'>$1</code>")
+    .replace(
+      /`([^`]+)`/g,
+      "<code style='background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-size:0.9em'>$1</code>",
+    )
     // Horizontal rule: ---
-    .replace(/^---$/gm, "<hr style='border:none;border-top:1px solid rgba(0,0,0,0.1);margin:8px 0'>")
+    .replace(
+      /^---$/gm,
+      "<hr style='border:none;border-top:1px solid rgba(0,0,0,0.1);margin:8px 0'>",
+    )
     // Headers: ### h3, ## h2, # h1
-    .replace(/^### (.+)$/gm, "<strong style='font-size:1em;display:block;margin:6px 0 2px'>$1</strong>")
-    .replace(/^## (.+)$/gm, "<strong style='font-size:1.05em;display:block;margin:8px 0 2px'>$1</strong>")
-    .replace(/^# (.+)$/gm, "<strong style='font-size:1.1em;display:block;margin:8px 0 4px'>$1</strong>")
-    // Newlines to <br>
-    .replace(/\n/g, "<br>");
+    .replace(
+      /^### (.+)$/gm,
+      "<strong style='font-size:1em;display:block;margin:6px 0 2px'>$1</strong>",
+    )
+    .replace(
+      /^## (.+)$/gm,
+      "<strong style='font-size:1.05em;display:block;margin:8px 0 2px'>$1</strong>",
+    )
+    .replace(
+      /^# (.+)$/gm,
+      "<strong style='font-size:1.1em;display:block;margin:8px 0 4px'>$1</strong>",
+    );
 
-  // Unordered list items: - item or • item or * item
-  html = html.replace(/(?:<br>|^)(?:- |\* |• )(.+?)(?=<br>|$)/g, (_, content) => {
-    return `<br><span style="display:flex;gap:6px;align-items:flex-start;margin:2px 0"><span style="flex-shrink:0;margin-top:2px">•</span><span>${content}</span></span>`;
+  // Unordered list items: group consecutive bullet lines into one container
+  // so there's zero newline/br between adjacent items.
+  html = html.replace(/(?:^|\n)((?:[-*•] .+?(?:\n|$))+)/g, (match) => {
+    const items = match
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const content = line.replace(/^[-*•] /, "");
+        return `<span style="display:flex;gap:5px;align-items:flex-start"><span style="flex-shrink:0;line-height:1.3">•</span><span style="line-height:1.3">${content}</span></span>`;
+      });
+    return `\n<div style="display:flex;flex-direction:column;gap:1px">${items.join("")}</div>`;
   });
+
+  // Newlines: double (or more) → paragraph break, single → space (prose flows naturally)
+  html = html.replace(/\n{2,}/g, "<br>").replace(/\n/g, " ");
+  // Collapse consecutive <br> tags and trim
+  html = html.replace(/(<br>\s*){2,}/g, "<br>").trim();
 
   return html;
 }
@@ -65,7 +91,10 @@ function getToken(): string | null {
 // ─── Strip [ACTION] blocks from AI response ──────────────────
 function stripActions(text: string): string {
   return text
-    .replace(/\[ACTION:(record_transaction|update_transaction|delete_transaction)\][\s\S]*?\[\/ACTION\]/g, "")
+    .replace(
+      /\[ACTION:(record_transaction|update_transaction|delete_transaction)\][\s\S]*?\[\/ACTION\]/g,
+      "",
+    )
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -91,12 +120,26 @@ function ChartWidget({ type }: { type: string }) {
       .catch(console.error);
   }, [type]);
 
-  if (!data) return <div style={{ fontStyle: "italic", opacity: 0.6 }}>Memuat grafik...</div>;
-  if (!data.topCategories || data.topCategories.length === 0) return <div>Belum ada pengeluaran bulan ini.</div>;
+  if (!data)
+    return (
+      <div style={{ fontStyle: "italic", opacity: 0.6 }}>Memuat grafik...</div>
+    );
+  if (!data.topCategories || data.topCategories.length === 0)
+    return <div>Belum ada pengeluaran bulan ini.</div>;
 
   return (
-    <div style={{ marginTop: 12, padding: 16, background: "var(--surface)", borderRadius: 16, border: "1px solid var(--outline-variant)" }}>
-      <h4 style={{ margin: "0 0 16px 0", fontSize: 14 }}>Kategori Pengeluaran Bulan Ini</h4>
+    <div
+      style={{
+        marginTop: 12,
+        padding: 16,
+        background: "var(--surface)",
+        borderRadius: 16,
+        border: "1px solid var(--outline-variant)",
+      }}
+    >
+      <h4 style={{ margin: "0 0 16px 0", fontSize: 14 }}>
+        Kategori Pengeluaran Bulan Ini
+      </h4>
       <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
         <div
           style={{
@@ -106,18 +149,53 @@ function ChartWidget({ type }: { type: string }) {
             borderRadius: "50%",
             borderWidth: "10px",
             borderStyle: "solid",
-            borderTopColor: data.topCategories.length ? "var(--primary)" : "var(--secondary-container)",
-            borderRightColor: data.topCategories.length > 1 ? "var(--tertiary)" : "transparent",
-            borderBottomColor: data.topCategories.length > 2 ? "var(--secondary-fixed-dim)" : "transparent",
-            borderLeftColor: data.topCategories.length ? "var(--primary)" : "var(--secondary-container)",
-            flexShrink: 0
+            borderTopColor: data.topCategories.length
+              ? "var(--primary)"
+              : "var(--secondary-container)",
+            borderRightColor:
+              data.topCategories.length > 1 ? "var(--tertiary)" : "transparent",
+            borderBottomColor:
+              data.topCategories.length > 2
+                ? "var(--secondary-fixed-dim)"
+                : "transparent",
+            borderLeftColor: data.topCategories.length
+              ? "var(--primary)"
+              : "var(--secondary-container)",
+            flexShrink: 0,
           }}
         />
-        <ul style={{ margin: 0, padding: 0, listStyle: "none", flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+        <ul
+          style={{
+            margin: 0,
+            padding: 0,
+            listStyle: "none",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
           {data.topCategories.map((cat: any, i: number) => (
-            <li key={cat.name} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+            <li
+              key={cat.name}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 13,
+              }}
+            >
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: CATEGORY_COLORS[i === 0 ? "primary" : i === 1 ? "tertiary" : "secondary"] || "var(--secondary)" }} />
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background:
+                      CATEGORY_COLORS[
+                        i === 0 ? "primary" : i === 1 ? "tertiary" : "secondary"
+                      ] || "var(--secondary)",
+                  }}
+                />
                 <span>{cat.name}</span>
               </div>
               <span style={{ fontWeight: 600 }}>{cat.percentage}%</span>
@@ -206,7 +284,9 @@ export default function ChatPage() {
           body: JSON.stringify({
             message: text,
             image: imageBase64 || undefined,
-            history: messages.slice(-10).map(m => ({ type: m.type, text: m.text })),
+            history: messages
+              .slice(-10)
+              .map((m) => ({ type: m.type, text: m.text })),
           }),
           signal: controller.signal,
         });
@@ -445,7 +525,16 @@ export default function ChatPage() {
             textDecoration: "none",
           }}
         >
-          <div style={{ position: "relative", width: 120, height: 32, overflow: "hidden", display: "flex", alignItems: "center" }}>
+          <div
+            style={{
+              position: "relative",
+              width: 120,
+              height: 32,
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
             <Image
               src="/logo/logo.png"
               alt="Catatin"
@@ -623,13 +712,20 @@ export default function ChatPage() {
                         opacity: 1,
                       }}
                     >
-                      <Image src="/logo/logo.png" alt="Bot" width={70} height={70} style={{ objectFit: "contain" }} priority />
+                      <Image
+                        src="/logo/logo.png"
+                        alt="Bot"
+                        width={70}
+                        height={70}
+                        style={{ objectFit: "contain" }}
+                        priority
+                      />
                     </div>
                   )}
                   {(() => {
                     const askMatch = msg.text.match(/\[ASK_ACCOUNT:(.*?)\]/);
                     const options = askMatch ? askMatch[1].split(",") : [];
-                    
+
                     const chartMatch = msg.text.match(/\[SHOW_CHART:(.*?)\]/);
                     const chartType = chartMatch ? chartMatch[1] : null;
 
@@ -638,19 +734,30 @@ export default function ChatPage() {
                       .replace(/\[ASK_ACCOUNT[\s\S]*?(?:\]|$)/g, "")
                       .replace(/\[SHOW_CHART[\s\S]*?(?:\]|$)/g, "")
                       .trim();
-                      
-                    const isProcessing = msg.isStreaming && cleanText.length === 0 && !chartType;
+
+                    const isProcessing =
+                      msg.isStreaming && cleanText.length === 0 && !chartType;
 
                     return (
                       <>
                         <div className="bubble-bot">
                           {isProcessing ? (
-                            <p style={{ margin: 0, fontStyle: "italic", opacity: 0.7 }}>Memproses...</p>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontStyle: "italic",
+                                opacity: 0.7,
+                              }}
+                            >
+                              Memproses...
+                            </p>
                           ) : (
                             <div
                               className="chat-md"
                               style={{ margin: 0 }}
-                              dangerouslySetInnerHTML={{ __html: renderMarkdown(cleanText) }}
+                              dangerouslySetInnerHTML={{
+                                __html: renderMarkdown(cleanText),
+                              }}
                             />
                           )}
                           {msg.isStreaming && !isProcessing && (
@@ -665,14 +772,26 @@ export default function ChatPage() {
                               }}
                             />
                           )}
-                          {chartType && !msg.isStreaming && <ChartWidget type={chartType} />}
+                          {chartType && !msg.isStreaming && (
+                            <ChartWidget type={chartType} />
+                          )}
                         </div>
                         {options.length > 0 && !msg.isStreaming && (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8, marginLeft: 8 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 8,
+                              marginTop: 8,
+                              marginLeft: 8,
+                            }}
+                          >
                             {options.map((opt) => (
                               <button
                                 key={opt}
-                                onClick={() => sendMessage(`Gunakan akun ${opt.trim()}`)}
+                                onClick={() =>
+                                  sendMessage(`Gunakan akun ${opt.trim()}`)
+                                }
                                 style={{
                                   padding: "6px 16px",
                                   fontSize: 13,
@@ -682,7 +801,7 @@ export default function ChatPage() {
                                   background: "var(--primary-container)",
                                   color: "var(--on-primary-container)",
                                   cursor: "pointer",
-                                  boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+                                  boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
                                 }}
                               >
                                 {opt.trim()}
@@ -704,7 +823,13 @@ export default function ChatPage() {
                   >
                     <span
                       className="text-label-md"
-                      style={{ color: "rgba(73, 69, 81, 0.6)", fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px", transform: "translateY(1px)" }}
+                      style={{
+                        color: "rgba(73, 69, 81, 0.6)",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        letterSpacing: "0.5px",
+                        transform: "translateY(1px)",
+                      }}
                     >
                       {msg.time}
                     </span>
