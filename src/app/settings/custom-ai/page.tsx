@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import BottomNav from "@/components/layout/BottomNav";
+import { useRouter } from "next/navigation";
 import AIProviderLogo from "@/components/AIProviderLogo";
 
 interface AIProviderItem {
@@ -22,6 +22,7 @@ const defaultProviders: AIProviderItem[] = [
 ];
 
 export default function CustomAIPage() {
+  const router = useRouter();
   const [providers, setProviders] = useState<AIProviderItem[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -32,6 +33,7 @@ export default function CustomAIPage() {
   const [formProvider, setFormProvider] = useState("openai");
   const [formKey, setFormKey] = useState("");
   const [formUrl, setFormUrl] = useState("");
+  const [formActive, setFormActive] = useState(false); // active status checkbox
 
   // Custom Dropdown state
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -94,6 +96,8 @@ export default function CustomAIPage() {
     if (!formName.trim()) return;
 
     let updated: AIProviderItem[];
+    const targetId = editingId || Date.now().toString();
+
     if (editingId) {
       updated = providers.map(p => {
         if (p.id === editingId) {
@@ -103,7 +107,8 @@ export default function CustomAIPage() {
             type: formType,
             provider: formProvider,
             key: formKey || p.key,
-            url: formUrl
+            url: formUrl,
+            active: formActive
           };
         }
         return p;
@@ -111,16 +116,25 @@ export default function CustomAIPage() {
       setSuccessMsg("Provider berhasil diperbarui!");
     } else {
       const newItem: AIProviderItem = {
-        id: Date.now().toString(),
+        id: targetId,
         name: formName,
         type: formType,
         provider: formProvider,
         key: formKey || "••••••••••••",
         url: formUrl,
-        active: false // inactive by default until toggled
+        active: formActive
       };
       updated = [...providers, newItem];
       setSuccessMsg("Provider berhasil ditambahkan!");
+    }
+
+    // Auto deactivate other providers of the same type if this one is set as active/default
+    if (formActive) {
+      updated.forEach(p => {
+        if (p.id !== targetId && p.type === formType) {
+          p.active = false;
+        }
+      });
     }
 
     saveToStorage(updated);
@@ -137,6 +151,7 @@ export default function CustomAIPage() {
     setFormProvider(item.provider);
     setFormKey(""); // Let key be blank if not editing it
     setFormUrl(item.url);
+    setFormActive(item.active);
     setIsAdding(true);
   };
 
@@ -146,6 +161,7 @@ export default function CustomAIPage() {
     setFormProvider("openai");
     setFormKey("");
     setFormUrl("");
+    setFormActive(false);
     setEditingId(null);
     setIsAdding(false);
   };
@@ -189,16 +205,23 @@ export default function CustomAIPage() {
           radial-gradient(at 0% 0%, rgba(207, 188, 255, 0.15) 0px, transparent 50%),
           radial-gradient(at 100% 100%, rgba(231, 195, 101, 0.1) 0px, transparent 50%)
         `,
+        backgroundAttachment: "fixed",
+        backgroundRepeat: "no-repeat",
         minHeight: "100dvh",
-        paddingBottom: 140,
+        paddingBottom: 40,
       }}
     >
       {/* Header */}
       <header className="top-app-bar" style={{ display: "flex", alignItems: "center", gap: 16 }}>
-        <Link href="/settings" style={{ display: "flex", alignItems: "center", color: "var(--primary)", textDecoration: "none" }}>
+        <button
+          onClick={isAdding ? resetForm : () => router.push("/settings")}
+          style={{ background: "none", border: "none", display: "flex", alignItems: "center", color: "var(--primary)", cursor: "pointer", padding: 0 }}
+        >
           <span className="material-symbols-outlined" style={{ fontSize: 24 }}>arrow_back</span>
-        </Link>
-        <h2 className="text-headline-md" style={{ color: "var(--on-surface)", margin: 0, fontSize: 18, fontWeight: 700 }}>Provider AI Kustom</h2>
+        </button>
+        <h2 className="text-headline-md" style={{ color: "var(--on-surface)", margin: 0, fontSize: 18, fontWeight: 700 }}>
+          {isAdding ? (editingId ? "Edit Provider AI" : "Tambah Provider AI") : "Provider AI Kustom"}
+        </h2>
       </header>
 
       <main style={{ marginTop: 72, padding: "20px var(--container-margin)", maxWidth: 672, margin: "72px auto 0" }}>
@@ -211,14 +234,11 @@ export default function CustomAIPage() {
         {isAdding ? (
           /* Add / Edit Form Card */
           <div className="glass-card animate-fade-slide-up" style={{ padding: "var(--card-padding)" }}>
-            <h3 className="text-headline-sm" style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>
-              {editingId ? "Edit Provider AI Kustom" : "Tambah Provider AI Kustom"}
-            </h3>
 
             <form onSubmit={handleAddOrEditSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Name */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Nama Provider</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Nama Provider</label>
                 <input
                   type="text"
                   className="glass-input"
@@ -226,13 +246,13 @@ export default function CustomAIPage() {
                   onChange={(e) => setFormName(e.target.value)}
                   required
                   placeholder="Contoh: OpenAI GPT-4o Kustom"
-                  style={{ width: "100%", boxSizing: "border-box" }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", fontSize: 13, height: 42 }}
                 />
               </div>
 
               {/* Type selector (Tombol tab kustom - NO HTML default radio) */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Tipe Model / Sensor</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tipe Model / Sensor</label>
                 <div style={{ display: "flex", gap: 8, background: "rgba(103, 80, 164, 0.04)", padding: 4, borderRadius: 14 }}>
                   {["text", "image", "voice"].map(type => (
                     <button
@@ -260,21 +280,22 @@ export default function CustomAIPage() {
 
               {/* Provider Platform Dropdown (Custom Dropdown Selector - NO HTML select) */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6, position: "relative" }}>
-                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Model Platform</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Model Platform</label>
                 <button
                   type="button"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   style={{
                     width: "100%",
-                    padding: "8px 12px",
-                    borderRadius: 16,
+                    height: 42,
+                    padding: "0 14px",
+                    borderRadius: 12,
                     border: "1px solid var(--glass-border)",
                     background: "white",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
                     cursor: "pointer",
-                    fontSize: 14,
+                    fontSize: 13,
                     color: "var(--on-surface)"
                   }}
                 >
@@ -340,7 +361,7 @@ export default function CustomAIPage() {
 
               {/* API Key */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>API Key / Token Kredensial</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>API Key / Token Kredensial</label>
                 <input
                   type="password"
                   className="glass-input"
@@ -348,21 +369,58 @@ export default function CustomAIPage() {
                   onChange={(e) => setFormKey(e.target.value)}
                   placeholder={editingId ? "Tinggalkan kosong jika tidak ingin diubah" : "Masukkan API key"}
                   required={!editingId}
-                  style={{ width: "100%", boxSizing: "border-box" }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", fontSize: 13, height: 42 }}
                 />
               </div>
 
               {/* Base URL */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Base URL / Custom Endpoint</label>
+                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Base URL / Custom Endpoint</label>
                 <input
                   type="text"
                   className="glass-input"
                   value={formUrl}
                   onChange={(e) => setFormUrl(e.target.value)}
                   placeholder="https://api.openai.com/v1 (opsional)"
-                  style={{ width: "100%", boxSizing: "border-box" }}
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", fontSize: 13, height: 42 }}
                 />
+              </div>
+
+              {/* Checkbox Set as Default (NO HTML default checkbox) */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginTop: 6,
+                  cursor: "pointer",
+                  userSelect: "none"
+                }}
+                onClick={() => setFormActive(!formActive)}
+              >
+                <div
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 6,
+                    border: `2px solid ${formActive ? "var(--primary)" : "var(--outline)"}`,
+                    background: formActive ? "var(--primary)" : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 0.2s ease",
+                    flexShrink: 0
+                  }}
+                >
+                  {formActive && (
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: "white", fontWeight: "bold" }}>
+                      check
+                    </span>
+                  )}
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface-variant)" }}>
+                  Jadikan sebagai default untuk {getTypeName(formType)}
+                </span>
               </div>
 
               {/* Form buttons */}
@@ -371,16 +429,16 @@ export default function CustomAIPage() {
                   type="button"
                   onClick={resetForm}
                   className="btn-secondary"
-                  style={{ flex: 1, padding: 14 }}
+                  style={{ flex: 1, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600 }}
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   className="btn-primary"
-                  style={{ flex: 1, padding: 14, boxShadow: "none" }}
+                  style={{ flex: 1, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, boxShadow: "none" }}
                 >
-                  {editingId ? "Simpan Perubahan" : "Tambah Provider"}
+                  {editingId ? "Simpan" : "Tambah"}
                 </button>
               </div>
             </form>
@@ -393,9 +451,9 @@ export default function CustomAIPage() {
               className="btn-primary"
               style={{
                 width: "100%",
-                padding: "14px",
-                borderRadius: 16,
-                fontSize: 15,
+                padding: "10px 16px",
+                borderRadius: 14,
+                fontSize: 14,
                 fontWeight: 600,
                 boxShadow: "none",
                 marginBottom: 4,
@@ -406,7 +464,7 @@ export default function CustomAIPage() {
                 gap: 8
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>add_circle</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>add_circle</span>
               Tambah Provider Baru
             </button>
 
@@ -532,8 +590,6 @@ export default function CustomAIPage() {
           </div>
         )}
       </main>
-
-      <BottomNav />
     </div>
   );
 }

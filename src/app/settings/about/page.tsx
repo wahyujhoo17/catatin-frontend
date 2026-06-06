@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import BottomNav from "@/components/layout/BottomNav";
 
 export default function AboutAppPage() {
   return (
@@ -13,8 +12,10 @@ export default function AboutAppPage() {
           radial-gradient(at 0% 0%, rgba(207, 188, 255, 0.15) 0px, transparent 50%),
           radial-gradient(at 100% 100%, rgba(231, 195, 101, 0.1) 0px, transparent 50%)
         `,
+        backgroundAttachment: "fixed",
+        backgroundRepeat: "no-repeat",
         minHeight: "100dvh",
-        paddingBottom: 128,
+        paddingBottom: 40,
       }}
     >
       {/* Header */}
@@ -74,7 +75,7 @@ export default function AboutAppPage() {
             <Link
               href="/settings"
               className="btn-primary"
-              style={{ padding: 14, fontSize: 16, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "none", marginTop: 12 }}
+              style={{ padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "none", marginTop: 12 }}
             >
               Kembali Ke Pengaturan
             </Link>
@@ -82,8 +83,6 @@ export default function AboutAppPage() {
           </div>
         </div>
       </main>
-
-      <BottomNav />
     </div>
   );
 }

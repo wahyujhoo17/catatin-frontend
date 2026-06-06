@@ -25,6 +25,7 @@ export default function SettingsPage() {
   // Profile states
   const [profileName, setProfileName] = useState("Budi Santoso");
   const [profileEmail, setProfileEmail] = useState("budi.santoso@gmail.com");
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   // Read/Save settings & default workspace to localStorage
   useEffect(() => {
@@ -39,8 +40,10 @@ export default function SettingsPage() {
       // Load profile info
       const savedName = localStorage.getItem("profile_name");
       const savedEmail = localStorage.getItem("profile_email");
+      const savedImage = localStorage.getItem("profile_image");
       if (savedName) setProfileName(savedName);
       if (savedEmail) setProfileEmail(savedEmail);
+      if (savedImage) setProfileImage(savedImage);
     }
   }, []);
 
@@ -82,6 +85,8 @@ export default function SettingsPage() {
           radial-gradient(at 0% 0%, rgba(207, 188, 255, 0.15) 0px, transparent 50%),
           radial-gradient(at 100% 100%, rgba(231, 195, 101, 0.1) 0px, transparent 50%)
         `,
+        backgroundAttachment: "fixed",
+        backgroundRepeat: "no-repeat",
         minHeight: "100dvh",
         paddingBottom: 160,
       }}
@@ -113,10 +118,15 @@ export default function SettingsPage() {
                 fontSize: 22,
                 fontWeight: 700,
                 color: "white",
-                boxShadow: "0 4px 15px rgba(79, 55, 138, 0.15)"
+                boxShadow: "0 4px 15px rgba(79, 55, 138, 0.15)",
+                overflow: "hidden"
               }}
             >
-              {profileName.charAt(0).toUpperCase()}
+              {profileImage ? (
+                <img src={profileImage} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                profileName.charAt(0).toUpperCase()
+              )}
             </div>
             <div style={{ flex: 1 }}>
               <h3 className="text-headline-sm" style={{ fontSize: 16, color: "var(--on-surface)", margin: 0, fontWeight: 700 }}>{profileName}</h3>

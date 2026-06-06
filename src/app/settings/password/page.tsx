@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import BottomNav from "@/components/layout/BottomNav";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
@@ -39,8 +38,10 @@ export default function ChangePasswordPage() {
           radial-gradient(at 0% 0%, rgba(207, 188, 255, 0.15) 0px, transparent 50%),
           radial-gradient(at 100% 100%, rgba(231, 195, 101, 0.1) 0px, transparent 50%)
         `,
+        backgroundAttachment: "fixed",
+        backgroundRepeat: "no-repeat",
         minHeight: "100dvh",
-        paddingBottom: 128,
+        paddingBottom: 40,
       }}
     >
       {/* Header */}
@@ -65,8 +66,8 @@ export default function ChangePasswordPage() {
               </div>
             )}
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label className="text-label-md" style={{ color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Kata Sandi Lama</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Kata Sandi Lama</label>
               <input
                 type="password"
                 className="glass-input"
@@ -74,12 +75,12 @@ export default function ChangePasswordPage() {
                 onChange={(e) => setOldPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                style={{ width: "100%", boxSizing: "border-box" }}
+                style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", fontSize: 13, height: 42 }}
               />
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label className="text-label-md" style={{ color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Kata Sandi Baru</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Kata Sandi Baru</label>
               <input
                 type="password"
                 className="glass-input"
@@ -87,12 +88,12 @@ export default function ChangePasswordPage() {
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
                 placeholder="Minimal 6 karakter"
-                style={{ width: "100%", boxSizing: "border-box" }}
+                style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", fontSize: 13, height: 42 }}
               />
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label className="text-label-md" style={{ color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Konfirmasi Kata Sandi Baru</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Konfirmasi Kata Sandi Baru</label>
               <input
                 type="password"
                 className="glass-input"
@@ -100,7 +101,7 @@ export default function ChangePasswordPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 placeholder="Ulangi kata sandi baru"
-                style={{ width: "100%", boxSizing: "border-box" }}
+                style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", fontSize: 13, height: 42 }}
               />
             </div>
 
@@ -108,14 +109,14 @@ export default function ChangePasswordPage() {
               <Link
                 href="/settings"
                 className="btn-secondary"
-                style={{ flex: 1, padding: 14, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+                style={{ flex: 1, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
                 Batal
               </Link>
               <button
                 type="submit"
                 className="btn-primary"
-                style={{ flex: 1, padding: 14, boxShadow: "none" }}
+                style={{ flex: 1, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, boxShadow: "none" }}
                 disabled={success}
               >
                 Simpan
@@ -124,8 +125,6 @@ export default function ChangePasswordPage() {
           </form>
         </div>
       </main>
-
-      <BottomNav />
     </div>
   );
 }
