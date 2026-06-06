@@ -101,7 +101,7 @@ export default function LoginPage() {
                     Kata Sandi
                   </label>
                   <Link
-                    href="#"
+                    href="/forgot-password"
                     className="text-label-md"
                     style={{ color: "var(--primary)" }}
                   >
@@ -216,7 +216,7 @@ export default function LoginPage() {
           alt="Catetin Logo"
           width={100}
           height={32}
-          style={{ height: "32px", width: "auto", objectFit: "contain" }}
+          style={{ width: "auto", height: "auto" }}
           priority
         />
         <p className="text-label-md" style={{ color: "var(--outline)", margin: 0 }}>Financial Intelligence</p>

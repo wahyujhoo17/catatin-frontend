@@ -15,7 +15,7 @@ export default function RegisterPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    router.push("/workspace");
+    router.push("/verify-otp");
   };
 
   return (
@@ -73,7 +73,7 @@ export default function RegisterPage() {
               alt="Catetin"
               width={180}
               height={60}
-              style={{ objectFit: "contain", marginBottom: 8 }}
+              style={{ objectFit: "contain", marginBottom: 8, width: "auto", height: "auto" }}
               priority
             />
             <h1 className="text-headline-lg-mobile" style={{ color: "var(--on-surface)" }}>
@@ -244,7 +244,7 @@ export default function RegisterPage() {
           alt="Catetin Logo"
           width={100}
           height={32}
-          style={{ height: "32px", width: "auto", objectFit: "contain" }}
+          style={{ width: "auto", height: "auto" }}
           priority
         />
         <p className="text-label-md" style={{ color: "var(--outline)", margin: 0 }}>Financial Intelligence</p>

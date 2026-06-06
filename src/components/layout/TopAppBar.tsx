@@ -20,7 +20,7 @@ export default function TopAppBar({
           alt="Catetin Logo"
           width={100}
           height={32}
-          style={{ height: "32px", width: "auto", objectFit: "contain" }}
+          style={{ width: "auto", height: "auto" }}
           priority
         />
       </Link>
