@@ -566,6 +566,7 @@ export default function BottomNav() {
                 width: "calc(100% + 40px)", // counteract the 20px padding of camera-overlay
                 maxWidth: 460,
                 flex: 1,
+                minHeight: 0, // Fix flex overflow bug
                 display: "flex",
                 flexDirection: "column",
                 borderRadius: "24px 24px 0 0",
@@ -579,8 +580,10 @@ export default function BottomNav() {
               <div
                 style={{
                   flex: 1,
+                  minHeight: 0, // Fix flex overflow bug
                   overflowY: "auto",
-                  padding: "24px 20px",
+                  WebkitOverflowScrolling: "touch",
+                  padding: "24px 20px 32px 20px", // Extra padding at bottom for breathing room
                   display: "flex",
                   flexDirection: "column",
                   gap: 16,
