@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
+import AIProviderLogo from "@/components/AIProviderLogo";
 
 export default function SettingsPage() {
   // Toggle states
@@ -320,9 +321,12 @@ export default function SettingsPage() {
             
             {/* AI Provider Dropdown */}
             <div className="settings-row" style={{ position: "relative" }}>
-              <div style={{ marginRight: 12, flex: 1 }}>
-                <p className="text-body-md" style={{ fontWeight: 600 }}>Provider AI Aktif</p>
-                <p className="text-body-sm" style={{ color: "var(--on-surface-variant)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 240 }}>{currentAI.label}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, marginRight: 12, minWidth: 0 }}>
+                <AIProviderLogo provider={activeAI} containerSize={36} size={20} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p className="text-body-md" style={{ fontWeight: 600, margin: 0 }}>Provider AI Aktif</p>
+                  <p className="text-body-sm" style={{ color: "var(--on-surface-variant)", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{currentAI.label}</p>
+                </div>
               </div>
               <button
                 type="button"
@@ -336,7 +340,8 @@ export default function SettingsPage() {
                   color: "var(--primary)",
                   display: "flex",
                   alignItems: "center",
-                  gap: 4
+                  gap: 4,
+                  flexShrink: 0
                 }}
               >
                 Pilih
@@ -356,7 +361,7 @@ export default function SettingsPage() {
                     display: "flex",
                     flexDirection: "column",
                     gap: 4,
-                    width: 260,
+                    width: 270,
                     background: "white",
                     boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
                     border: "1px solid rgba(203, 196, 210, 0.4)"
@@ -379,11 +384,17 @@ export default function SettingsPage() {
                         background: activeAI === a.value ? "rgba(103, 80, 164, 0.08)" : "transparent",
                         color: activeAI === a.value ? "var(--primary)" : "var(--on-surface)",
                         fontWeight: activeAI === a.value ? 600 : 500,
-                        transition: "background 0.2s"
+                        transition: "background 0.2s",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10
                       }}
                     >
-                      <p style={{ fontSize: 14, margin: 0 }}>{a.label}</p>
-                      <p style={{ fontSize: 10, color: "var(--outline)", margin: "2px 0 0 0" }}>{a.detail}</p>
+                      <AIProviderLogo provider={a.value} containerSize={28} size={15} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, margin: 0, fontWeight: activeAI === a.value ? 600 : 500 }}>{a.label}</p>
+                        <p style={{ fontSize: 10, color: "var(--outline)", margin: "2px 0 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.detail}</p>
+                      </div>
                     </button>
                   ))}
                 </div>

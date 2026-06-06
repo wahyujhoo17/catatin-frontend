@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/layout/BottomNav";
+import AIProviderLogo from "@/components/AIProviderLogo";
 
 interface AIProviderItem {
   id: string;
@@ -154,6 +155,7 @@ export default function CustomAIPage() {
     { value: "gemini", label: "Google Gemini API" },
     { value: "claude", label: "Anthropic Claude API" },
     { value: "ollama", label: "Ollama (Local LLM)" },
+    { value: "deepseek", label: "DeepSeek API" },
     { value: "whisper", label: "Whisper Speech API" },
     { value: "google", label: "Google Speech-to-Text" },
     { value: "custom", label: "Custom Endpoints" }
@@ -193,17 +195,31 @@ export default function CustomAIPage() {
     >
       {/* Header */}
       <header className="top-app-bar" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingRight: "var(--container-margin)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Link href="/settings" style={{ display: "flex", alignItems: "center", color: "var(--primary)", textDecoration: "none" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+          <Link href="/settings" style={{ display: "flex", alignItems: "center", color: "var(--primary)", textDecoration: "none", flexShrink: 0 }}>
             <span className="material-symbols-outlined" style={{ fontSize: 24 }}>arrow_back</span>
           </Link>
-          <h2 className="text-headline-md" style={{ color: "var(--on-surface)", margin: 0, fontSize: 18, fontWeight: 700 }}>Provider AI Kustom</h2>
+          <h2
+            className="text-headline-md"
+            style={{
+              color: "var(--on-surface)",
+              margin: 0,
+              fontSize: 16,
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: "calc(100vw - 160px)"
+            }}
+          >
+            Provider AI Kustom
+          </h2>
         </div>
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
             className="btn-primary"
-            style={{ padding: "8px 16px", borderRadius: 12, fontSize: 13, boxShadow: "none" }}
+            style={{ padding: "8px 16px", borderRadius: 12, fontSize: 13, boxShadow: "none", flexShrink: 0 }}
           >
             Tambah
           </button>
@@ -275,7 +291,7 @@ export default function CustomAIPage() {
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   style={{
                     width: "100%",
-                    padding: 12,
+                    padding: "8px 12px",
                     borderRadius: 16,
                     border: "1px solid var(--glass-border)",
                     background: "white",
@@ -287,7 +303,10 @@ export default function CustomAIPage() {
                     color: "var(--on-surface)"
                   }}
                 >
-                  {currentOption.label}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <AIProviderLogo provider={formProvider} containerSize={26} size={15} />
+                    <span>{currentOption.label}</span>
+                  </div>
                   <span className="material-symbols-outlined" style={{ fontSize: 18, color: "var(--outline)" }}>
                     {isDropdownOpen ? "keyboard_arrow_up" : "keyboard_arrow_down"}
                   </span>
@@ -322,7 +341,7 @@ export default function CustomAIPage() {
                         }}
                         style={{
                           width: "100%",
-                          padding: 10,
+                          padding: "6px 8px",
                           textAlign: "left",
                           background: formProvider === o.value ? "rgba(103, 80, 164, 0.06)" : "transparent",
                           color: formProvider === o.value ? "var(--primary)" : "var(--on-surface)",
@@ -330,10 +349,14 @@ export default function CustomAIPage() {
                           borderRadius: 10,
                           fontSize: 13,
                           fontWeight: formProvider === o.value ? 600 : 500,
-                          cursor: "pointer"
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10
                         }}
                       >
-                        {o.label}
+                        <AIProviderLogo provider={o.value} containerSize={26} size={15} />
+                        <span>{o.label}</span>
                       </button>
                     ))}
                   </div>
@@ -400,54 +423,38 @@ export default function CustomAIPage() {
               providers.map(item => (
                 <div
                   key={item.id}
-                  className="glass-card"
+                  className="glass-card animate-fade-slide-up"
                   style={{
                     padding: 18,
                     display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
+                    flexDirection: "column",
+                    gap: 12,
                     borderLeft: `5px solid ${getTypeColor(item.type)}`
                   }}
                 >
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minWidth: 0, marginRight: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <h4 className="text-headline-sm" style={{ fontSize: 15, fontWeight: 700, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</h4>
-                      <span
-                        className="text-label-md"
-                        style={{
-                          background: `${getTypeColor(item.type)}12`,
-                          color: getTypeColor(item.type),
-                          padding: "1px 8px",
-                          borderRadius: 6,
-                          fontSize: 9,
-                          fontWeight: 700
-                        }}
-                      >
-                        {getTypeName(item.type)}
-                      </span>
-                    </div>
-                    <p className="text-body-sm" style={{ color: "var(--outline)", margin: 0, fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      Model: {item.provider.toUpperCase()} {item.url ? `• Endpt: ${item.url}` : ""}
-                    </p>
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-                    {/* Action buttons (Edit & Delete) */}
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button
-                        onClick={() => handleStartEdit(item)}
-                        style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}
-                        title="Edit"
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: 20, color: "var(--primary)" }}>edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}
-                        title="Hapus"
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: 20, color: "var(--error)" }}>delete</span>
-                      </button>
+                  {/* Top Row: Logo, Info, Toggle */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <AIProviderLogo provider={item.provider} containerSize={40} size={22} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <h4 className="text-headline-sm" style={{ fontSize: 15, fontWeight: 700, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</h4>
+                        <span
+                          className="text-label-md"
+                          style={{
+                            background: `${getTypeColor(item.type)}12`,
+                            color: getTypeColor(item.type),
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                            fontSize: 10,
+                            fontWeight: 700
+                          }}
+                        >
+                          {getTypeName(item.type)}
+                        </span>
+                      </div>
+                      <p className="text-body-sm" style={{ color: "var(--outline)", margin: "4px 0 0 0", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        Platform: {item.provider.toUpperCase()}
+                      </p>
                     </div>
 
                     {/* Active toggle */}
@@ -456,7 +463,71 @@ export default function CustomAIPage() {
                       className={`settings-toggle ${item.active ? "active" : ""}`}
                       onClick={() => handleToggleActive(item.id)}
                       aria-label={`Aktifkan provider ${item.name}`}
+                      style={{ flexShrink: 0 }}
                     />
+                  </div>
+
+                  {/* Bottom Row: Key/URL Info & Action Buttons */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      borderTop: "1px solid rgba(203, 196, 210, 0.15)",
+                      paddingTop: 12,
+                      marginTop: 4,
+                      gap: 12
+                    }}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 11, color: "var(--outline)", overflow: "hidden", flex: 1 }}>
+                      {item.url && (
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={item.url}>
+                          URL: {item.url}
+                        </span>
+                      )}
+                      <span>Key: {item.key ? "••••••••••••" : "tidak ada"}</span>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                      <button
+                        onClick={() => handleStartEdit(item)}
+                        style={{
+                          background: "rgba(103, 80, 164, 0.06)",
+                          color: "var(--primary)",
+                          border: "none",
+                          borderRadius: 8,
+                          padding: "6px 10px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: "pointer"
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 15 }}>edit</span>
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        style={{
+                          background: "rgba(179, 38, 30, 0.06)",
+                          color: "var(--error)",
+                          border: "none",
+                          borderRadius: 8,
+                          padding: "6px 10px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: "pointer"
+                        }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 15 }}>delete</span>
+                        Hapus
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
