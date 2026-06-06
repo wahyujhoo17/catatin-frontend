@@ -3,26 +3,34 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const [name, setName] = useState("Budi Santoso");
-  const [email, setEmail] = useState("budi.santoso@gmail.com");
+  const { user } = useAuth();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // First populate from AuthContext
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+    }
+    // Then override with localStorage if available
     if (typeof window !== "undefined") {
       const savedName = localStorage.getItem("profile_name");
       const savedEmail = localStorage.getItem("profile_email");
       const savedImage = localStorage.getItem("profile_image");
-      
+
       if (savedName) setName(savedName);
       if (savedEmail) setEmail(savedEmail);
       if (savedImage) setProfileImage(savedImage);
     }
-  }, []);
+  }, [user]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,16 +71,54 @@ export default function EditProfilePage() {
       }}
     >
       {/* Header */}
-      <header className="top-app-bar" style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 12 }}>
-        <button onClick={() => router.push("/settings")} style={{ background: "none", border: "none", padding: 0, display: "flex", alignItems: "center", color: "var(--primary)", cursor: "pointer" }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 24 }}>arrow_back</span>
+      <header
+        className="top-app-bar"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          gap: 12,
+        }}
+      >
+        <button
+          onClick={() => router.push("/settings")}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            display: "flex",
+            alignItems: "center",
+            color: "var(--primary)",
+            cursor: "pointer",
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 24 }}>
+            arrow_back
+          </span>
         </button>
-        <h2 className="text-headline-md" style={{ color: "var(--on-surface)", margin: 0, fontSize: 16, fontWeight: 700 }}>Ubah Profil</h2>
+        <h2
+          className="text-headline-md"
+          style={{
+            color: "var(--on-surface)",
+            margin: 0,
+            fontSize: 16,
+            fontWeight: 700,
+          }}
+        >
+          Ubah Profil
+        </h2>
       </header>
 
       <main className="settings-main-container">
-        <div className="glass-card animate-fade-slide-up" style={{ padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          
+        <div
+          className="glass-card animate-fade-slide-up"
+          style={{
+            padding: "32px 24px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
           {/* Avatar / Profile Picture Section */}
           <div style={{ position: "relative", marginBottom: 32 }}>
             <div
@@ -80,7 +126,8 @@ export default function EditProfilePage() {
                 width: 100,
                 height: 100,
                 borderRadius: "50%",
-                background: "linear-gradient(135deg, var(--primary-fixed-dim), var(--primary))",
+                background:
+                  "linear-gradient(135deg, var(--primary-fixed-dim), var(--primary))",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -89,11 +136,15 @@ export default function EditProfilePage() {
                 color: "white",
                 boxShadow: "0 8px 24px rgba(79, 55, 138, 0.2)",
                 overflow: "hidden",
-                border: "4px solid rgba(255, 255, 255, 0.5)"
+                border: "4px solid rgba(255, 255, 255, 0.5)",
               }}
             >
               {profileImage ? (
-                <img src={profileImage} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img
+                  src={profileImage}
+                  alt="Profile"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
               ) : (
                 name.charAt(0).toUpperCase()
               )}
@@ -116,10 +167,15 @@ export default function EditProfilePage() {
                 color: "white",
                 cursor: "pointer",
                 boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
-                padding: 0
+                padding: 0,
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>photo_camera</span>
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 18 }}
+              >
+                photo_camera
+              </span>
             </button>
             <input
               type="file"
@@ -130,15 +186,46 @@ export default function EditProfilePage() {
             />
           </div>
 
-          <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%" }}>
+          <form
+            onSubmit={handleSave}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 20,
+              width: "100%",
+            }}
+          >
             {isSaved && (
-              <div className="animate-fade-in" style={{ color: "var(--primary)", fontSize: 13, background: "rgba(79, 55, 138, 0.08)", padding: "12px 16px", borderRadius: 12, fontWeight: 600, textAlign: "center", marginBottom: 8 }}>
+              <div
+                className="animate-fade-in"
+                style={{
+                  color: "var(--primary)",
+                  fontSize: 13,
+                  background: "rgba(79, 55, 138, 0.08)",
+                  padding: "12px 16px",
+                  borderRadius: 12,
+                  fontWeight: 600,
+                  textAlign: "center",
+                  marginBottom: 8,
+                }}
+              >
                 Profil berhasil disimpan! Mengalihkan...
               </div>
             )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.08em", paddingLeft: 4 }}>Nama Lengkap</label>
+              <label
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--on-surface-variant)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  paddingLeft: 4,
+                }}
+              >
+                Nama Lengkap
+              </label>
               <input
                 type="text"
                 className="glass-input"
@@ -146,12 +233,31 @@ export default function EditProfilePage() {
                 onChange={(e) => setName(e.target.value)}
                 required
                 placeholder="Budi Santoso"
-                style={{ width: "100%", boxSizing: "border-box", padding: "14px 16px", fontSize: 14, height: 48, borderRadius: 16, backgroundColor: "rgba(255, 255, 255, 0.6)" }}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "14px 16px",
+                  fontSize: 14,
+                  height: 48,
+                  borderRadius: 16,
+                  backgroundColor: "rgba(255, 255, 255, 0.6)",
+                }}
               />
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.08em", paddingLeft: 4 }}>Alamat Email</label>
+              <label
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--on-surface-variant)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  paddingLeft: 4,
+                }}
+              >
+                Alamat Email
+              </label>
               <input
                 type="email"
                 className="glass-input"
@@ -159,7 +265,15 @@ export default function EditProfilePage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="budi.santoso@email.com"
-                style={{ width: "100%", boxSizing: "border-box", padding: "14px 16px", fontSize: 14, height: 48, borderRadius: 16, backgroundColor: "rgba(255, 255, 255, 0.6)" }}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "14px 16px",
+                  fontSize: 14,
+                  height: 48,
+                  borderRadius: 16,
+                  backgroundColor: "rgba(255, 255, 255, 0.6)",
+                }}
               />
             </div>
 
@@ -168,14 +282,29 @@ export default function EditProfilePage() {
                 type="button"
                 onClick={() => router.push("/settings")}
                 className="btn-secondary"
-                style={{ flex: 1, padding: "14px 16px", borderRadius: 16, fontSize: 14, fontWeight: 600, border: "1px solid rgba(203, 196, 210, 0.5)", background: "rgba(255, 255, 255, 0.4)" }}
+                style={{
+                  flex: 1,
+                  padding: "14px 16px",
+                  borderRadius: 16,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: "1px solid rgba(203, 196, 210, 0.5)",
+                  background: "rgba(255, 255, 255, 0.4)",
+                }}
               >
                 Batal
               </button>
               <button
                 type="submit"
                 className="btn-primary"
-                style={{ flex: 1, padding: "14px 16px", borderRadius: 16, fontSize: 14, fontWeight: 600, boxShadow: "0 8px 20px rgba(79, 55, 138, 0.25)" }}
+                style={{
+                  flex: 1,
+                  padding: "14px 16px",
+                  borderRadius: 16,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  boxShadow: "0 8px 20px rgba(79, 55, 138, 0.25)",
+                }}
                 disabled={isSaved}
               >
                 Simpan

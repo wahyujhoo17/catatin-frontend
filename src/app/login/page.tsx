@@ -4,16 +4,47 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push("/workspace");
+    setError("");
+
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      setError("Email dan password wajib diisi");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await login(trimmedEmail, trimmedPassword);
+      router.push("/workspace");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Login gagal";
+
+      // Jika user belum verifikasi OTP, arahkan ke verify-otp
+      if (msg.includes("UNVERIFIED") || msg.includes("verifikasi")) {
+        localStorage.setItem("pending_email", trimmedEmail);
+        router.push("/verify-otp");
+        return;
+      }
+
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -138,6 +169,38 @@ export default function LoginPage() {
               onSubmit={handleSubmit}
               style={{ display: "flex", flexDirection: "column", gap: 24 }}
             >
+              {/* Error Message */}
+              {error && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "12px 16px",
+                    borderRadius: 12,
+                    background: "var(--error-container)",
+                    border: "1px solid rgba(186, 26, 26, 0.15)",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{
+                      fontSize: 20,
+                      color: "var(--error)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    error
+                  </span>
+                  <span
+                    className="text-body-sm"
+                    style={{ color: "var(--on-error-container)" }}
+                  >
+                    {error}
+                  </span>
+                </div>
+              )}
+
               {/* Email Field */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <label
@@ -246,14 +309,37 @@ export default function LoginPage() {
               </div>
 
               {/* Submit Button */}
-              <button type="submit" className="btn-primary" id="login-submit">
-                Masuk
-                <span
-                  className="material-symbols-outlined"
-                  style={{ transition: "transform 0.2s" }}
-                >
-                  arrow_forward
-                </span>
+              <button
+                type="submit"
+                className="btn-primary"
+                id="login-submit"
+                disabled={isLoading || !email.trim() || !password.trim()}
+                style={{
+                  opacity:
+                    isLoading || !email.trim() || !password.trim() ? 0.5 : 1,
+                }}
+              >
+                {isLoading ? (
+                  <>
+                    <span
+                      className="material-symbols-outlined"
+                      style={{ animation: "spin 1s linear infinite" }}
+                    >
+                      progress_activity
+                    </span>
+                    Memproses...
+                  </>
+                ) : (
+                  <>
+                    Masuk
+                    <span
+                      className="material-symbols-outlined"
+                      style={{ transition: "transform 0.2s" }}
+                    >
+                      arrow_forward
+                    </span>
+                  </>
+                )}
               </button>
             </form>
 

@@ -1,202 +1,192 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AIProviderLogo from "@/components/AIProviderLogo";
 
-interface AIProviderItem {
-  id: string;
-  name: string;
-  type: string; // 'text' | 'image' | 'voice'
-  provider: string; // 'openai' | 'gemini' | 'claude' | 'ollama' | 'whisper' | 'google' | 'custom'
-  key: string;
-  url: string;
-  active: boolean;
+// ─── Config ──────────────────────────────────────────────────
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+// ─── Types ────────────────────────────────────────────────────
+interface CustomAI {
+  enabled: boolean;
+  provider: string;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
 }
 
-const defaultProviders: AIProviderItem[] = [
-  { id: "1", name: "Default Text AI", type: "text", provider: "openai", key: "••••••••••••", url: "https://api.openai.com/v1", active: true },
-  { id: "2", name: "Gemini Vision Scanner", type: "image", provider: "gemini", key: "••••••••••••", url: "", active: true },
-  { id: "3", name: "Whisper Audio Input", type: "voice", provider: "whisper", key: "••••••••••••", url: "", active: true }
+const EMPTY_CONFIG: CustomAI = {
+  enabled: false,
+  provider: "openai",
+  baseUrl: "",
+  apiKey: "",
+  model: "",
+};
+
+const providerOptions = [
+  {
+    value: "openai",
+    label: "OpenAI Compatible API",
+    baseUrl: "https://api.openai.com/v1",
+  },
+  {
+    value: "deepseek",
+    label: "DeepSeek API",
+    baseUrl: "https://api.deepseek.com",
+  },
+  {
+    value: "groq",
+    label: "Groq API",
+    baseUrl: "https://api.groq.com/openai/v1",
+  },
+  {
+    value: "openrouter",
+    label: "OpenRouter API",
+    baseUrl: "https://openrouter.ai/api/v1",
+  },
+  {
+    value: "gemini",
+    label: "Google Gemini API",
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+  },
+  {
+    value: "ollama",
+    label: "Ollama (Local)",
+    baseUrl: "http://localhost:11434/v1",
+  },
+  { value: "custom", label: "Custom Endpoint", baseUrl: "" },
 ];
+
+// ─── Helpers ──────────────────────────────────────────────────
+function getToken(): string | null {
+  try {
+    return localStorage.getItem("token");
+  } catch {
+    return null;
+  }
+}
 
 export default function CustomAIPage() {
   const router = useRouter();
-  const [providers, setProviders] = useState<AIProviderItem[]>([]);
-  const [isAdding, setIsAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  // Form states
-  const [formName, setFormName] = useState("");
-  const [formType, setFormType] = useState("text"); // 'text' | 'image' | 'voice'
+  const [config, setConfig] = useState<CustomAI>(EMPTY_CONFIG);
   const [formProvider, setFormProvider] = useState("openai");
-  const [formKey, setFormKey] = useState("");
-  const [formUrl, setFormUrl] = useState("");
-  const [formActive, setFormActive] = useState(false); // active status checkbox
-
-  // Custom Dropdown state
+  const [formBaseUrl, setFormBaseUrl] = useState("");
+  const [formApiKey, setFormApiKey] = useState("");
+  const [formModel, setFormModel] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  // Load from localStorage
+  // ─── Load config dari backend ──────────────────────────────
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("custom_ai_providers_list");
-      if (saved) {
-        try {
-          setProviders(JSON.parse(saved));
-        } catch (e) {
-          setProviders(defaultProviders);
+    const token = getToken();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    fetch(`${API_BASE}/api/settings/ai-config`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((data: CustomAI) => {
+        setConfig(data);
+        setFormProvider(data.provider || "openai");
+        setFormBaseUrl(data.baseUrl || "");
+        setFormApiKey(data.apiKey || "");
+        setFormModel(data.model || "");
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [router]);
+
+  // ─── Auto-fill base URL when provider changes ──────────────
+  const handleProviderChange = (value: string) => {
+    setFormProvider(value);
+    setIsDropdownOpen(false);
+    const opt = providerOptions.find((o) => o.value === value);
+    if (opt?.baseUrl) setFormBaseUrl(opt.baseUrl);
+  };
+
+  // ─── Toggle Catetin AI / Custom AI (simpan ke backend) ────
+  const handleToggleMode = async (useCustom: boolean) => {
+    const token = getToken();
+    if (!token) return;
+
+    const updated = { ...config, enabled: useCustom };
+
+    // Jika switch ke Catetin AI — langsung reset
+    if (!useCustom) {
+      try {
+        const res = await fetch(`${API_BASE}/api/settings/ai-config`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(EMPTY_CONFIG),
+        });
+        if (res.ok) {
+          setConfig(EMPTY_CONFIG);
+          setSuccessMsg("Beralih ke Catetin AI (Default) ✅");
+          setTimeout(() => setSuccessMsg(""), 2000);
         }
-      } else {
-        setProviders(defaultProviders);
-        localStorage.setItem("custom_ai_providers_list", JSON.stringify(defaultProviders));
+      } catch {
+        /* ignore */
       }
+      return;
     }
-  }, []);
 
-  const saveToStorage = (updatedList: AIProviderItem[]) => {
-    setProviders(updatedList);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("custom_ai_providers_list", JSON.stringify(updatedList));
-    }
+    // Switch ke Custom AI — simpan form saat ini
+    setConfig(updated);
   };
 
-  const handleToggleActive = (id: string) => {
-    const updated = providers.map(p => {
-      // If we activate a provider, we might want to deactivate others of the same type
-      if (p.id === id) {
-        const nextActive = !p.active;
-        return { ...p, active: nextActive };
-      }
-      return p;
-    });
-    
-    // Auto deactivate other providers of the same type if this one becomes active
-    const activeItem = updated.find(p => p.id === id);
-    if (activeItem && activeItem.active) {
-      updated.forEach(p => {
-        if (p.id !== id && p.type === activeItem.type) {
-          p.active = false;
-        }
-      });
-    }
-    
-    saveToStorage(updated);
-  };
-
-  const handleDelete = (id: string) => {
-    const updated = providers.filter(p => p.id !== id);
-    saveToStorage(updated);
-  };
-
-  const handleAddOrEditSubmit = (e: React.FormEvent) => {
+  // ─── Save custom AI config ke backend ─────────────────────
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName.trim()) return;
+    const token = getToken();
+    if (!token) return;
 
-    let updated: AIProviderItem[];
-    const targetId = editingId || Date.now().toString();
+    if (!formApiKey.trim()) {
+      setSuccessMsg("API Key wajib diisi.");
+      return;
+    }
 
-    if (editingId) {
-      updated = providers.map(p => {
-        if (p.id === editingId) {
-          return {
-            ...p,
-            name: formName,
-            type: formType,
-            provider: formProvider,
-            key: formKey || p.key,
-            url: formUrl,
-            active: formActive
-          };
-        }
-        return p;
+    const updated: CustomAI = {
+      enabled: true,
+      provider: formProvider,
+      baseUrl: formBaseUrl.trim(),
+      apiKey: formApiKey.trim(),
+      model: formModel.trim(),
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/api/settings/ai-config`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updated),
       });
-      setSuccessMsg("Provider berhasil diperbarui!");
-    } else {
-      const newItem: AIProviderItem = {
-        id: targetId,
-        name: formName,
-        type: formType,
-        provider: formProvider,
-        key: formKey || "••••••••••••",
-        url: formUrl,
-        active: formActive
-      };
-      updated = [...providers, newItem];
-      setSuccessMsg("Provider berhasil ditambahkan!");
-    }
 
-    // Auto deactivate other providers of the same type if this one is set as active/default
-    if (formActive) {
-      updated.forEach(p => {
-        if (p.id !== targetId && p.type === formType) {
-          p.active = false;
-        }
-      });
-    }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Gagal" }));
+        setSuccessMsg(err.error || "Gagal menyimpan.");
+        return;
+      }
 
-    saveToStorage(updated);
-    setTimeout(() => {
-      setSuccessMsg("");
-      resetForm();
-    }, 1000);
-  };
-
-  const handleStartEdit = (item: AIProviderItem) => {
-    setEditingId(item.id);
-    setFormName(item.name);
-    setFormType(item.type);
-    setFormProvider(item.provider);
-    setFormKey(""); // Let key be blank if not editing it
-    setFormUrl(item.url);
-    setFormActive(item.active);
-    setIsAdding(true);
-  };
-
-  const resetForm = () => {
-    setFormName("");
-    setFormType("text");
-    setFormProvider("openai");
-    setFormKey("");
-    setFormUrl("");
-    setFormActive(false);
-    setEditingId(null);
-    setIsAdding(false);
-  };
-
-  const providerOptions = [
-    { value: "openai", label: "OpenAI Compatible API" },
-    { value: "gemini", label: "Google Gemini API" },
-    { value: "claude", label: "Anthropic Claude API" },
-    { value: "ollama", label: "Ollama (Local LLM)" },
-    { value: "deepseek", label: "DeepSeek API" },
-    { value: "openrouter", label: "OpenRouter API" },
-    { value: "whisper", label: "Whisper Speech API" },
-    { value: "google", label: "Google Speech-to-Text" },
-    { value: "custom", label: "Custom Endpoints" }
-  ];
-
-  const currentOption = providerOptions.find(o => o.value === formProvider) || providerOptions[0];
-
-  const getTypeName = (type: string) => {
-    switch (type) {
-      case "text": return "Teks Utama";
-      case "image": return "Gambar / OCR";
-      case "voice": return "Voice / STT";
-      default: return type;
+      setConfig(updated);
+      setSuccessMsg("Konfigurasi AI kustom berhasil disimpan! ✅");
+      setTimeout(() => setSuccessMsg(""), 2000);
+    } catch {
+      setSuccessMsg("Gagal terhubung ke server.");
     }
   };
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "text": return "var(--primary)";
-      case "image": return "var(--tertiary)";
-      case "voice": return "var(--secondary-fixed-dim)";
-      default: return "var(--outline)";
-    }
-  };
+  const currentOption =
+    providerOptions.find((o) => o.value === formProvider) || providerOptions[0];
 
   return (
     <div
@@ -207,81 +197,291 @@ export default function CustomAIPage() {
       }}
     >
       {/* Header */}
-      <header className="top-app-bar" style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 12 }}>
+      <header
+        className="top-app-bar"
+        style={{ display: "flex", alignItems: "center", gap: 12 }}
+      >
         <button
-          onClick={isAdding ? resetForm : () => router.push("/settings")}
-          style={{ background: "none", border: "none", display: "flex", alignItems: "center", color: "var(--primary)", cursor: "pointer", padding: 0 }}
+          onClick={() => router.push("/settings")}
+          style={{
+            background: "none",
+            border: "none",
+            display: "flex",
+            alignItems: "center",
+            color: "var(--primary)",
+            cursor: "pointer",
+            padding: 0,
+          }}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: 24 }}>arrow_back</span>
+          <span className="material-symbols-outlined" style={{ fontSize: 24 }}>
+            arrow_back
+          </span>
         </button>
-        <h2 className="text-headline-md" style={{ color: "var(--on-surface)", margin: 0, fontSize: 18, fontWeight: 700 }}>
-          {isAdding ? (editingId ? "Edit Provider AI" : "Tambah Provider AI") : "Provider AI Kustom"}
+        <h2
+          className="text-headline-md"
+          style={{
+            color: "var(--on-surface)",
+            margin: 0,
+            fontSize: 18,
+            fontWeight: 700,
+          }}
+        >
+          Provider AI Aktif
         </h2>
       </header>
 
       <main className="settings-main-container">
         {successMsg && (
-          <div className="glass-card animate-fade-in" style={{ padding: "12px 16px", marginBottom: 16, color: "var(--primary)", background: "rgba(79, 55, 138, 0.08)", fontWeight: 600, fontSize: 14, borderRadius: 16 }}>
+          <div
+            className="glass-card animate-fade-in"
+            style={{
+              padding: "12px 16px",
+              marginBottom: 16,
+              color: config.enabled ? "var(--primary)" : "var(--tertiary)",
+              background: config.enabled
+                ? "rgba(79,55,138,0.08)"
+                : "rgba(118,91,0,0.08)",
+              fontWeight: 600,
+              fontSize: 14,
+              borderRadius: 16,
+            }}
+          >
             {successMsg}
           </div>
         )}
 
-        {isAdding ? (
-          /* Add / Edit Form Card */
-          <div className="glass-card animate-fade-slide-up" style={{ padding: "var(--card-padding)" }}>
+        {/* ─── TOGGLE CARD ─────────────────────────────── */}
+        <div
+          className="glass-card"
+          style={{ padding: "var(--card-padding)", marginBottom: 20 }}
+        >
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: "var(--on-surface-variant)",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              margin: "0 0 16px 0",
+            }}
+          >
+            Pilih Provider AI
+          </p>
 
-            <form onSubmit={handleAddOrEditSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* Name */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Nama Provider</label>
-                <input
-                  type="text"
-                  className="glass-input"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  required
-                  placeholder="Contoh: OpenAI GPT-4o Kustom"
-                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", fontSize: 13, height: 42 }}
-                />
-              </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {/* Catetin AI (Default) */}
+            <button
+              onClick={() => handleToggleMode(false)}
+              style={{
+                flex: 1,
+                padding: "16px 12px",
+                borderRadius: 16,
+                border: config.enabled
+                  ? "1px solid var(--outline)"
+                  : "2px solid var(--primary)",
+                background: config.enabled
+                  ? "transparent"
+                  : "rgba(79,55,138,0.06)",
+                cursor: "pointer",
+                textAlign: "center",
+                transition: "all 0.2s",
+              }}
+            >
+              <span
+                className="material-symbols-outlined filled"
+                style={{
+                  fontSize: 32,
+                  color: "var(--primary)",
+                  display: "block",
+                  marginBottom: 8,
+                }}
+              >
+                auto_awesome
+              </span>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "var(--on-surface)",
+                }}
+              >
+                Catetin AI
+              </p>
+              <p
+                style={{
+                  margin: "4px 0 0",
+                  fontSize: 11,
+                  color: "var(--outline)",
+                }}
+              >
+                Default
+              </p>
+              {!config.enabled && (
+                <span
+                  style={{
+                    display: "inline-block",
+                    marginTop: 8,
+                    padding: "2px 10px",
+                    borderRadius: 99,
+                    background: "var(--primary)",
+                    color: "white",
+                    fontSize: 10,
+                    fontWeight: 700,
+                  }}
+                >
+                  AKTIF
+                </span>
+              )}
+            </button>
 
-              {/* Type selector (Tombol tab kustom - NO HTML default radio) */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tipe Model / Sensor</label>
-                <div style={{ display: "flex", gap: 8, background: "rgba(103, 80, 164, 0.04)", padding: 4, borderRadius: 14 }}>
-                  {["text", "image", "voice"].map(type => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setFormType(type)}
-                      style={{
-                        flex: 1,
-                        padding: "10px 0",
-                        borderRadius: 10,
-                        border: "none",
-                        background: formType === type ? "var(--primary)" : "transparent",
-                        color: formType === type ? "white" : "var(--on-surface-variant)",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "all 0.2s"
-                      }}
-                    >
-                      {getTypeName(type)}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            {/* Custom AI */}
+            <button
+              onClick={() => handleToggleMode(true)}
+              style={{
+                flex: 1,
+                padding: "16px 12px",
+                borderRadius: 16,
+                border: config.enabled
+                  ? "2px solid var(--primary)"
+                  : "1px solid var(--outline)",
+                background: config.enabled
+                  ? "rgba(79,55,138,0.06)"
+                  : "transparent",
+                cursor: "pointer",
+                textAlign: "center",
+                transition: "all 0.2s",
+              }}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{
+                  fontSize: 32,
+                  color: "var(--tertiary)",
+                  display: "block",
+                  marginBottom: 8,
+                }}
+              >
+                dns
+              </span>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "var(--on-surface)",
+                }}
+              >
+                Custom AI
+              </p>
+              <p
+                style={{
+                  margin: "4px 0 0",
+                  fontSize: 11,
+                  color: "var(--outline)",
+                }}
+              >
+                API sendiri
+              </p>
+              {config.enabled && (
+                <span
+                  style={{
+                    display: "inline-block",
+                    marginTop: 8,
+                    padding: "2px 10px",
+                    borderRadius: 99,
+                    background: "var(--primary)",
+                    color: "white",
+                    fontSize: 10,
+                    fontWeight: 700,
+                  }}
+                >
+                  AKTIF
+                </span>
+              )}
+            </button>
+          </div>
 
-              {/* Provider Platform Dropdown (Custom Dropdown Selector - NO HTML select) */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6, position: "relative" }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Model Platform</label>
+          {/* Info Catetin AI */}
+          {!config.enabled && (
+            <div
+              style={{
+                marginTop: 16,
+                padding: 14,
+                borderRadius: 12,
+                background: "rgba(79,55,138,0.04)",
+                border: "1px solid rgba(79,55,138,0.08)",
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "var(--primary)",
+                }}
+              >
+                🔄 3-Layer Auto-Failover
+              </p>
+              <p
+                style={{
+                  margin: "6px 0 0",
+                  fontSize: 12,
+                  color: "var(--on-surface-variant)",
+                  lineHeight: 1.6,
+                }}
+              >
+                Groq (gratis, cepat) → DeepSeek v4 Flash → OpenRouter Gemini 2.5
+                Flash. Otomatis switch jika ada yang error atau rate-limit.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* ─── CUSTOM AI FORM (muncul jika enabled) ──────── */}
+        {config.enabled && (
+          <div
+            className="glass-card animate-fade-slide-up"
+            style={{ padding: "var(--card-padding)" }}
+          >
+            <p
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--on-surface-variant)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                margin: "0 0 16px 0",
+              }}
+            >
+              Konfigurasi Custom AI
+            </p>
+
+            <form
+              onSubmit={handleSave}
+              style={{ display: "flex", flexDirection: "column", gap: 16 }}
+            >
+              {/* Provider dropdown */}
+              <div style={{ position: "relative" }}>
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--on-surface-variant)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  Provider
+                </label>
                 <button
                   type="button"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   style={{
                     width: "100%",
-                    height: 42,
+                    height: 44,
                     padding: "0 14px",
                     borderRadius: 12,
                     border: "1px solid var(--glass-border)",
@@ -290,16 +490,27 @@ export default function CustomAIPage() {
                     justifyContent: "space-between",
                     alignItems: "center",
                     cursor: "pointer",
-                    fontSize: 13,
-                    color: "var(--on-surface)"
+                    fontSize: 14,
+                    color: "var(--on-surface)",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <AIProviderLogo provider={formProvider} containerSize={26} size={15} />
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <AIProviderLogo
+                      provider={formProvider}
+                      containerSize={28}
+                      size={16}
+                    />
                     <span>{currentOption.label}</span>
                   </div>
-                  <span className="material-symbols-outlined" style={{ fontSize: 18, color: "var(--outline)" }}>
-                    {isDropdownOpen ? "keyboard_arrow_up" : "keyboard_arrow_down"}
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 20, color: "var(--outline)" }}
+                  >
+                    {isDropdownOpen
+                      ? "keyboard_arrow_up"
+                      : "keyboard_arrow_down"}
                   </span>
                 </button>
 
@@ -315,27 +526,30 @@ export default function CustomAIPage() {
                       marginTop: 6,
                       padding: 6,
                       background: "white",
-                      boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
-                      border: "1px solid rgba(203, 196, 210, 0.4)",
+                      boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
+                      border: "1px solid rgba(203,196,210,0.4)",
                       display: "flex",
                       flexDirection: "column",
-                      gap: 4
+                      gap: 2,
                     }}
                   >
-                    {providerOptions.map(o => (
+                    {providerOptions.map((o) => (
                       <button
                         key={o.value}
                         type="button"
-                        onClick={() => {
-                          setFormProvider(o.value);
-                          setIsDropdownOpen(false);
-                        }}
+                        onClick={() => handleProviderChange(o.value)}
                         style={{
                           width: "100%",
-                          padding: "6px 8px",
+                          padding: "8px 10px",
                           textAlign: "left",
-                          background: formProvider === o.value ? "rgba(103, 80, 164, 0.06)" : "transparent",
-                          color: formProvider === o.value ? "var(--primary)" : "var(--on-surface)",
+                          background:
+                            formProvider === o.value
+                              ? "rgba(103,80,164,0.06)"
+                              : "transparent",
+                          color:
+                            formProvider === o.value
+                              ? "var(--primary)"
+                              : "var(--on-surface)",
                           border: "none",
                           borderRadius: 10,
                           fontSize: 13,
@@ -343,10 +557,14 @@ export default function CustomAIPage() {
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
-                          gap: 10
+                          gap: 10,
                         }}
                       >
-                        <AIProviderLogo provider={o.value} containerSize={26} size={15} />
+                        <AIProviderLogo
+                          provider={o.value}
+                          containerSize={26}
+                          size={15}
+                        />
                         <span>{o.label}</span>
                       </button>
                     ))}
@@ -354,234 +572,114 @@ export default function CustomAIPage() {
                 )}
               </div>
 
-              {/* API Key */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>API Key / Token Kredensial</label>
-                <input
-                  type="password"
-                  className="glass-input"
-                  value={formKey}
-                  onChange={(e) => setFormKey(e.target.value)}
-                  placeholder={editingId ? "Tinggalkan kosong jika tidak ingin diubah" : "Masukkan API key"}
-                  required={!editingId}
-                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", fontSize: 13, height: 42 }}
-                />
-              </div>
-
               {/* Base URL */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 600, color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Base URL / Custom Endpoint</label>
+              <div>
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--on-surface-variant)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  Base URL
+                </label>
                 <input
                   type="text"
                   className="glass-input"
-                  value={formUrl}
-                  onChange={(e) => setFormUrl(e.target.value)}
-                  placeholder="https://api.openai.com/v1 (opsional)"
-                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 14px", fontSize: 13, height: 42 }}
+                  value={formBaseUrl}
+                  onChange={(e) => setFormBaseUrl(e.target.value)}
+                  placeholder="https://api.openai.com/v1"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "10px 14px",
+                    fontSize: 14,
+                    height: 44,
+                  }}
                 />
               </div>
 
-              {/* Checkbox Set as Default (NO HTML default checkbox) */}
-              <div
+              {/* API Key */}
+              <div>
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--on-surface-variant)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  API Key
+                </label>
+                <input
+                  type="password"
+                  className="glass-input"
+                  value={formApiKey}
+                  onChange={(e) => setFormApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "10px 14px",
+                    fontSize: 14,
+                    height: 44,
+                  }}
+                />
+              </div>
+
+              {/* Model */}
+              <div>
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--on-surface-variant)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    display: "block",
+                    marginBottom: 6,
+                  }}
+                >
+                  Model (opsional)
+                </label>
+                <input
+                  type="text"
+                  className="glass-input"
+                  value={formModel}
+                  onChange={(e) => setFormModel(e.target.value)}
+                  placeholder="gpt-4o (kosongkan untuk default)"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "10px 14px",
+                    fontSize: 14,
+                    height: 44,
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="btn-primary"
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  marginTop: 6,
-                  cursor: "pointer",
-                  userSelect: "none"
+                  marginTop: 8,
+                  padding: "12px 20px",
+                  borderRadius: 14,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  boxShadow: "none",
                 }}
-                onClick={() => setFormActive(!formActive)}
               >
-                <div
-                  style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 6,
-                    border: `2px solid ${formActive ? "var(--primary)" : "var(--outline)"}`,
-                    background: formActive ? "var(--primary)" : "transparent",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "all 0.2s ease",
-                    flexShrink: 0
-                  }}
-                >
-                  {formActive && (
-                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: "white", fontWeight: "bold" }}>
-                      check
-                    </span>
-                  )}
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--on-surface-variant)" }}>
-                  Jadikan sebagai default untuk {getTypeName(formType)}
-                </span>
-              </div>
-
-              {/* Form buttons */}
-              <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="btn-secondary"
-                  style={{ flex: 1, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600 }}
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  style={{ flex: 1, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, boxShadow: "none" }}
-                >
-                  {editingId ? "Simpan" : "Tambah"}
-                </button>
-              </div>
+                💾 Simpan Konfigurasi
+              </button>
             </form>
-          </div>
-        ) : (
-          /* List of custom AI Providers */
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <button
-              onClick={() => setIsAdding(true)}
-              className="btn-primary"
-              style={{
-                width: "100%",
-                padding: "10px 16px",
-                borderRadius: 14,
-                fontSize: 14,
-                fontWeight: 600,
-                boxShadow: "none",
-                marginBottom: 4,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>add_circle</span>
-              Tambah Provider Baru
-            </button>
-
-            {providers.length === 0 ? (
-              <div className="glass-card" style={{ padding: 32, textAlign: "center" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 48, color: "var(--outline)", opacity: 0.5 }}>dns</span>
-                <p className="text-body-md" style={{ marginTop: 12, color: "var(--on-surface-variant)", fontWeight: 500 }}>Belum ada provider kustom.</p>
-                <p className="text-body-sm" style={{ color: "var(--outline)", marginTop: 4 }}>Klik tombol Tambah Provider Baru di atas untuk menambahkan provider AI milik sendiri.</p>
-              </div>
-            ) : (
-              providers.map(item => (
-                <div
-                  key={item.id}
-                  className="glass-card animate-fade-slide-up"
-                  style={{
-                    padding: 18,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 12,
-                    borderLeft: `5px solid ${getTypeColor(item.type)}`
-                  }}
-                >
-                  {/* Top Row: Logo, Info, Toggle */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <AIProviderLogo provider={item.provider} containerSize={40} size={22} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <h4 className="text-headline-sm" style={{ fontSize: 15, fontWeight: 700, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</h4>
-                        <span
-                          className="text-label-md"
-                          style={{
-                            background: `${getTypeColor(item.type)}12`,
-                            color: getTypeColor(item.type),
-                            padding: "2px 8px",
-                            borderRadius: 6,
-                            fontSize: 10,
-                            fontWeight: 700
-                          }}
-                        >
-                          {getTypeName(item.type)}
-                        </span>
-                      </div>
-                      <p className="text-body-sm" style={{ color: "var(--outline)", margin: "4px 0 0 0", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        Platform: {item.provider.toUpperCase()}
-                      </p>
-                    </div>
-
-                    {/* Active toggle */}
-                    <button
-                      type="button"
-                      className={`settings-toggle ${item.active ? "active" : ""}`}
-                      onClick={() => handleToggleActive(item.id)}
-                      aria-label={`Aktifkan provider ${item.name}`}
-                      style={{ flexShrink: 0 }}
-                    />
-                  </div>
-
-                  {/* Bottom Row: Key/URL Info & Action Buttons */}
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      borderTop: "1px solid rgba(203, 196, 210, 0.15)",
-                      paddingTop: 12,
-                      marginTop: 4,
-                      gap: 12
-                    }}
-                  >
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 11, color: "var(--outline)", overflow: "hidden", flex: 1 }}>
-                      {item.url && (
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={item.url}>
-                          URL: {item.url}
-                        </span>
-                      )}
-                      <span>Key: {item.key ? "••••••••••••" : "tidak ada"}</span>
-                    </div>
-
-                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                      <button
-                        onClick={() => handleStartEdit(item)}
-                        style={{
-                          background: "rgba(103, 80, 164, 0.06)",
-                          color: "var(--primary)",
-                          border: "none",
-                          borderRadius: 8,
-                          padding: "6px 10px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                          fontSize: 11,
-                          fontWeight: 600,
-                          cursor: "pointer"
-                        }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: 15 }}>edit</span>
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        style={{
-                          background: "rgba(179, 38, 30, 0.06)",
-                          color: "var(--error)",
-                          border: "none",
-                          borderRadius: 8,
-                          padding: "6px 10px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                          fontSize: 11,
-                          fontWeight: 600,
-                          cursor: "pointer"
-                        }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: 15 }}>delete</span>
-                        Hapus
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
           </div>
         )}
       </main>

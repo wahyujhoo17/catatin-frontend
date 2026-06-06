@@ -1,49 +1,20 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
+// ─── Config ──────────────────────────────────────────────────
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
 interface Message {
   id: string;
-  type: "user" | "bot" | "confirmation";
+  type: "user" | "bot" | "error";
   text: string;
   time: string;
-  data?: {
-    category?: string;
-    amount?: string;
-    method?: string;
-    status?: "success" | "pending";
-  };
+  isStreaming?: boolean;
 }
-
-const initialMessages: Message[] = [
-  {
-    id: "1",
-    type: "bot",
-    text: 'Hai! Ada yang ingin dicatat hari ini? Kamu bisa bilang "Makan siang 50rb" atau tanya "Berapa sisa saldo saya?".',
-    time: "10:02",
-  },
-  {
-    id: "2",
-    type: "user",
-    text: "Tadi beli kopi di Starbucks 45.000 pake kartu debit",
-    time: "10:05",
-  },
-  {
-    id: "3",
-    type: "confirmation",
-    text: "Berhasil Dicatat",
-    time: "10:05",
-    data: {
-      category: "Makanan & Minuman",
-      amount: "Rp 45.000",
-      method: "Debit Card",
-      status: "success",
-    },
-  },
-];
 
 const suggestions = [
   { icon: "outbox", label: "Catat Pengeluaran" },
@@ -51,12 +22,43 @@ const suggestions = [
   { icon: "account_balance_wallet", label: "Cek Saldo" },
 ];
 
+// ─── Get auth token ──────────────────────────────────────────
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem("token");
+  } catch {
+    return null;
+  }
+}
+
+// ─── Strip [ACTION] blocks from AI response ──────────────────
+function stripActions(text: string): string {
+  return text
+    .replace(/\[ACTION:record_transaction\][\s\S]*?\[\/ACTION\]/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export default function ChatPage() {
   const router = useRouter();
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "welcome",
+      type: "bot",
+      text: 'Hai! 👋 Aku Catetin AI, asisten keuangan pribadimu.\n\nKamu bisa:\n• Catat pengeluaran: "Makan siang 50rb"\n• Catat pemasukan: "Gaji 5jt masuk"\n• Tanya saldo: "Berapa sisa saldo saya?"\n• Minta analisis keuangan\n\n⚠️ Aku hanya bisa bantu urusan keuangan dan aplikasi Catetin ya!',
+      time: new Date().toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    },
+  ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -66,57 +68,144 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  const handleScanReceipt = () => {
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      type: "user",
-      text: "[Mengunggah Foto Struk Kopi Sejahtera]",
-      time: new Date().toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
+  // ─── Send message to AI backend with SSE streaming ─────────
+  const sendToAI = useCallback(
+    async (text: string, imageBase64?: string) => {
+      const token = getToken();
+      if (!token) {
+        router.push("/login");
+        return;
+      }
 
-    setMessages((prev) => [...prev, userMsg]);
-    setIsTyping(true);
-
-    setTimeout(() => {
-      setIsTyping(false);
+      const botId = (Date.now() + 1).toString();
       const botMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "confirmation",
-        text: "Struk Berhasil Dipindai oleh AI",
+        id: botId,
+        type: "bot",
+        text: "",
         time: new Date().toLocaleTimeString("id-ID", {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        data: {
-          category: "Makanan & Minuman",
-          amount: "Rp 98.000",
-          method: "Tunai",
-          status: "success",
-        },
+        isStreaming: true,
       };
       setMessages((prev) => [...prev, botMsg]);
-    }, 2000);
-  };
+      setIsTyping(false);
+      setInput("");
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("scan") === "success") {
-        window.history.replaceState(
-          {},
-          document.title,
-          window.location.pathname,
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/ai/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            message: text,
+            image: imageBase64 || undefined,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          const err = await res
+            .json()
+            .catch(() => ({ error: `HTTP ${res.status}` }));
+          throw new Error(err.error || `Gagal (${res.status})`);
+        }
+
+        const reader = res.body?.getReader();
+        if (!reader) throw new Error("Tidak ada response stream");
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data: ")) continue;
+
+            const payload = trimmed.slice(6);
+            if (payload === "[DONE]") continue;
+
+            try {
+              const event = JSON.parse(payload);
+
+              if (event.type === "token" && event.content) {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === botId
+                      ? {
+                          ...m,
+                          text: m.text + event.content,
+                        }
+                      : m,
+                  ),
+                );
+              } else if (event.type === "transaction_created") {
+                // Transaksi berhasil tercatat — tampilkan notifikasi inline
+                const tx = event.transaction;
+                const formatted = `✅ Transaksi tercatat: ${tx.type === "INCOME" ? "+" : "-"}Rp ${tx.amount.toLocaleString("id-ID")} — ${tx.description} (${tx.category})`;
+                setMessages((prev) => [
+                  ...prev,
+                  {
+                    id: `tx-${Date.now()}`,
+                    type: "bot",
+                    text: formatted,
+                    time: new Date().toLocaleTimeString("id-ID", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                  },
+                ]);
+              } else if (event.type === "error") {
+                throw new Error(event.error);
+              }
+            } catch {
+              // skip
+            }
+          }
+        }
+      } catch (err: any) {
+        if (err.name === "AbortError") return;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === botId
+              ? { ...m, type: "error", text: err.message, isStreaming: false }
+              : m,
+          ),
         );
-        setTimeout(handleScanReceipt, 500);
+      } finally {
+        // Strip [ACTION] blocks dari teks yang ditampilkan
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === botId
+              ? {
+                  ...m,
+                  isStreaming: false,
+                  text: stripActions(m.text),
+                }
+              : m,
+          ),
+        );
+        abortRef.current = null;
       }
-    }
-  }, []);
+    },
+    [router],
+  );
 
+  // ─── Send text message ─────────────────────────────────────
   const sendMessage = (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || isTyping) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -129,48 +218,91 @@ export default function ChatPage() {
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    setInput("");
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      setIsTyping(false);
-
-      // Parse simple amount patterns
-      const amountMatch = text.match(/(\d+[\.,]?\d*)\s*(rb|ribu|k|jt|juta)?/i);
-      let amount = "Rp 0";
-      if (amountMatch) {
-        let num = parseFloat(amountMatch[1].replace(",", "."));
-        const suffix = amountMatch[2]?.toLowerCase();
-        if (suffix === "rb" || suffix === "ribu" || suffix === "k") num *= 1000;
-        if (suffix === "jt" || suffix === "juta") num *= 1000000;
-        amount = `Rp ${num.toLocaleString("id-ID")}`;
-      }
-
-      const botMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "confirmation",
-        text: "Berhasil Dicatat",
-        time: new Date().toLocaleTimeString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        data: {
-          category: "Pengeluaran Umum",
-          amount,
-          method: "Tunai",
-          status: "success",
-        },
-      };
-
-      setMessages((prev) => [...prev, botMsg]);
-    }, 1500);
+    if (capturedImage) {
+      sendToAI(text, capturedImage);
+      setCapturedImage(null);
+    } else {
+      sendToAI(text);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendMessage(input);
+    if (capturedImage && !input.trim()) {
+      sendMessage("Analisis gambar ini dan catat transaksinya");
+    } else {
+      sendMessage(input);
+    }
   };
+
+  // ─── Image compression utility ─────────────────────────────
+  const compressImage = (
+    file: File,
+    maxW = 1024,
+    quality = 0.7,
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        // Downscale if exceeds max
+        if (width > maxW || height > maxW) {
+          const ratio = Math.min(maxW / width, maxW / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Gagal memuat gambar"));
+      };
+    });
+  };
+
+  // ─── Image attachment ──────────────────────────────────────
+  const handleAttachImage = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validasi tipe & ukuran sebelum kompresi
+    if (!file.type.startsWith("image/")) {
+      alert("Hanya file gambar yang didukung");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      alert("Ukuran gambar maksimal 20 MB");
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      const compressed = await compressImage(file);
+      setCapturedImage(compressed);
+    } catch {
+      alert("Gagal memproses gambar. Coba lagi.");
+    }
+    e.target.value = "";
+  };
+
+  // ─── Cleanup ───────────────────────────────────────────────
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   return (
     <div
@@ -233,15 +365,11 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {/* Floating Back Button below top app bar */}
+      {/* Back Button */}
       <button
-        onClick={() => {
-          if (window.history.length > 1) {
-            router.back();
-          } else {
-            router.push("/dashboard");
-          }
-        }}
+        onClick={() =>
+          window.history.length > 1 ? router.back() : router.push("/dashboard")
+        }
         style={{
           position: "fixed",
           top: 80,
@@ -259,9 +387,8 @@ export default function ChatPage() {
           justifyContent: "center",
           boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
           cursor: "pointer",
-          transition: "transform 0.2s",
         }}
-        aria-label="Kembali ke Dashboard"
+        aria-label="Kembali"
       >
         <span
           className="material-symbols-outlined"
@@ -287,50 +414,52 @@ export default function ChatPage() {
         }}
       >
         {/* Welcome Section */}
-        <div
-          className="animate-fade-slide-up"
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            textAlign: "center",
-            marginBottom: "var(--stack-gap-lg)",
-          }}
-        >
+        {messages.length <= 1 && (
           <div
-            className="glass-card"
+            className="animate-fade-slide-up"
             style={{
-              width: 80,
-              height: 80,
-              borderRadius: "50%",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
-              marginBottom: 16,
+              textAlign: "center",
+              marginBottom: "var(--stack-gap-lg)",
             }}
           >
-            <span
-              className="material-symbols-outlined filled"
-              style={{ color: "var(--primary)", fontSize: 40 }}
+            <div
+              className="glass-card"
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
+                marginBottom: 16,
+              }}
             >
-              auto_awesome
-            </span>
+              <span
+                className="material-symbols-outlined filled"
+                style={{ color: "var(--primary)", fontSize: 40 }}
+              >
+                auto_awesome
+              </span>
+            </div>
+            <h1
+              className="text-headline-md"
+              style={{ color: "var(--on-surface)", marginBottom: 8 }}
+            >
+              Halo, Saya Catetin AI
+            </h1>
+            <p
+              className="text-body-md"
+              style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}
+            >
+              Membantu kamu mencatat keuangan dengan bahasa sehari-hari. Cukup
+              ketik atau kirim foto struk.
+            </p>
           </div>
-          <h1
-            className="text-headline-md"
-            style={{ color: "var(--on-surface)", marginBottom: 8 }}
-          >
-            Halo, Saya Catetin AI
-          </h1>
-          <p
-            className="text-body-md"
-            style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}
-          >
-            Membantu kamu mencatat keuangan dengan bahasa sehari-hari. Cukup
-            ketik atau bicara.
-          </p>
-        </div>
+        )}
 
         {/* Messages */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -363,7 +492,6 @@ export default function ChatPage() {
                   </span>
                 </div>
               )}
-
               {msg.type === "bot" && (
                 <div
                   style={{
@@ -374,7 +502,75 @@ export default function ChatPage() {
                   }}
                 >
                   <div className="bubble-bot">
-                    <p style={{ margin: 0 }}>{msg.text}</p>
+                    <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                      {msg.text}
+                      {msg.isStreaming && (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            width: 8,
+                            height: 16,
+                            background: "var(--primary)",
+                            marginLeft: 2,
+                            animation: "blink 1s step-end infinite",
+                          }}
+                        />
+                      )}
+                    </p>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      marginTop: 4,
+                      marginLeft: 8,
+                    }}
+                  >
+                    <span
+                      className="text-label-md"
+                      style={{ color: "rgba(73, 69, 81, 0.6)" }}
+                    >
+                      {msg.time}
+                    </span>
+                    {!msg.isStreaming && msg.type === "bot" && (
+                      <span
+                        className="text-label-sm"
+                        style={{
+                          color: "rgba(73, 69, 81, 0.4)",
+                          background: "rgba(0,0,0,0.04)",
+                          padding: "1px 6px",
+                          borderRadius: 4,
+                        }}
+                      >
+                        Catatin AI
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+              {msg.type === "error" && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    maxWidth: "85%",
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "rgba(186, 26, 26, 0.08)",
+                      padding: "12px 16px",
+                      borderRadius: 16,
+                      border: "1px solid rgba(186, 26, 26, 0.15)",
+                    }}
+                  >
+                    <p
+                      style={{ margin: 0, color: "var(--error)", fontSize: 14 }}
+                    >
+                      ⚠️ {msg.text}
+                    </p>
                   </div>
                   <span
                     className="text-label-md"
@@ -388,213 +584,11 @@ export default function ChatPage() {
                   </span>
                 </div>
               )}
-
-              {msg.type === "confirmation" && msg.data && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    maxWidth: "90%",
-                  }}
-                >
-                  <div
-                    style={{
-                      background: "rgba(255, 255, 255, 0.85)",
-                      backdropFilter: "blur(24px)",
-                      WebkitBackdropFilter: "blur(24px)",
-                      padding: 16,
-                      borderRadius: 20,
-                      boxShadow: "0 8px 32px rgba(0,0,0,0.05)",
-                      border: "1px solid rgba(255, 255, 255, 0.6)",
-                      position: "relative",
-                      overflow: "hidden",
-                      width: "100%",
-                    }}
-                  >
-                    {/* Left accent bar */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: 4,
-                        height: "100%",
-                        background: "var(--primary)",
-                      }}
-                    />
-
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        marginBottom: 16,
-                      }}
-                    >
-                      <div
-                        style={{
-                          background: "rgba(79, 55, 138, 0.1)",
-                          padding: 6,
-                          borderRadius: "50%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <span
-                          className="material-symbols-outlined"
-                          style={{ color: "var(--primary)", fontSize: 20 }}
-                        >
-                          check_circle
-                        </span>
-                      </div>
-                      <span
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 700,
-                          color: "var(--on-surface)",
-                        }}
-                      >
-                        {msg.text}
-                      </span>
-                    </div>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 10,
-                        marginBottom: 16,
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          borderBottom: "1px solid rgba(203, 196, 210, 0.1)",
-                          paddingBottom: 6,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: "rgba(73, 69, 81, 0.6)",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.08em",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Kategori
-                        </span>
-                        <span
-                          className="text-body-sm"
-                          style={{ fontWeight: 600 }}
-                        >
-                          {msg.data.category}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          borderBottom: "1px solid rgba(203, 196, 210, 0.1)",
-                          paddingBottom: 6,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: "rgba(73, 69, 81, 0.6)",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.08em",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Jumlah
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 15,
-                            fontWeight: 700,
-                            color: "var(--error)",
-                          }}
-                        >
-                          {msg.data.amount}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color: "rgba(73, 69, 81, 0.6)",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.08em",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Metode
-                        </span>
-                        <span
-                          className="text-body-sm"
-                          style={{ fontWeight: 600 }}
-                        >
-                          {msg.data.method}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button
-                        style={{
-                          flex: 1,
-                          padding: "10px",
-                          borderRadius: 12,
-                          background: "rgba(230, 224, 233, 0.3)",
-                          color: "var(--on-surface-variant)",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          letterSpacing: "0.05em",
-                          border: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        style={{
-                          flex: 1,
-                          padding: "10px",
-                          borderRadius: 12,
-                          background: "var(--primary)",
-                          color: "white",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          letterSpacing: "0.05em",
-                          border: "none",
-                          boxShadow: "0 4px 15px rgba(79, 55, 138, 0.2)",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Selesai
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           ))}
 
-          {/* Suggestion Chips (show after first bot message) */}
-          {messages.length <= 3 && (
+          {/* Suggestions */}
+          {messages.length <= 2 && (
             <div
               style={{
                 display: "flex",
@@ -621,8 +615,8 @@ export default function ChatPage() {
             </div>
           )}
 
-          {/* Typing Indicator */}
-          {isTyping && (
+          {/* Loading dots */}
+          {isTyping && !messages.some((m) => m.isStreaming) && (
             <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
               <div
                 className="bubble-bot"
@@ -653,7 +647,17 @@ export default function ChatPage() {
         </div>
       </main>
 
-      {/* Bottom Input Dock */}
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleImageSelect}
+        style={{ display: "none" }}
+      />
+
+      {/* Bottom Input */}
       <div
         style={{
           position: "fixed",
@@ -669,6 +673,50 @@ export default function ChatPage() {
           onSubmit={handleSubmit}
           style={{ maxWidth: 672, margin: "0 auto" }}
         >
+          {capturedImage && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 12px",
+                marginBottom: 8,
+                background: "rgba(255,255,255,0.85)",
+                borderRadius: 12,
+                backdropFilter: "blur(16px)",
+              }}
+            >
+              <img
+                src={capturedImage}
+                alt="Preview"
+                style={{
+                  width: 40,
+                  height: 40,
+                  objectFit: "cover",
+                  borderRadius: 8,
+                }}
+              />
+              <span
+                className="text-body-sm"
+                style={{ color: "var(--on-surface-variant)", flex: 1 }}
+              >
+                Gambar terpasang — AI akan menganalisis
+              </span>
+              <button
+                type="button"
+                onClick={() => setCapturedImage(null)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--on-surface-variant)",
+                  padding: 4,
+                }}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+          )}
           <div
             className="glass-card"
             style={{
@@ -682,24 +730,30 @@ export default function ChatPage() {
           >
             <button
               type="button"
+              onClick={handleAttachImage}
               style={{
                 padding: 8,
-                color: "var(--primary)",
+                color: capturedImage
+                  ? "var(--primary)"
+                  : "var(--on-surface-variant)",
                 borderRadius: "50%",
-                transition: "all 0.2s",
                 background: "none",
                 border: "none",
                 cursor: "pointer",
               }}
-              aria-label="Voice input"
+              aria-label="Lampirkan gambar"
             >
-              <span className="material-symbols-outlined">mic</span>
+              <span className="material-symbols-outlined">image</span>
             </button>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ketik pesan atau tanya sesuatu..."
+              placeholder={
+                capturedImage
+                  ? "Deskripsi gambar (opsional)..."
+                  : "Ketik pesan..."
+              }
               style={{
                 flex: 1,
                 background: "transparent",
@@ -714,8 +768,11 @@ export default function ChatPage() {
             />
             <button
               type="submit"
+              disabled={isTyping || (!input.trim() && !capturedImage)}
               style={{
-                background: "var(--primary)",
+                background: isTyping
+                  ? "rgba(79, 55, 138, 0.3)"
+                  : "var(--primary)",
                 color: "white",
                 width: 44,
                 height: 44,
@@ -723,21 +780,23 @@ export default function ChatPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 4px 15px rgba(79, 55, 138, 0.3)",
+                boxShadow: isTyping
+                  ? "none"
+                  : "0 4px 15px rgba(79, 55, 138, 0.3)",
                 border: "none",
-                cursor: "pointer",
-                transition: "opacity 0.2s",
+                cursor: isTyping ? "not-allowed" : "pointer",
               }}
               aria-label="Kirim"
-              id="chat-send"
             >
-              <span className="material-symbols-outlined">send</span>
+              <span className="material-symbols-outlined">
+                {isTyping ? "more_horiz" : "send"}
+              </span>
             </button>
           </div>
         </form>
       </div>
 
-      {/* Background Decorative */}
+      {/* Decorative */}
       <div
         style={{
           position: "fixed",
@@ -748,21 +807,6 @@ export default function ChatPage() {
           background: "rgba(79, 55, 138, 0.05)",
           filter: "blur(120px)",
           borderRadius: "50%",
-          zIndex: -1,
-          pointerEvents: "none",
-        }}
-      />
-      <div
-        style={{
-          position: "fixed",
-          bottom: "25%",
-          right: -96,
-          width: 320,
-          height: 320,
-          background: "rgba(118, 91, 0, 0.05)",
-          filter: "blur(120px)",
-          borderRadius: "50%",
-          zIndex: -1,
           pointerEvents: "none",
         }}
       />

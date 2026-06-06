@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface TopAppBarProps {
   showProfile?: boolean;
@@ -12,9 +13,20 @@ export default function TopAppBar({
   showProfile = true,
   showNotification = true,
 }: TopAppBarProps) {
+  const { user } = useAuth();
+  const initial = user?.name ? user.name.charAt(0).toUpperCase() : "B";
+
   return (
     <header className="top-app-bar">
-      <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none" }}>
+      <Link
+        href="/dashboard"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          textDecoration: "none",
+        }}
+      >
         <Image
           src="/logo/logo.png"
           alt="Catetin Logo"
@@ -27,7 +39,10 @@ export default function TopAppBar({
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
         {showNotification && (
           <button className="btn-icon" aria-label="Notifikasi">
-            <span className="material-symbols-outlined" style={{ color: "var(--on-surface-variant)" }}>
+            <span
+              className="material-symbols-outlined"
+              style={{ color: "var(--on-surface-variant)" }}
+            >
               notifications
             </span>
           </button>
@@ -38,7 +53,8 @@ export default function TopAppBar({
               width: 40,
               height: 40,
               borderRadius: "50%",
-              background: "linear-gradient(135deg, var(--primary-fixed-dim), var(--primary-fixed))",
+              background:
+                "linear-gradient(135deg, var(--primary-fixed-dim), var(--primary-fixed))",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -49,7 +65,7 @@ export default function TopAppBar({
               color: "var(--primary)",
             }}
           >
-            B
+            {initial}
           </div>
         )}
       </div>

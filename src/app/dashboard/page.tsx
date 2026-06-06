@@ -1,22 +1,128 @@
 "use client";
 
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
-const transactions = [
-  { icon: "shopping_bag", name: "Toko Elektronik", category: "Belanja", time: "Hari ini", amount: "-Rp 129.000", color: "var(--secondary)", bgColor: "var(--secondary-container)", isExpense: true },
-  { icon: "restaurant", name: "Warung Sushi", category: "Makanan", time: "Kemarin", amount: "-Rp 84.500", color: "var(--tertiary)", bgColor: "var(--tertiary-container)", isExpense: true },
-  { icon: "payments", name: "Gaji Bulan Ini", category: "Pemasukan", time: "2 hari lalu", amount: "+Rp 5.000.000", color: "var(--on-primary)", bgColor: "var(--primary-container)", isExpense: false },
-];
+// ─── Config ──────────────────────────────────────────────────
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-const categories = [
-  { name: "Kebutuhan Hidup", color: "var(--primary)", pct: 45 },
-  { name: "Makan & Hiburan", color: "var(--tertiary)", pct: 30 },
-  { name: "Langganan", color: "var(--secondary-fixed-dim)", pct: 25 },
-];
+interface DashboardData {
+  balance: number;
+  incomeThisMonth: number;
+  expenseThisMonth: number;
+  budgetHealth: number;
+  healthLabel: string;
+  recentTransactions: {
+    id: string;
+    type: string;
+    amount: number;
+    description: string;
+    category: string;
+    categoryIcon: string;
+    categoryColor: string;
+    date: string;
+    isExpense: boolean;
+  }[];
+  topCategories: {
+    name: string;
+    icon: string;
+    color: string;
+    amount: number;
+    percentage: number;
+  }[];
+}
 
+// ─── Helpers ──────────────────────────────────────────────────
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+}
+
+function formatRupiah(n: number): string {
+  if (n >= 1_000_000) {
+    return `Rp ${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}jt`;
+  }
+  return `Rp ${n.toLocaleString("id-ID")}`;
+}
+
+function formatRupiahFull(n: number): string {
+  return `Rp ${n.toLocaleString("id-ID")}`;
+}
+
+function timeAgo(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHour = Math.floor(diffMs / 3600000);
+  const diffDay = Math.floor(diffMs / 86400000);
+
+  if (diffMin < 60) return diffMin <= 1 ? "Baru saja" : `${diffMin} menit lalu`;
+  if (diffHour < 24) return `${diffHour} jam lalu`;
+  if (diffDay === 1) return "Kemarin";
+  if (diffDay < 7) return `${diffDay} hari lalu`;
+  return d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  primary: "var(--primary)",
+  secondary: "var(--secondary)",
+  tertiary: "var(--tertiary)",
+};
+
+const CATEGORY_BG: Record<string, string> = {
+  primary: "var(--primary-container)",
+  secondary: "var(--secondary-container)",
+  tertiary: "var(--tertiary-container)",
+};
+
+// ─── Page ─────────────────────────────────────────────────────
 export default function DashboardPersonalPage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [fetchError, setFetchError] = useState("");
+  const displayName = user?.name?.split(" ")[0] || "";
+
+  // Redirect to workspace if mode not set or to POS dashboard if POS mode
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user?.mode) router.replace("/workspace");
+    else if (user.mode === "POS") router.replace("/dashboard/pos");
+  }, [user?.mode, isLoading, router]);
+
+  // ─── Fetch dashboard data ──────────────────────────────────
+  const fetchDashboard = useCallback(async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/dashboard/summary`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Gagal memuat data");
+      const json = await res.json();
+      setData(json);
+    } catch (err: any) {
+      setFetchError(err.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && user) fetchDashboard();
+  }, [isLoading, user, fetchDashboard]);
+
+  const currentMonth = new Date().toLocaleDateString("id-ID", {
+    month: "long",
+  });
+
+  // ─── Gauge rotation based on health percentage ─────────────
+  // 0% = -45deg (left), 100% = 135deg (right)
+  const gaugeRotation = data ? -45 + (data.budgetHealth / 100) * 180 : -45;
+
   return (
     <div
       style={{
@@ -27,15 +133,50 @@ export default function DashboardPersonalPage() {
     >
       <TopAppBar />
 
-      <main style={{ marginTop: 72, padding: "0 var(--container-margin)", maxWidth: 896, margin: "72px auto 0" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--stack-gap-lg)" }}>
+      <main
+        style={{
+          marginTop: 72,
+          padding: "0 var(--container-margin)",
+          maxWidth: 896,
+          margin: "72px auto 0",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--stack-gap-lg)",
+          }}
+        >
           {/* Welcome */}
           <header className="animate-fade-slide-up" style={{ paddingTop: 16 }}>
-            <h1 className="text-headline-lg" style={{ color: "var(--on-surface)" }}>Halo, Budi 👋</h1>
-            <p className="text-body-md" style={{ color: "var(--on-surface-variant)", marginTop: 4 }}>
-              Ini status keuanganmu bulan Juni.
+            <h1
+              className="text-headline-lg"
+              style={{ color: "var(--on-surface)" }}
+            >
+              Halo, {displayName} 👋
+            </h1>
+            <p
+              className="text-body-md"
+              style={{ color: "var(--on-surface-variant)", marginTop: 4 }}
+            >
+              Ini status keuanganmu bulan {currentMonth}.
             </p>
           </header>
+
+          {fetchError && (
+            <div
+              style={{
+                padding: "12px 16px",
+                borderRadius: 12,
+                background: "var(--error-container)",
+                color: "var(--on-error-container)",
+                fontSize: 14,
+              }}
+            >
+              {fetchError}
+            </div>
+          )}
 
           {/* Bento Grid */}
           <div
@@ -58,20 +199,35 @@ export default function DashboardPersonalPage() {
                 gap: 16,
               }}
             >
-              <h3 className="text-headline-sm" style={{ alignSelf: "flex-start" }}>Kesehatan Budget</h3>
+              <h3
+                className="text-headline-sm"
+                style={{ alignSelf: "flex-start" }}
+              >
+                Kesehatan Budget
+              </h3>
 
               {/* Gauge */}
               <div style={{ position: "relative", padding: "16px 0" }}>
-                <div style={{ position: "relative", width: 200, height: 100, overflow: "hidden" }}>
+                <div
+                  style={{
+                    position: "relative",
+                    width: 200,
+                    height: 100,
+                    overflow: "hidden",
+                  }}
+                >
                   {/* Background arc */}
                   <div
                     style={{
                       width: 200,
                       height: 200,
-                      border: "18px solid var(--secondary-container)",
-                      borderRadius: "50%",
+                      borderWidth: "18px",
+                      borderStyle: "solid",
+                      borderTopColor: "var(--secondary-container)",
+                      borderRightColor: "var(--secondary-container)",
                       borderBottomColor: "transparent",
                       borderLeftColor: "transparent",
+                      borderRadius: "50%",
                       transform: "rotate(-45deg)",
                     }}
                   />
@@ -83,11 +239,14 @@ export default function DashboardPersonalPage() {
                       left: 0,
                       width: 200,
                       height: 200,
-                      border: "18px solid var(--primary)",
-                      borderRadius: "50%",
+                      borderWidth: "18px",
+                      borderStyle: "solid",
+                      borderTopColor: "var(--primary)",
+                      borderRightColor: "var(--primary)",
                       borderBottomColor: "transparent",
                       borderLeftColor: "transparent",
-                      transform: "rotate(85deg)",
+                      borderRadius: "50%",
+                      transform: `rotate(${gaugeRotation}deg)`,
                       transition: "transform 1s ease-out",
                     }}
                   />
@@ -103,21 +262,71 @@ export default function DashboardPersonalPage() {
                     paddingBottom: 8,
                   }}
                 >
-                  <span className="text-headline-md">72%</span>
-                  <span className="text-label-md" style={{ color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                    Sangat Baik
+                  <span className="text-headline-md">
+                    {data ? `${data.budgetHealth}%` : "—"}
+                  </span>
+                  <span
+                    className="text-label-md"
+                    style={{
+                      color: "var(--on-surface-variant)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.1em",
+                    }}
+                  >
+                    {data?.healthLabel || "Memuat…"}
                   </span>
                 </div>
               </div>
 
-              <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <div style={{ padding: 12, borderRadius: 12, background: "rgba(79, 55, 138, 0.06)", border: "1px solid rgba(79, 55, 138, 0.12)" }}>
-                  <p className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Budget Bulanan</p>
-                  <p className="text-headline-sm" style={{ color: "var(--primary)" }}>Rp 4.500.000</p>
+              <div
+                style={{
+                  width: "100%",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 16,
+                }}
+              >
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    background: "rgba(79, 55, 138, 0.06)",
+                    border: "1px solid rgba(79, 55, 138, 0.12)",
+                  }}
+                >
+                  <p
+                    className="text-label-md"
+                    style={{ color: "var(--on-surface-variant)" }}
+                  >
+                    Pemasukan
+                  </p>
+                  <p
+                    className="text-headline-sm"
+                    style={{ color: "var(--primary)" }}
+                  >
+                    {data ? formatRupiah(data.incomeThisMonth) : "—"}
+                  </p>
                 </div>
-                <div style={{ padding: 12, borderRadius: 12, background: "rgba(118, 91, 0, 0.06)", border: "1px solid rgba(118, 91, 0, 0.12)" }}>
-                  <p className="text-label-md" style={{ color: "var(--on-surface-variant)" }}>Tersisa</p>
-                  <p className="text-headline-sm" style={{ color: "var(--tertiary)" }}>Rp 1.260.000</p>
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    background: "rgba(186, 26, 26, 0.06)",
+                    border: "1px solid rgba(186, 26, 26, 0.12)",
+                  }}
+                >
+                  <p
+                    className="text-label-md"
+                    style={{ color: "var(--on-surface-variant)" }}
+                  >
+                    Pengeluaran
+                  </p>
+                  <p
+                    className="text-headline-sm"
+                    style={{ color: "var(--error)" }}
+                  >
+                    {data ? formatRupiah(data.expenseThisMonth) : "—"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -129,8 +338,17 @@ export default function DashboardPersonalPage() {
                 padding: "var(--card-padding)",
               }}
             >
-              <h3 className="text-headline-sm" style={{ marginBottom: 24 }}>Kategori Teratas</h3>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
+              <h3 className="text-headline-sm" style={{ marginBottom: 24 }}>
+                Kategori Teratas
+              </h3>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 24,
+                }}
+              >
                 {/* Pie chart representation */}
                 <div
                   style={{
@@ -138,27 +356,100 @@ export default function DashboardPersonalPage() {
                     width: 128,
                     height: 128,
                     borderRadius: "50%",
-                    border: "14px solid var(--primary)",
-                    borderRightColor: "var(--tertiary)",
-                    borderBottomColor: "var(--secondary-fixed-dim)",
+                    borderWidth: "14px",
+                    borderStyle: "solid",
+                    borderTopColor: data?.topCategories.length
+                      ? "var(--primary)"
+                      : "var(--secondary-container)",
+                    borderRightColor:
+                      data?.topCategories.length &&
+                      data.topCategories.length > 1
+                        ? "var(--tertiary)"
+                        : "transparent",
+                    borderBottomColor:
+                      data?.topCategories.length &&
+                      data.topCategories.length > 2
+                        ? "var(--secondary-fixed-dim)"
+                        : "transparent",
+                    borderLeftColor: data?.topCategories.length
+                      ? "var(--primary)"
+                      : "var(--secondary-container)",
                   }}
                 >
-                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span className="text-headline-sm">3</span>
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <span className="text-headline-sm">
+                      {data ? data.topCategories.length : 0}
+                    </span>
                   </div>
                 </div>
 
-                <ul style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
-                  {categories.map((cat) => (
-                    <li key={cat.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ width: 10, height: 10, borderRadius: "50%", background: cat.color }} />
-                        <span className="text-body-sm">{cat.name}</span>
-                      </div>
-                      <span className="text-label-md" style={{ fontWeight: 700 }}>{cat.pct}%</span>
-                    </li>
-                  ))}
-                </ul>
+                {data && data.topCategories.length > 0 ? (
+                  <ul
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 12,
+                    }}
+                  >
+                    {data.topCategories.map((cat, i) => (
+                      <li
+                        key={cat.name}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: "50%",
+                              background:
+                                CATEGORY_COLORS[
+                                  i === 0
+                                    ? "primary"
+                                    : i === 1
+                                      ? "tertiary"
+                                      : "secondary"
+                                ] || "var(--secondary)",
+                            }}
+                          />
+                          <span className="text-body-sm">{cat.name}</span>
+                        </div>
+                        <span
+                          className="text-label-md"
+                          style={{ fontWeight: 700 }}
+                        >
+                          {cat.percentage}%
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p
+                    className="text-body-sm"
+                    style={{ color: "var(--on-surface-variant)" }}
+                  >
+                    Belum ada pengeluaran bulan ini
+                  </p>
+                )}
               </div>
             </div>
 
@@ -174,17 +465,63 @@ export default function DashboardPersonalPage() {
                 boxShadow: "0 20px 50px rgba(0,0,0,0.06)",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-                <div className="insight-icon-container" style={{ background: "rgba(79, 55, 138, 0.1)", padding: 16, borderRadius: 16 }}>
-                  <span className="material-symbols-outlined filled auto-awesome-icon" style={{ color: "var(--primary)", fontSize: 32 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div
+                  className="insight-icon-container"
+                  style={{
+                    background: "rgba(79, 55, 138, 0.1)",
+                    padding: 16,
+                    borderRadius: 16,
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined filled auto-awesome-icon"
+                    style={{ color: "var(--primary)", fontSize: 32 }}
+                  >
                     auto_awesome
                   </span>
                 </div>
                 <div style={{ flex: 1, minWidth: 200 }}>
-                  <h4 className="text-headline-sm" style={{ color: "var(--primary)" }}>Insight AI Pintar</h4>
-                  <p className="text-body-md" style={{ color: "var(--on-surface-variant)", marginTop: 8 }}>
-                    Pengeluaran hiburanmu 12% lebih rendah dari bulan lalu. Kamu on track untuk menabung Rp 400.000 ekstra untuk dana liburanmu!
-                  </p>
+                  <h4
+                    className="text-headline-sm"
+                    style={{ color: "var(--primary)" }}
+                  >
+                    Insight AI Pintar
+                  </h4>
+                  {data ? (
+                    <p
+                      className="text-body-md"
+                      style={{
+                        color: "var(--on-surface-variant)",
+                        marginTop: 8,
+                      }}
+                    >
+                      {data.expenseThisMonth === 0
+                        ? "Kamu belum mencatat pengeluaran bulan ini. Yuk mulai catat biar keuangan makin terpantau! 💪"
+                        : data.budgetHealth >= 70
+                          ? `Keuanganmu sehat! Pengeluaran ${formatRupiah(data.expenseThisMonth)} dari pemasukan ${formatRupiah(data.incomeThisMonth)}. Tetap konsisten menabung ya! 🎉`
+                          : data.budgetHealth >= 50
+                            ? `Pengeluaranmu ${formatRupiah(data.expenseThisMonth)} bulan ini. Masih aman, tapi mulai perhatikan pengeluaran di kategori teratas. ⚠️`
+                            : `Waspada! Pengeluaranmu sudah ${formatRupiah(data.expenseThisMonth)} dari pemasukan ${formatRupiah(data.incomeThisMonth)}. Saatnya hemat! 🔴`}
+                    </p>
+                  ) : (
+                    <p
+                      className="text-body-md"
+                      style={{
+                        color: "var(--on-surface-variant)",
+                        marginTop: 8,
+                      }}
+                    >
+                      Memuat insight…
+                    </p>
+                  )}
                 </div>
               </div>
               <Link
@@ -202,7 +539,7 @@ export default function DashboardPersonalPage() {
                   alignSelf: "flex-start",
                 }}
               >
-                Lihat Detail
+                Tanya AI Catetin
               </Link>
             </div>
 
@@ -214,63 +551,156 @@ export default function DashboardPersonalPage() {
                 padding: "var(--card-padding)",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 24,
+                }}
+              >
                 <h3 className="text-headline-sm">Transaksi Terbaru</h3>
-                <Link href="/chat" className="text-label-md" style={{ color: "var(--primary)" }}>Lihat Semua</Link>
+                <Link
+                  href="/wallet"
+                  className="text-label-md"
+                  style={{ color: "var(--primary)" }}
+                >
+                  Lihat Semua
+                </Link>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {transactions.map((tx) => (
-                  <div
-                    key={tx.name}
-                    className="dashboard-tx-item"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: 16,
-                      background: "rgba(255, 255, 255, 0.4)",
-                      borderRadius: 16,
-                      border: "1px solid rgba(255, 255, 255, 0.2)",
-                      gap: 12,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+
+              {data && data.recentTransactions.length > 0 ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 16,
+                  }}
+                >
+                  {data.recentTransactions.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className="dashboard-tx-item"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: 16,
+                        background: "rgba(255, 255, 255, 0.4)",
+                        borderRadius: 16,
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        gap: 12,
+                      }}
+                    >
                       <div
-                        className="dashboard-tx-avatar"
                         style={{
-                          width: 48,
-                          height: 48,
-                          background: tx.bgColor,
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "center",
-                          borderRadius: 12,
+                          gap: 12,
+                          flex: 1,
+                          minWidth: 0,
+                        }}
+                      >
+                        <div
+                          className="dashboard-tx-avatar"
+                          style={{
+                            width: 48,
+                            height: 48,
+                            background: tx.isExpense
+                              ? "var(--secondary-container)"
+                              : "var(--primary-container)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: 12,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <span
+                            className="material-symbols-outlined dashboard-tx-icon"
+                            style={{
+                              color: tx.isExpense
+                                ? "var(--secondary)"
+                                : "var(--primary)",
+                            }}
+                          >
+                            {tx.categoryIcon || "receipt_long"}
+                          </span>
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <p
+                            className="text-body-md"
+                            style={{
+                              fontWeight: 700,
+                              margin: 0,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {tx.description}
+                          </p>
+                          <p
+                            className="text-body-sm"
+                            style={{
+                              color: "var(--on-surface-variant)",
+                              margin: "2px 0 0 0",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {tx.category} • {timeAgo(tx.date)}
+                          </p>
+                        </div>
+                      </div>
+                      <span
+                        style={{
+                          color: tx.isExpense
+                            ? "var(--error)"
+                            : "var(--primary)",
+                          fontWeight: 600,
+                          fontSize: "15px",
+                          whiteSpace: "nowrap",
                           flexShrink: 0,
                         }}
                       >
-                        <span className="material-symbols-outlined dashboard-tx-icon" style={{ color: tx.color }}>{tx.icon}</span>
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <p className="text-body-md" style={{ fontWeight: 700, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tx.name}</p>
-                        <p className="text-body-sm" style={{ color: "var(--on-surface-variant)", margin: "2px 0 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {tx.category} • {tx.time}
-                        </p>
-                      </div>
+                        {tx.isExpense ? "-" : "+"}
+                        {formatRupiahFull(tx.amount)}
+                      </span>
                     </div>
-                    <span
-                      style={{
-                        color: tx.isExpense ? "var(--error)" : "var(--primary)",
-                        fontWeight: 600,
-                        fontSize: "15px",
-                        whiteSpace: "nowrap",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {tx.amount}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "32px 16px",
+                    color: "var(--on-surface-variant)",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 48, marginBottom: 12 }}
+                  >
+                    receipt_long
+                  </span>
+                  <p className="text-body-md">
+                    Belum ada transaksi. Mulai catat lewat chat AI!
+                  </p>
+                  <Link
+                    href="/chat"
+                    style={{
+                      display: "inline-block",
+                      marginTop: 12,
+                      color: "var(--primary)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Mulai Catat →
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -278,8 +708,34 @@ export default function DashboardPersonalPage() {
       <BottomNav />
 
       {/* Background Atmospheric Elements */}
-      <div style={{ position: "fixed", top: "10%", right: "15%", width: 256, height: 256, background: "rgba(103, 80, 164, 0.12)", filter: "blur(100px)", borderRadius: "50%", zIndex: -1, pointerEvents: "none" }} />
-      <div style={{ position: "fixed", bottom: "20%", left: "10%", width: 320, height: 320, background: "rgba(201, 167, 77, 0.08)", filter: "blur(120px)", borderRadius: "50%", zIndex: -1, pointerEvents: "none" }} />
+      <div
+        style={{
+          position: "fixed",
+          top: "10%",
+          right: "15%",
+          width: 256,
+          height: 256,
+          background: "rgba(103, 80, 164, 0.12)",
+          filter: "blur(100px)",
+          borderRadius: "50%",
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        style={{
+          position: "fixed",
+          bottom: "20%",
+          left: "10%",
+          width: 320,
+          height: 320,
+          background: "rgba(201, 167, 77, 0.08)",
+          filter: "blur(120px)",
+          borderRadius: "50%",
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+      />
     </div>
   );
 }

@@ -1,14 +1,17 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
+import { useAuth } from "@/contexts/AuthContext";
 
 const workspaces = [
   {
     id: "pos",
     title: "POS Operations",
-    subtitle: "Kelola penjualan, inventaris, dan transaksi bisnis dengan tools profesional bertenaga AI.",
+    subtitle:
+      "Kelola penjualan, inventaris, dan transaksi bisnis dengan tools profesional bertenaga AI.",
     badge: "Business Mode",
     icon: "point_of_sale",
     color: "#2196F3",
@@ -24,7 +27,8 @@ const workspaces = [
   {
     id: "personal",
     title: "Personal Management",
-    subtitle: "Catat pengeluaran, target tabungan, dan budgeting keluarga di lingkungan yang nyaman.",
+    subtitle:
+      "Catat pengeluaran, target tabungan, dan budgeting keluarga di lingkungan yang nyaman.",
     badge: "Financial Mode",
     icon: "account_balance_wallet",
     color: "var(--primary)",
@@ -41,14 +45,85 @@ const workspaces = [
 
 export default function WorkspacePage() {
   const router = useRouter();
+  const { user, updateMode } = useAuth();
+  const displayName = user?.name || "Pengguna";
+  const [saving, setSaving] = useState<string | null>(null);
+
+  // Redirect if mode already set
+  useEffect(() => {
+    if (user?.mode === "POS") router.replace("/dashboard/pos");
+    else if (user?.mode === "PERSONAL") router.replace("/dashboard");
+  }, [user?.mode, router]);
+
+  const handleSelect = async (ws: (typeof workspaces)[0]) => {
+    setSaving(ws.id);
+    try {
+      const mode = ws.id === "pos" ? "POS" : "PERSONAL";
+      await updateMode(mode);
+      router.push(ws.href);
+    } catch {
+      // fallback: tetap navigasi meski API gagal
+      router.push(ws.href);
+    } finally {
+      setSaving(null);
+    }
+  };
 
   return (
-    <div style={{ background: "var(--surface)", minHeight: "100dvh", position: "relative", overflow: "hidden" }}>
+    <div
+      style={{
+        background: "var(--surface)",
+        minHeight: "100dvh",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
       {/* Atmospheric Background */}
-      <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: "-10%", left: "-10%", width: "50%", height: "50%", borderRadius: "50%", background: "rgba(224, 210, 255, 0.3)", filter: "blur(120px)" }} />
-        <div style={{ position: "absolute", top: "40%", right: "-5%", width: "40%", height: "40%", borderRadius: "50%", background: "rgba(178, 235, 242, 0.2)", filter: "blur(100px)" }} />
-        <div style={{ position: "absolute", bottom: "-10%", left: "20%", width: "60%", height: "40%", borderRadius: "50%", background: "rgba(255, 249, 196, 0.2)", filter: "blur(120px)" }} />
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: "-10%",
+            left: "-10%",
+            width: "50%",
+            height: "50%",
+            borderRadius: "50%",
+            background: "rgba(224, 210, 255, 0.3)",
+            filter: "blur(120px)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: "40%",
+            right: "-5%",
+            width: "40%",
+            height: "40%",
+            borderRadius: "50%",
+            background: "rgba(178, 235, 242, 0.2)",
+            filter: "blur(100px)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            bottom: "-10%",
+            left: "20%",
+            width: "60%",
+            height: "40%",
+            borderRadius: "50%",
+            background: "rgba(255, 249, 196, 0.2)",
+            filter: "blur(120px)",
+          }}
+        />
       </div>
 
       <TopAppBar />
@@ -72,7 +147,14 @@ export default function WorkspacePage() {
         }}
       >
         {/* Welcome Header */}
-        <div className="animate-fade-slide-up" style={{ textAlign: "center", marginBottom: "var(--stack-gap-lg)", maxWidth: 640 }}>
+        <div
+          className="animate-fade-slide-up"
+          style={{
+            textAlign: "center",
+            marginBottom: "var(--stack-gap-lg)",
+            maxWidth: 640,
+          }}
+        >
           <div
             style={{
               display: "inline-flex",
@@ -86,14 +168,26 @@ export default function WorkspacePage() {
               marginBottom: 16,
             }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>waving_hand</span>
-            <span className="text-label-md">Selamat datang, Budi</span>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: 18 }}
+            >
+              waving_hand
+            </span>
+            <span className="text-label-md">Selamat datang, {displayName}</span>
           </div>
-          <h1 className="text-display-lg" style={{ color: "var(--on-surface)", marginBottom: 8 }}>
+          <h1
+            className="text-display-lg"
+            style={{ color: "var(--on-surface)", marginBottom: 8 }}
+          >
             Pilih Workspace
           </h1>
-          <p className="text-body-lg" style={{ color: "var(--on-surface-variant)" }}>
-            Pilih konteks workspace untuk personalisasi pengalamanmu dan optimalkan alur kerja hari ini.
+          <p
+            className="text-body-lg"
+            style={{ color: "var(--on-surface-variant)" }}
+          >
+            Pilih konteks workspace untuk personalisasi pengalamanmu dan
+            optimalkan alur kerja hari ini.
           </p>
         </div>
 
@@ -102,7 +196,8 @@ export default function WorkspacePage() {
           className="animate-fade-slide-up"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))",
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(min(100%, 380px), 1fr))",
             gap: "var(--stack-gap-md)",
             width: "100%",
             maxWidth: 960,
@@ -112,7 +207,8 @@ export default function WorkspacePage() {
           {workspaces.map((ws) => (
             <button
               key={ws.id}
-              onClick={() => router.push(ws.href)}
+              onClick={() => handleSelect(ws)}
+              disabled={saving !== null}
               className="glass-card"
               style={{
                 padding: "var(--card-padding)",
@@ -125,12 +221,16 @@ export default function WorkspacePage() {
                 overflow: "hidden",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(-8px)";
-                (e.currentTarget as HTMLElement).style.boxShadow = `0 20px 40px rgba(0,0,0,0.08), 0 0 20px ${ws.id === "pos" ? "rgba(33,150,243,0.15)" : "rgba(79,55,138,0.15)"}`;
+                (e.currentTarget as HTMLElement).style.transform =
+                  "translateY(-8px)";
+                (e.currentTarget as HTMLElement).style.boxShadow =
+                  `0 20px 40px rgba(0,0,0,0.08), 0 0 20px ${ws.id === "pos" ? "rgba(33,150,243,0.15)" : "rgba(79,55,138,0.15)"}`;
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "0 10px 30px rgba(0,0,0,0.04)";
+                (e.currentTarget as HTMLElement).style.transform =
+                  "translateY(0)";
+                (e.currentTarget as HTMLElement).style.boxShadow =
+                  "0 10px 30px rgba(0,0,0,0.04)";
               }}
               id={`workspace-${ws.id}`}
             >
@@ -150,7 +250,14 @@ export default function WorkspacePage() {
                 className="accent-bar"
               />
 
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: 24,
+                }}
+              >
                 <div
                   style={{
                     width: 64,
@@ -164,7 +271,12 @@ export default function WorkspacePage() {
                     transition: "all 0.3s",
                   }}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 32 }}>{ws.icon}</span>
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 32 }}
+                  >
+                    {ws.icon}
+                  </span>
                 </div>
                 <span
                   className="text-label-md"
@@ -180,13 +292,29 @@ export default function WorkspacePage() {
               </div>
 
               <div style={{ marginTop: "auto" }}>
-                <h3 className="text-headline-md" style={{ color: "var(--on-surface)", marginBottom: 8 }}>
+                <h3
+                  className="text-headline-md"
+                  style={{ color: "var(--on-surface)", marginBottom: 8 }}
+                >
                   {ws.title}
                 </h3>
-                <p className="text-body-md" style={{ color: "var(--on-surface-variant)", marginBottom: 24 }}>
+                <p
+                  className="text-body-md"
+                  style={{
+                    color: "var(--on-surface-variant)",
+                    marginBottom: 24,
+                  }}
+                >
                   {ws.subtitle}
                 </p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 32 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    marginBottom: 32,
+                  }}
+                >
                   {ws.chips.map((chip) => (
                     <span
                       key={chip.label}
@@ -201,17 +329,38 @@ export default function WorkspacePage() {
                         color: "var(--on-surface-variant)",
                       }}
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{chip.icon}</span>
+                      <span
+                        className="material-symbols-outlined"
+                        style={{ fontSize: 14 }}
+                      >
+                        {chip.icon}
+                      </span>
                       {chip.label}
                     </span>
                   ))}
                 </div>
                 <div
                   className="text-label-md"
-                  style={{ display: "flex", alignItems: "center", color: ws.color, gap: 4 }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    color: ws.color,
+                    gap: 4,
+                  }}
                 >
-                  {ws.cta}
-                  <span className="material-symbols-outlined" style={{ marginLeft: 4 }}>arrow_forward</span>
+                  {saving === ws.id ? (
+                    "Menyimpan..."
+                  ) : (
+                    <>
+                      {ws.cta}
+                      <span
+                        className="material-symbols-outlined"
+                        style={{ marginLeft: 4 }}
+                      >
+                        arrow_forward
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </button>
@@ -221,9 +370,19 @@ export default function WorkspacePage() {
         {/* Secondary Actions */}
         <div
           className="animate-fade-slide-up"
-          style={{ marginTop: "var(--stack-gap-lg)", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, animationDelay: "0.2s" }}
+          style={{
+            marginTop: "var(--stack-gap-lg)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 16,
+            animationDelay: "0.2s",
+          }}
         >
-          <button className="btn-secondary" style={{ borderRadius: 9999, padding: "12px 24px" }}>
+          <button
+            className="btn-secondary"
+            style={{ borderRadius: 9999, padding: "12px 24px" }}
+          >
             <span className="material-symbols-outlined">add_circle</span>
             Buat Workspace Baru
           </button>

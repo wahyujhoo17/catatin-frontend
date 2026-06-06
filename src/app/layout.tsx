@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
   title: "Catetin — Asisten Keuangan AI",
@@ -39,18 +41,8 @@ export default function RootLayout({
         />
       </head>
       <body>
-        {children}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ("serviceWorker" in navigator) {
-                window.addEventListener("load", function() {
-                  navigator.serviceWorker.register("/sw.js");
-                });
-              }
-            `,
-          }}
-        />
+        <AuthProvider>{children}</AuthProvider>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

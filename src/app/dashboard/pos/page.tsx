@@ -1,14 +1,49 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
 const stats = [
-  { icon: "payments", label: "Pendapatan", value: "Rp 8,4Jt", badge: "+12%", badgeBg: "rgba(201, 167, 77, 0.15)", badgeColor: "var(--on-tertiary-container)", iconColor: "var(--primary)" },
-  { icon: "shopping_cart", label: "Pesanan", value: "156", badge: "48", badgeBg: "rgba(233, 221, 255, 0.3)", badgeColor: "var(--primary)", iconColor: "var(--secondary)" },
-  { icon: "group", label: "Pelanggan Baru", value: "24", badge: null, badgeBg: null, badgeColor: null, iconColor: "var(--tertiary)" },
-  { icon: "inventory_2", label: "Stok", value: "1,2Rb", badge: null, badgeBg: null, badgeColor: null, iconColor: "var(--error)" },
+  {
+    icon: "payments",
+    label: "Pendapatan",
+    value: "Rp 8,4Jt",
+    badge: "+12%",
+    badgeBg: "rgba(201, 167, 77, 0.15)",
+    badgeColor: "var(--on-tertiary-container)",
+    iconColor: "var(--primary)",
+  },
+  {
+    icon: "shopping_cart",
+    label: "Pesanan",
+    value: "156",
+    badge: "48",
+    badgeBg: "rgba(233, 221, 255, 0.3)",
+    badgeColor: "var(--primary)",
+    iconColor: "var(--secondary)",
+  },
+  {
+    icon: "group",
+    label: "Pelanggan Baru",
+    value: "24",
+    badge: null,
+    badgeBg: null,
+    badgeColor: null,
+    iconColor: "var(--tertiary)",
+  },
+  {
+    icon: "inventory_2",
+    label: "Stok",
+    value: "1,2Rb",
+    badge: null,
+    badgeBg: null,
+    badgeColor: null,
+    iconColor: "var(--error)",
+  },
 ];
 
 const barData = [
@@ -48,6 +83,17 @@ const alerts = [
 ];
 
 export default function DashboardPOSPage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const displayName = user?.name?.split(" ")[0] || "Budi";
+
+  // Redirect to workspace if mode not set or to personal dashboard if personal mode
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user?.mode) router.replace("/workspace");
+    else if (user.mode === "PERSONAL") router.replace("/dashboard");
+  }, [user?.mode, isLoading, router]);
+
   return (
     <div
       className="mesh-bg"
@@ -55,14 +101,33 @@ export default function DashboardPOSPage() {
     >
       <TopAppBar />
 
-      <main style={{ paddingTop: 88, padding: "88px var(--container-margin) 0", maxWidth: 896, margin: "0 auto" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--stack-gap-lg)" }}>
+      <main
+        style={{
+          paddingTop: 88,
+          padding: "88px var(--container-margin) 0",
+          maxWidth: 896,
+          margin: "0 auto",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--stack-gap-lg)",
+          }}
+        >
           {/* Welcome */}
           <section className="animate-fade-slide-up">
-            <h1 className="text-headline-lg-mobile" style={{ color: "var(--on-surface)" }}>
-              Selamat Pagi, Budi 👋
+            <h1
+              className="text-headline-lg-mobile"
+              style={{ color: "var(--on-surface)" }}
+            >
+              Selamat Pagi, {displayName} 👋
             </h1>
-            <p className="text-body-md" style={{ color: "var(--on-surface-variant)", marginTop: 4 }}>
+            <p
+              className="text-body-md"
+              style={{ color: "var(--on-surface-variant)", marginTop: 4 }}
+            >
               Ini yang terjadi di tokomu hari ini.
             </p>
           </section>
@@ -91,14 +156,27 @@ export default function DashboardPOSPage() {
                   cursor: "default",
                 }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.transform = "translateY(-4px)";
+                  (e.currentTarget as HTMLElement).style.transform =
+                    "translateY(-4px)";
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                  (e.currentTarget as HTMLElement).style.transform =
+                    "translateY(0)";
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <span className="material-symbols-outlined" style={{ color: stat.iconColor }}>{stat.icon}</span>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ color: stat.iconColor }}
+                  >
+                    {stat.icon}
+                  </span>
                   {stat.badge && (
                     <span
                       className="text-label-md"
@@ -114,10 +192,20 @@ export default function DashboardPOSPage() {
                   )}
                 </div>
                 <div>
-                  <p className="text-label-md" style={{ color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  <p
+                    className="text-label-md"
+                    style={{
+                      color: "var(--on-surface-variant)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
                     {stat.label}
                   </p>
-                  <p className="text-headline-sm" style={{ color: "var(--on-surface)" }}>
+                  <p
+                    className="text-headline-sm"
+                    style={{ color: "var(--on-surface)" }}
+                  >
                     {stat.value}
                   </p>
                 </div>
@@ -135,7 +223,14 @@ export default function DashboardPOSPage() {
               animationDelay: "0.15s",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 24,
+              }}
+            >
               <h2 className="text-headline-sm">Tren Penjualan</h2>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
@@ -182,8 +277,24 @@ export default function DashboardPOSPage() {
               }}
             >
               {barData.map((bar) => (
-                <div key={bar.day} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
-                  <div style={{ position: "relative", width: "100%", maxWidth: 32, display: "flex", justifyContent: "center" }}>
+                <div
+                  key={bar.day}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    flex: 1,
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "relative",
+                      width: "100%",
+                      maxWidth: 32,
+                      display: "flex",
+                      justifyContent: "center",
+                    }}
+                  >
                     {bar.isPeak && (
                       <div
                         style={{
@@ -205,25 +316,46 @@ export default function DashboardPOSPage() {
                         width: "100%",
                         maxWidth: 32,
                         height: `${(bar.height / 100) * 192}px`,
-                        background: bar.isPeak ? "var(--primary)" : "rgba(79, 55, 138, 0.2)",
+                        background: bar.isPeak
+                          ? "var(--primary)"
+                          : "rgba(79, 55, 138, 0.2)",
                         borderRadius: "8px 8px 0 0",
                         transition: "all 0.3s",
                         cursor: "pointer",
                       }}
                       onMouseEnter={(e) => {
-                        if (!bar.isPeak) (e.currentTarget as HTMLElement).style.background = "rgba(79, 55, 138, 0.4)";
+                        if (!bar.isPeak)
+                          (e.currentTarget as HTMLElement).style.background =
+                            "rgba(79, 55, 138, 0.4)";
                       }}
                       onMouseLeave={(e) => {
-                        if (!bar.isPeak) (e.currentTarget as HTMLElement).style.background = "rgba(79, 55, 138, 0.2)";
+                        if (!bar.isPeak)
+                          (e.currentTarget as HTMLElement).style.background =
+                            "rgba(79, 55, 138, 0.2)";
                       }}
                     />
                   </div>
                 </div>
               ))}
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, padding: "0 8px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginTop: 16,
+                padding: "0 8px",
+              }}
+            >
               {barData.map((bar) => (
-                <span key={bar.day} className="text-label-md" style={{ color: "var(--outline)", flex: 1, textAlign: "center" }}>
+                <span
+                  key={bar.day}
+                  className="text-label-md"
+                  style={{
+                    color: "var(--outline)",
+                    flex: 1,
+                    textAlign: "center",
+                  }}
+                >
                   {bar.day}
                 </span>
               ))}
@@ -231,8 +363,18 @@ export default function DashboardPOSPage() {
           </section>
 
           {/* Inventory Alerts */}
-          <section className="animate-fade-slide-up" style={{ display: "flex", flexDirection: "column", gap: 16, animationDelay: "0.2s" }}>
-            <h2 className="text-headline-sm" style={{ paddingLeft: 4 }}>Peringatan Inventaris</h2>
+          <section
+            className="animate-fade-slide-up"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+              animationDelay: "0.2s",
+            }}
+          >
+            <h2 className="text-headline-sm" style={{ paddingLeft: 4 }}>
+              Peringatan Inventaris
+            </h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {alerts.map((alert) => (
                 <div
@@ -250,7 +392,9 @@ export default function DashboardPOSPage() {
                     flexWrap: "wrap",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 16 }}
+                  >
                     <div
                       style={{
                         width: 48,
@@ -267,8 +411,18 @@ export default function DashboardPOSPage() {
                       {alert.icon}
                     </div>
                     <div>
-                      <p className="text-body-md" style={{ fontWeight: 600, color: alert.textColor }}>{alert.name}</p>
-                      <p className="text-body-sm" style={{ color: "var(--on-surface-variant)" }}>{alert.detail}</p>
+                      <p
+                        className="text-body-md"
+                        style={{ fontWeight: 600, color: alert.textColor }}
+                      >
+                        {alert.name}
+                      </p>
+                      <p
+                        className="text-body-sm"
+                        style={{ color: "var(--on-surface-variant)" }}
+                      >
+                        {alert.detail}
+                      </p>
                     </div>
                   </div>
                   <button
@@ -279,9 +433,14 @@ export default function DashboardPOSPage() {
                       borderRadius: 9999,
                       fontSize: 12,
                       fontWeight: 600,
-                      border: alert.actionBorder ? `1px solid ${alert.actionBorder}` : "none",
+                      border: alert.actionBorder
+                        ? `1px solid ${alert.actionBorder}`
+                        : "none",
                       cursor: "pointer",
-                      boxShadow: alert.actionBg !== "transparent" ? "0 2px 8px rgba(0,0,0,0.1)" : "none",
+                      boxShadow:
+                        alert.actionBg !== "transparent"
+                          ? "0 2px 8px rgba(0,0,0,0.1)"
+                          : "none",
                       transition: "transform 0.2s",
                     }}
                   >

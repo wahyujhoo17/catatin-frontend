@@ -1,33 +1,65 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
-export default function ForgotPasswordPage() {
-  const { forgotPassword } = useAuth();
-  const [email, setEmail] = useState("");
+function ResetForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { resetPassword } = useAuth();
+  const token = searchParams.get("token") || "";
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  // Redirect kalau tidak ada token
+  useEffect(() => {
+    if (!token) {
+      router.push("/forgot-password");
+    }
+  }, [token, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+
+    if (!newPassword || !confirmPassword) {
+      setError("Harap isi semua field");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError("Password baru minimal 6 karakter");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError("Konfirmasi password tidak cocok");
+      return;
+    }
+
     setError("");
     setIsLoading(true);
     try {
-      await forgotPassword(email);
-      setSubmitted(true);
+      await resetPassword(token, newPassword);
+      setSuccess(true);
+      setTimeout(() => {
+        router.push("/login");
+      }, 2500);
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Gagal mengirim tautan reset",
-      );
+      setError(err instanceof Error ? err.message : "Gagal reset password");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (!token) return null;
 
   return (
     <div
@@ -94,7 +126,7 @@ export default function ForgotPasswordPage() {
           className="animate-fade-slide-up"
           style={{
             width: "100%",
-            maxWidth: 480,
+            maxWidth: 448,
             display: "flex",
             flexDirection: "column",
             gap: 32,
@@ -127,32 +159,58 @@ export default function ForgotPasswordPage() {
               className="text-headline-lg-mobile"
               style={{ color: "var(--on-surface)" }}
             >
-              Lupa Kata Sandi
+              Buat Kata Sandi Baru
             </h1>
             <p
               className="text-body-lg"
               style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}
             >
-              Masukkan email yang terdaftar untuk menerima tautan pemulihan kata
-              sandi.
+              Masukkan kata sandi baru untuk akun Anda.
             </p>
           </div>
 
-          {/* Form Card */}
-          <div
+          {/* Form */}
+          <form
+            onSubmit={handleSubmit}
             className="glass-card-elevated"
             style={{
               padding: 32,
               display: "flex",
               flexDirection: "column",
-              gap: 24,
+              gap: 28,
             }}
           >
-            {!submitted ? (
-              <form
-                onSubmit={handleSubmit}
-                style={{ display: "flex", flexDirection: "column", gap: 24 }}
+            {/* Success Message */}
+            {success && (
+              <div
+                className="animate-fade-in"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 12,
+                  textAlign: "center",
+                  padding: "8px 0",
+                }}
               >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 48, color: "#34A853" }}
+                >
+                  check_circle
+                </span>
+                <p
+                  className="text-body-md"
+                  style={{ color: "var(--on-surface)" }}
+                >
+                  Password berhasil direset! Anda akan dialihkan ke halaman
+                  login...
+                </p>
+              </div>
+            )}
+
+            {!success && (
+              <>
                 {/* Error Message */}
                 {error && (
                   <div
@@ -185,7 +243,7 @@ export default function ForgotPasswordPage() {
                   </div>
                 )}
 
-                {/* Email Field */}
+                {/* New Password Field */}
                 <div
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
@@ -197,7 +255,7 @@ export default function ForgotPasswordPage() {
                       marginLeft: 4,
                     }}
                   >
-                    Alamat Email
+                    Kata Sandi Baru
                   </label>
                   <div style={{ position: "relative" }}>
                     <span
@@ -210,15 +268,73 @@ export default function ForgotPasswordPage() {
                         color: "var(--outline)",
                       }}
                     >
-                      mail
+                      lock
                     </span>
                     <input
                       className="glass-input"
-                      type="email"
+                      type={showPassword ? "text" : "password"}
                       required
-                      placeholder="nama@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Minimal 6 karakter"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: "absolute",
+                        right: 12,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 4,
+                        color: "var(--outline)",
+                      }}
+                      aria-label="Toggle password visibility"
+                    >
+                      <span className="material-symbols-outlined">
+                        {showPassword ? "visibility_off" : "visibility"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm Password Field */}
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                >
+                  <label
+                    className="text-label-md"
+                    style={{
+                      color: "var(--on-surface-variant)",
+                      textTransform: "uppercase",
+                      marginLeft: 4,
+                    }}
+                  >
+                    Konfirmasi Kata Sandi
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <span
+                      className="material-symbols-outlined"
+                      style={{
+                        position: "absolute",
+                        left: 16,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "var(--outline)",
+                      }}
+                    >
+                      lock_reset
+                    </span>
+                    <input
+                      className="glass-input"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      placeholder="Masukkan ulang kata sandi"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                     />
                   </div>
                 </div>
@@ -238,55 +354,23 @@ export default function ForgotPasswordPage() {
                       >
                         progress_activity
                       </span>
-                      Mengirim...
+                      Mereset...
                     </>
                   ) : (
                     <>
-                      Kirim Tautan Reset
+                      Reset Password
                       <span
                         className="material-symbols-outlined"
                         style={{ transition: "transform 0.2s" }}
                       >
-                        send
+                        check
                       </span>
                     </>
                   )}
                 </button>
-              </form>
-            ) : (
-              <div
-                className="animate-fade-in"
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 16,
-                  textAlign: "center",
-                  padding: "16px 0",
-                }}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: 48, color: "#34A853" }}
-                >
-                  check_circle
-                </span>
-                <p
-                  className="text-body-lg"
-                  style={{ color: "var(--on-surface)" }}
-                >
-                  Tautan pemulihan telah dikirim ke <strong>{email}</strong>.
-                </p>
-                <p
-                  className="text-body-sm"
-                  style={{ color: "var(--on-surface-variant)" }}
-                >
-                  Cek kotak masuk (dan folder spam) email Anda. Klik tautan di
-                  dalamnya untuk membuat kata sandi baru.
-                </p>
-              </div>
+              </>
             )}
-          </div>
+          </form>
 
           {/* Footer */}
           <div style={{ textAlign: "center" }}>
@@ -308,41 +392,37 @@ export default function ForgotPasswordPage() {
               >
                 arrow_back
               </span>
-              Kembali ke Halaman Login
+              Kembali ke Login
             </Link>
           </div>
         </div>
       </main>
-
-      {/* Desktop Watermark */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 32,
-          right: 32,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-end",
-          gap: 6,
-          opacity: 0.4,
-        }}
-        className="hidden-mobile"
-      >
-        <Image
-          src="/logo/logo.png"
-          alt="Catetin Logo"
-          width={100}
-          height={32}
-          style={{ width: "auto", height: "auto" }}
-          priority
-        />
-        <p
-          className="text-label-md"
-          style={{ color: "var(--outline)", margin: 0 }}
-        >
-          Financial Intelligence
-        </p>
-      </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: "100dvh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <span
+            className="material-symbols-outlined"
+            style={{ animation: "spin 1s linear infinite", fontSize: 32 }}
+          >
+            progress_activity
+          </span>
+        </div>
+      }
+    >
+      <ResetForm />
+    </Suspense>
   );
 }

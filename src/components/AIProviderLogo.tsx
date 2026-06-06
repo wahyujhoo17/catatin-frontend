@@ -14,23 +14,28 @@ export default function AIProviderLogo({
   provider,
   size = 20,
   containerSize = 36,
-  style = {}
+  style = {},
 }: AIProviderLogoProps) {
   const normProvider = provider.toLowerCase().trim();
 
   // Determine logo source
   let logoSrc = "/favicon.ico"; // Default to favicon for custom/unknown providers
-  
+
   if (normProvider.includes("openai") || normProvider.includes("chatgpt")) {
     logoSrc = "/logo/providers/openai.png";
   } else if (normProvider.includes("gemini")) {
     logoSrc = "/logo/providers/gemini.png";
-  } else if (normProvider.includes("claude") || normProvider.includes("anthropic")) {
+  } else if (
+    normProvider.includes("claude") ||
+    normProvider.includes("anthropic")
+  ) {
     logoSrc = "/logo/providers/anthropic.png";
   } else if (normProvider.includes("ollama")) {
     logoSrc = "/logo/providers/ollama.png";
   } else if (normProvider.includes("deepseek")) {
     logoSrc = "/logo/providers/deepseek.png";
+  } else if (normProvider.includes("groq")) {
+    logoSrc = "/logo/providers/groq.png";
   } else if (normProvider.includes("whisper")) {
     logoSrc = "/logo/providers/whisper.png";
   } else if (normProvider.includes("google")) {
@@ -56,7 +61,7 @@ export default function AIProviderLogo({
         flexShrink: 0,
         boxShadow: "0 4px 10px rgba(0, 0, 0, 0.08)",
         overflow: "hidden", // Ensure image stays inside circle
-        ...style
+        ...style,
       }}
     >
       <Image

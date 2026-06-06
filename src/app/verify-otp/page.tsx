@@ -4,17 +4,33 @@ import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function VerifyOtpPage() {
   const router = useRouter();
+  const { verifyOtp } = useAuth();
   const [otp, setOtp] = useState(["", "", "", ""]);
-  const [attempts, setAttempts] = useState(0);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const MAX_ATTEMPTS = 3;
+  const [attempts, setAttempts] = useState(0);
+
+  // Get email and registration type from localStorage (set during registration)
+  const [email, setEmail] = useState("");
+  const [registrationType, setRegistrationType] = useState<"email" | "phone">(
+    "email",
+  );
+  const [registrationInput, setRegistrationInput] = useState("");
 
   useEffect(() => {
+    const stored = localStorage.getItem("pending_email");
+    if (stored) setEmail(stored);
+    const type = localStorage.getItem("registration_type");
+    if (type === "phone") setRegistrationType("phone");
+    const input = localStorage.getItem("registration_input");
+    if (input) setRegistrationInput(input);
     // Auto focus first input on load
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
@@ -22,17 +38,11 @@ export default function VerifyOtpPage() {
   }, []);
 
   const handleChange = (index: number, value: string) => {
-    // Only allow numbers
     if (!/^\d*$/.test(value)) return;
-
-    // Clear error when user starts typing again
     if (error) setError("");
-
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-
-    // Auto-focus next input
     if (value !== "" && index < 3) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -42,41 +52,46 @@ export default function VerifyOtpPage() {
     index: number,
     e: React.KeyboardEvent<HTMLInputElement>,
   ) => {
-    // Handle backspace to focus previous input
     if (e.key === "Backspace" && index > 0 && otp[index] === "") {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = otp.join("");
+    if (isLocked || code.length < 4 || !email) return;
 
-    if (isLocked) return;
+    const newAttempts = attempts + 1;
+    setAttempts(newAttempts);
 
-    if (code.length === 4) {
-      const newAttempts = attempts + 1;
-      setAttempts(newAttempts);
+    if (newAttempts >= MAX_ATTEMPTS) {
+      setIsLocked(true);
+      setError(
+        `Anda telah mencapai ${MAX_ATTEMPTS}x percobaan. Akun Anda terkunci sementara. Silakan coba lagi nanti.`,
+      );
+      return;
+    }
 
-      if (newAttempts >= MAX_ATTEMPTS) {
-        setIsLocked(true);
-        setError(
-          `Anda telah mencapai ${MAX_ATTEMPTS}x percobaan. Akun Anda terkunci sementara. Silakan coba lagi nanti.`,
-        );
-        return;
-      }
-
-      // Simulasi verifikasi gagal — ganti dengan logika nyata
-      if (code !== "1234") {
-        const remaining = MAX_ATTEMPTS - newAttempts;
-        setError(`Kode OTP salah. Sisa percobaan: ${remaining}x`);
-        setOtp(["", "", "", ""]);
-        inputRefs.current[0]?.focus();
-        return;
-      }
-
-      // Success — ganti dengan logika verifikasi nyata
+    setError("");
+    setIsLoading(true);
+    try {
+      await verifyOtp(email, code);
+      localStorage.removeItem("pending_email");
+      localStorage.removeItem("registration_type");
+      localStorage.removeItem("registration_input");
       router.push("/workspace");
+    } catch (err: unknown) {
+      const remaining = MAX_ATTEMPTS - newAttempts;
+      setError(
+        err instanceof Error
+          ? err.message
+          : `Kode OTP salah. Sisa percobaan: ${remaining}x`,
+      );
+      setOtp(["", "", "", ""]);
+      inputRefs.current[0]?.focus();
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -178,13 +193,17 @@ export default function VerifyOtpPage() {
               className="text-headline-lg-mobile"
               style={{ color: "var(--on-surface)" }}
             >
-              Verifikasi Email
+              {registrationType === "phone"
+                ? "Verifikasi Telepon"
+                : "Verifikasi Email"}
             </h1>
             <p
               className="text-body-lg"
               style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}
             >
-              Masukkan 4 digit kode OTP yang telah kami kirimkan ke email Anda.
+              {registrationType === "phone"
+                ? `Masukkan 4 digit kode OTP yang telah kami kirimkan ke ${registrationInput || "WhatsApp Anda"}.`
+                : "Masukkan 4 digit kode OTP yang telah kami kirimkan ke email Anda."}
             </p>
           </div>
 
@@ -267,14 +286,31 @@ export default function VerifyOtpPage() {
             <button
               type="submit"
               className="btn-primary"
-              disabled={otp.join("").length < 4 || isLocked}
+              disabled={otp.join("").length < 4 || isLocked || isLoading}
               style={{
-                opacity: otp.join("").length < 4 || isLocked ? 0.7 : 1,
+                opacity:
+                  otp.join("").length < 4 || isLocked || isLoading ? 0.7 : 1,
                 cursor: isLocked ? "not-allowed" : undefined,
               }}
             >
-              Verifikasi Kode
-              <span className="material-symbols-outlined">check_circle</span>
+              {isLoading ? (
+                <>
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ animation: "spin 1s linear infinite" }}
+                  >
+                    progress_activity
+                  </span>
+                  Memverifikasi...
+                </>
+              ) : (
+                <>
+                  Verifikasi Kode
+                  <span className="material-symbols-outlined">
+                    check_circle
+                  </span>
+                </>
+              )}
             </button>
 
             {/* Resend Code */}
@@ -296,7 +332,31 @@ export default function VerifyOtpPage() {
                     padding: 0,
                     opacity: isLocked ? 0.5 : 1,
                   }}
-                  onClick={() => alert("Kode OTP baru telah dikirim!")}
+                  onClick={async () => {
+                    if (!email) {
+                      alert("Email tidak ditemukan. Silakan daftar ulang.");
+                      router.push("/register");
+                      return;
+                    }
+                    try {
+                      const res = await fetch(
+                        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/auth/forgot-password`,
+                        {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ email }),
+                        },
+                      );
+                      const data = await res.json();
+                      if (res.ok) {
+                        alert("Kode OTP baru telah dikirim ke email Anda!");
+                      } else {
+                        alert(data.error || "Gagal mengirim ulang OTP");
+                      }
+                    } catch {
+                      alert("Gagal mengirim ulang OTP. Periksa koneksi Anda.");
+                    }
+                  }}
                 >
                   Kirim ulang
                 </button>
