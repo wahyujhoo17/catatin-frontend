@@ -234,9 +234,9 @@ export default function ChatPage() {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
-  const [isTopIntersecting, setIsTopIntersecting] = useState(false);
 
-  const prevScrollY = useRef(0);
+  // Ref to hold scrollHeight before new messages render
+  const previousScrollHeightRef = useRef<number | null>(null);
 
   const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -274,16 +274,14 @@ export default function ChatPage() {
       }));
       
       if (fetchedMessages.length > 0) {
-        // Record scroll position before prepending messages
-        const scrollContainer = document.documentElement || document.body;
-        const oldScrollHeight = scrollContainer.scrollHeight;
-
         setMessages((prev) => {
           if (pageToLoad === 1) {
             const filtered = prev.filter(m => m.id !== "welcome");
             if (filtered.length === 0) return fetchedMessages;
             return [...fetchedMessages, ...filtered];
           } else {
+            // Save scrollHeight synchronously before React renders the new elements
+            previousScrollHeightRef.current = document.documentElement.scrollHeight || document.body.scrollHeight;
             return [...fetchedMessages, ...prev];
           }
         });
@@ -311,33 +309,45 @@ export default function ChatPage() {
     }
   }, [fetchHistory, initialLoadDone]);
 
-  // 1. Always keep observer active to track if top is intersecting
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        setIsTopIntersecting(entries[0].isIntersecting);
-      },
-      {
-        root: null,
-        rootMargin: "250px", // Trigger when top is within 250px
-        threshold: 0,
-      }
-    );
-
-    const target = topRef.current;
-    if (target) observer.observe(target);
-
-    return () => {
-      if (target) observer.unobserve(target);
-    };
-  }, []);
-
-  // 2. Fetch whenever top is intersecting and we are not already loading
-  useEffect(() => {
-    if (isTopIntersecting && !isLoadingHistory && hasMore && initialLoadDone) {
-      fetchHistory(page + 1);
+  // Synchronously restore scroll position after messages update but BEFORE browser paints
+  useLayoutEffect(() => {
+    if (previousScrollHeightRef.current !== null) {
+      const scrollContainer = document.documentElement || document.body;
+      const newScrollHeight = scrollContainer.scrollHeight;
+      
+      // Temporarily disable smooth scrolling to prevent bouncy animated scroll
+      const originalScrollBehavior = document.documentElement.style.scrollBehavior;
+      document.documentElement.style.scrollBehavior = 'auto';
+      
+      window.scrollBy({
+        top: newScrollHeight - previousScrollHeightRef.current,
+        left: 0,
+        behavior: 'instant' as any
+      });
+      
+      // Restore original scroll behavior
+      document.documentElement.style.scrollBehavior = originalScrollBehavior;
+      
+      previousScrollHeightRef.current = null;
     }
-  }, [isTopIntersecting, isLoadingHistory, hasMore, initialLoadDone, fetchHistory, page]);
+  }, [messages]);
+
+  // Infinite scroll listener based on exact coordinates (100% reliable)
+  useEffect(() => {
+    const handleScroll = () => {
+      // If we are within 250px of the top, trigger fetch
+      if (window.scrollY <= 250 && !isLoadingHistory && hasMore && initialLoadDone) {
+        fetchHistory(page + 1);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    
+    // Also check immediately in case the screen is already at the top
+    handleScroll();
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isLoadingHistory, hasMore, initialLoadDone, fetchHistory, page]);
 
   // Handle scanned image from BottomNav
   useEffect(() => {
@@ -716,7 +726,7 @@ export default function ChatPage() {
           display: "flex",
           flexDirection: "column",
           paddingBottom: 100,
-          overflowAnchor: "auto", // explicitly enable native scroll anchoring
+          overflowAnchor: "none", // explicitly DISABLE native scroll anchoring to avoid glitz when we manually calculate
         }}
       >
         <div ref={topRef} />
@@ -820,7 +830,11 @@ export default function ChatPage() {
                   }}
                 >
                   <div className="bubble-user">
-                    <p style={{ margin: 0 }}>{msg.text}</p>
+                    <p style={{ margin: 0 }}>
+                      {msg.text.includes("Tolong analisis struk/gambar ini dengan detail")
+                        ? "📷 Mengirimkan struk untuk dianalisis..."
+                        : msg.text}
+                    </p>
                   </div>
                   <span
                     className="text-label-md"
