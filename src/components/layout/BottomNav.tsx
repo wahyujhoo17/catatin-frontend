@@ -319,7 +319,7 @@ export default function BottomNav() {
 
     try {
       for (const tx of scanResult.transactions) {
-        await fetch(`${API_BASE}/api/transactions`, {
+        const res = await fetch(`${API_BASE}/api/transactions`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -334,6 +334,11 @@ export default function BottomNav() {
             date: (tx as any).date || new Date().toISOString(),
           }),
         });
+        
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Gagal menyimpan transaksi dari server");
+        }
       }
       // Transition smoothly to success phase
       setIsSaving(false);
@@ -348,8 +353,8 @@ export default function BottomNav() {
         handleCloseScan();
       }, 2500);
 
-    } catch (e) {
-      setScanError("Gagal menyimpan transaksi");
+    } catch (e: any) {
+      setScanError(e.message || "Gagal menyimpan transaksi");
       setIsSaving(false);
     }
   };
