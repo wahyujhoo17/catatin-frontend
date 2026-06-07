@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import TopAppBar from "@/components/layout/TopAppBar";
 import { DateRange } from "react-day-picker";
 import PeriodSelector from "@/components/ui/PeriodSelector";
+import TransactionDetailModal from "@/components/ui/TransactionDetailModal";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
@@ -51,6 +52,9 @@ export default function TransactionsPage() {
   const [editAmount, setEditAmount] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Detail Modal State
+  const [selectedDetailTxId, setSelectedDetailTxId] = useState<string | null>(null);
   
   // Date Filter Modal
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -196,7 +200,7 @@ export default function TransactionsPage() {
   };
 
   return (
-    <div style={{ backgroundColor: "var(--surface)", minHeight: "100dvh", paddingBottom: 100 }}>
+    <div style={{ backgroundColor: "var(--surface)", minHeight: "100dvh", paddingBottom: 100, overflowX: "hidden" }}>
       <TopAppBar />
 
       <main style={{ marginTop: 72, padding: "0 var(--container-margin)", maxWidth: 672, margin: "72px auto 0" }}>
@@ -243,6 +247,7 @@ export default function TransactionsPage() {
             gap: 12, 
             overflowX: "auto", 
             paddingBottom: 12,
+            width: "100%",
             WebkitOverflowScrolling: "touch",
             scrollbarWidth: "none", /* Firefox */
             msOverflowStyle: "none", /* IE 10+ */
@@ -322,7 +327,9 @@ export default function TransactionsPage() {
                     justifyContent: "space-between",
                     padding: 16,
                     gap: 12,
+                    cursor: "pointer"
                   }}
+                  onClick={() => setSelectedDetailTxId(tx.id)}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
                     <div
@@ -356,7 +363,7 @@ export default function TransactionsPage() {
                         {tx.description || "Tanpa deskripsi"}
                       </p>
                       <p className="text-body-sm" style={{ color: "var(--on-surface-variant)", margin: "2px 0 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {new Date(tx.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} • {tx.category?.name || "Umum"} • {tx.account?.name}
+                        {tx.category?.name || "Umum"} {tx.account?.name ? `• ${tx.account.name}` : ""}
                       </p>
                     </div>
                   </div>
@@ -365,17 +372,29 @@ export default function TransactionsPage() {
                       {isExpense ? "-" : "+"}{formatRupiah(tx.amount)}
                     </span>
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button
-                        onClick={() => openEditModal(tx)}
-                        style={{ background: "none", border: "none", padding: 4, cursor: "pointer", color: "var(--primary)", opacity: 0.7 }}
-                        title="Edit"
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingTx(tx);
+                          setEditAmount(tx.amount.toString());
+                          setEditDesc(tx.description);
+                        }} 
+                        style={{
+                          background: "none", border: "none", color: "var(--on-surface-variant)", 
+                          cursor: "pointer", padding: 4, display: "flex", alignItems: "center", justifyContent: "center"
+                        }}
                       >
                         <span className="material-symbols-outlined" style={{ fontSize: 18 }}>edit</span>
                       </button>
-                      <button
-                        onClick={() => handleDelete(tx.id)}
-                        style={{ background: "none", border: "none", padding: 4, cursor: "pointer", color: "var(--error)", opacity: 0.7 }}
-                        title="Hapus"
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(tx.id);
+                        }} 
+                        style={{
+                          background: "none", border: "none", color: "var(--error)", 
+                          cursor: "pointer", padding: 4, display: "flex", alignItems: "center", justifyContent: "center"
+                        }}
                       >
                         <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
                       </button>
@@ -496,8 +515,18 @@ export default function TransactionsPage() {
       <PeriodSelector 
         isOpen={isDatePickerOpen}
         onClose={() => setIsDatePickerOpen(false)}
-        onSelectRange={setDateRange}
+        onSelectRange={(range) => {
+          setDateRange(range);
+          setPage(1); // reset to page 1 when filter changes
+        }}
         initialRange={dateRange}
+      />
+
+      {/* Transaction Detail Modal */}
+      <TransactionDetailModal
+        isOpen={!!selectedDetailTxId}
+        transactionId={selectedDetailTxId}
+        onClose={() => setSelectedDetailTxId(null)}
       />
     </div>
   );

@@ -64,7 +64,7 @@ interface ScanResult {
   error?: string;
 }
 
-type ScanPhase = "camera" | "preview" | "processing" | "result";
+type ScanPhase = "camera" | "preview" | "processing" | "result" | "success";
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -335,19 +335,18 @@ export default function BottomNav() {
           }),
         });
       }
+      // Transition smoothly to success phase
+      setIsSaving(false);
+      setScanPhase("success");
       
-      handleCloseScan();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("transactionSaved"));
+      }
       
+      // Auto-close after animation
       setTimeout(() => {
-        setSaveSuccess(true);
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new Event("transactionSaved"));
-        }
-        
-        setTimeout(() => {
-          setSaveSuccess(false);
-        }, 2000);
-      }, 300); // Slight delay for smoother transition after modal closes
+        handleCloseScan();
+      }, 2500);
 
     } catch (e) {
       setScanError("Gagal menyimpan transaksi");
@@ -357,30 +356,6 @@ export default function BottomNav() {
 
   return (
     <>
-      {saveSuccess && (
-        <div style={{
-          position: "fixed",
-          top: 40,
-          left: "50%",
-          transform: "translateX(-50%)",
-          background: "var(--primary)",
-          color: "var(--on-primary)",
-          padding: "12px 24px",
-          borderRadius: 24,
-          zIndex: 99999,
-          fontWeight: 600,
-          fontSize: 14,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          boxShadow: "0 8px 32px rgba(79, 55, 138, 0.4)",
-          animation: "fadeSlideDown 0.3s ease-out forwards"
-        }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check_circle</span>
-          Transaksi berhasil disimpan!
-        </div>
-      )}
-
       <nav className="bottom-nav">
         {navItems.map((item, index) => {
           // Special center button for Scan
@@ -685,8 +660,8 @@ export default function BottomNav() {
             </div>
           )}
 
-          {/* ─── PHASE: Result ─── */}
-          {scanPhase === "result" && (
+          {/* ─── PHASE: Result & Success ─── */}
+          {(scanPhase === "result" || scanPhase === "success") && (
             <div
               style={{
                 width: "calc(100% + 40px)", // counteract the 20px padding of camera-overlay
@@ -739,6 +714,50 @@ export default function BottomNav() {
                     >
                       {scanError}
                     </p>
+                  </div>
+                ) : scanPhase === "success" ? (
+                  /* Success State Overlay */
+                  <div
+                    className="animate-fade-in"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 24,
+                      padding: "60px 16px",
+                      textAlign: "center",
+                      height: "100%",
+                    }}
+                  >
+                    <div style={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: "50%",
+                      background: "rgba(76, 175, 80, 0.15)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      animation: "pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+                    }}>
+                      <span
+                        className="material-symbols-outlined"
+                        style={{ 
+                          fontSize: 48, 
+                          color: "#4CAF50",
+                        }}
+                      >
+                        check_circle
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-headline-sm" style={{ color: "var(--on-surface)", marginBottom: 8, fontWeight: 700 }}>
+                        Berhasil Disimpan!
+                      </h3>
+                      <p className="text-body-md" style={{ color: "var(--on-surface-variant)" }}>
+                        Transaksi Anda sudah aman tercatat.
+                      </p>
+                    </div>
                   </div>
                 ) : scanResult ? (
                   /* Success State */
@@ -965,86 +984,88 @@ export default function BottomNav() {
               </div>
 
               {/* Bottom Action Bar inside the sheet */}
-              <div
-                style={{
-                  padding: "12px 16px 24px",
-                  background: "var(--surface)",
-                  borderTop: "1px solid var(--outline-variant)",
-                  display: "flex",
-                  gap: 10,
-                  width: "100%",
-                }}
-              >
-                <button
-                  onClick={handleRetake}
+              {scanPhase === "result" && (
+                <div
                   style={{
-                    flex: 1,
-                    padding: "12px 16px",
-                    borderRadius: 20,
-                    background: "var(--surface-container-highest)",
-                    border: "none",
-                    color: "var(--on-surface)",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
+                    padding: "12px 16px 24px",
+                    background: "var(--surface)",
+                    borderTop: "1px solid var(--outline-variant)",
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                    transition: "opacity 0.2s",
+                    gap: 10,
+                    width: "100%",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                 >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: 18 }}
+                  <button
+                    onClick={handleRetake}
+                    style={{
+                      flex: 1,
+                      padding: "12px 16px",
+                      borderRadius: 20,
+                      background: "var(--surface-container-highest)",
+                      border: "none",
+                      color: "var(--on-surface)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      transition: "opacity 0.2s",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                   >
-                    photo_camera
-                  </span>
-                  Scan Lagi
-                </button>
-                {(() => {
-                  const askMatch = scanResult?.content?.match(/\[ASK_ACCOUNT:(.*?)\]/);
-                  const needsAccount = askMatch && askMatch[1].split(",").length > 0;
-                  const isReady = !needsAccount || selectedAccount !== null;
-
-                  return (
-                    <button
-                      onClick={handleConfirmAndSave}
-                      disabled={isSaving || !isReady}
-                      style={{
-                        flex: 1,
-                        padding: "12px 16px",
-                        borderRadius: 20,
-                        background: "var(--primary)",
-                        border: "none",
-                        color: "var(--on-primary)",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: isReady ? "pointer" : "not-allowed",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 6,
-                        boxShadow: isReady ? "0 4px 16px rgba(79, 55, 138, 0.4)" : "none",
-                        transition: "opacity 0.2s",
-                        opacity: isSaving || !isReady ? 0.5 : 1,
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.opacity = isSaving || !isReady ? "0.5" : "0.9")}
-                      onMouseLeave={(e) => (e.currentTarget.style.opacity = isSaving || !isReady ? "0.5" : "1")}
+                    <span
+                      className="material-symbols-outlined"
+                      style={{ fontSize: 18 }}
                     >
-                      <span
-                        className="material-symbols-outlined"
-                        style={{ fontSize: 18 }}
+                      photo_camera
+                    </span>
+                    Scan Lagi
+                  </button>
+                  {(() => {
+                    const askMatch = scanResult?.content?.match(/\[ASK_ACCOUNT:(.*?)\]/);
+                    const needsAccount = askMatch && askMatch[1].split(",").length > 0;
+                    const isReady = !needsAccount || selectedAccount !== null;
+
+                    return (
+                      <button
+                        onClick={handleConfirmAndSave}
+                        disabled={isSaving || !isReady}
+                        style={{
+                          flex: 1,
+                          padding: "12px 16px",
+                          borderRadius: 20,
+                          background: "var(--primary)",
+                          border: "none",
+                          color: "var(--on-primary)",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: isReady ? "pointer" : "not-allowed",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                          boxShadow: isReady ? "0 4px 16px rgba(79, 55, 138, 0.4)" : "none",
+                          transition: "opacity 0.2s",
+                          opacity: isSaving || !isReady ? 0.5 : 1,
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.opacity = isSaving || !isReady ? "0.5" : "0.9")}
+                        onMouseLeave={(e) => (e.currentTarget.style.opacity = isSaving || !isReady ? "0.5" : "1")}
                       >
-                        {isSaving ? "hourglass_empty" : "check"}
-                      </span>
-                      {isSaving ? "Menyimpan..." : "Konfirmasi & Simpan"}
-                    </button>
-                  );
-                })()}
-              </div>
+                        <span
+                          className="material-symbols-outlined"
+                          style={{ fontSize: 18 }}
+                        >
+                          {isSaving ? "hourglass_empty" : "check"}
+                        </span>
+                        {isSaving ? "Menyimpan..." : "Konfirmasi & Simpan"}
+                      </button>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           )}
 

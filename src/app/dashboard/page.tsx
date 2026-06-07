@@ -6,6 +6,7 @@ import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import TransactionDetailModal from "@/components/ui/TransactionDetailModal";
 
 // ─── Config ──────────────────────────────────────────────────
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -87,6 +88,7 @@ export default function DashboardPersonalPage() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [fetchError, setFetchError] = useState("");
+  const [selectedDetailTxId, setSelectedDetailTxId] = useState<string | null>(null);
   const displayName = user?.name?.split(" ")[0] || "";
 
   // Redirect to workspace if mode not set or to POS dashboard if POS mode
@@ -595,7 +597,9 @@ export default function DashboardPersonalPage() {
                         borderRadius: 16,
                         border: "1px solid rgba(255, 255, 255, 0.2)",
                         gap: 12,
+                        cursor: "pointer"
                       }}
+                      onClick={() => setSelectedDetailTxId(tx.id)}
                     >
                       <div
                         style={{
@@ -752,6 +756,12 @@ export default function DashboardPersonalPage() {
           zIndex: -1,
           pointerEvents: "none",
         }}
+      />
+      {/* Transaction Detail Modal */}
+      <TransactionDetailModal
+        isOpen={!!selectedDetailTxId}
+        transactionId={selectedDetailTxId}
+        onClose={() => setSelectedDetailTxId(null)}
       />
     </div>
   );

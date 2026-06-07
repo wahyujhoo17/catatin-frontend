@@ -3,6 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
+import { DateRange } from "react-day-picker";
+import PeriodSelector from "@/components/ui/PeriodSelector";
+import TransactionDetailModal from "@/components/ui/TransactionDetailModal";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 
 // ─── Config ──────────────────────────────────────────────────
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
@@ -15,6 +20,15 @@ interface BackendAccount {
   balance: number;
   icon: string | null;
   color: string | null;
+}
+
+interface Transaction {
+  id: string;
+  type: "INCOME" | "EXPENSE" | "DEBT" | "DEBT_PAYMENT";
+  amount: number;
+  description: string;
+  date: string;
+  category?: { name: string; icon: string; color: string };
 }
 
 const TYPE_MAP: Record<
@@ -78,6 +92,20 @@ export default function WalletPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Details Modal
+  const [selectedAccount, setSelectedAccount] = useState<BackendAccount | null>(null);
+  const [accountTx, setAccountTx] = useState<Transaction[]>([]);
+  const [isLoadingTx, setIsLoadingTx] = useState(false);
+
+  // Tx Filters inside modal
+  const [txPage, setTxPage] = useState(1);
+  const [txTotalPages, setTxTotalPages] = useState(1);
+  const [txFilterType, setTxFilterType] = useState<string>("");
+  const [txSearch, setTxSearch] = useState("");
+  const [txDateRange, setTxDateRange] = useState<DateRange | undefined>();
+  const [isTxDatePickerOpen, setIsTxDatePickerOpen] = useState(false);
+  const [selectedDetailTxId, setSelectedDetailTxId] = useState<string | null>(null);
+
   // Form
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState("BANK");
@@ -108,6 +136,62 @@ export default function WalletPage() {
   useEffect(() => {
     fetchAccounts();
   }, [fetchAccounts]);
+
+  // ─── Fetch transactions for account ───────────────────────
+  const fetchAccountTransactions = useCallback(async (
+    accountId: string,
+    pageNum: number = 1,
+    type: string = "",
+    search: string = "",
+    startDate: string = "",
+    endDate: string = ""
+  ) => {
+    const token = getToken();
+    if (!token) return;
+    setIsLoadingTx(true);
+    try {
+      const url = new URL(`${API_BASE}/api/transactions`);
+      url.searchParams.append("accountId", accountId);
+      url.searchParams.append("page", pageNum.toString());
+      url.searchParams.append("limit", "15");
+      if (type) url.searchParams.append("type", type);
+      if (search) url.searchParams.append("search", search);
+      if (startDate) url.searchParams.append("startDate", startDate);
+      if (endDate) url.searchParams.append("endDate", endDate);
+
+      const res = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Gagal memuat mutasi");
+      const json = await res.json();
+      setAccountTx(json.transactions || []);
+      setTxTotalPages(json.pagination?.totalPages || 1);
+      setTxPage(pageNum);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setIsLoadingTx(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!selectedAccount) return;
+    const timer = setTimeout(() => {
+      const startStr = txDateRange?.from ? txDateRange.from.toISOString() : "";
+      const endStr = txDateRange?.to ? txDateRange.to.toISOString() : "";
+      fetchAccountTransactions(selectedAccount.id, 1, txFilterType, txSearch, startStr, endStr);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [selectedAccount, txFilterType, txSearch, txDateRange, fetchAccountTransactions]);
+
+  const handleOpenAccountDetails = (acc: BackendAccount) => {
+    setSelectedAccount(acc);
+    setAccountTx([]);
+    setTxPage(1);
+    setTxFilterType("");
+    setTxSearch("");
+    setTxDateRange(undefined);
+  };
 
   // ─── Add account ──────────────────────────────────────────
   const handleAddAccount = async (e: React.FormEvent) => {
@@ -327,7 +411,9 @@ export default function WalletPage() {
                           gap: 16,
                           flex: 1,
                           minWidth: 0,
+                          cursor: "pointer"
                         }}
+                        onClick={() => handleOpenAccountDetails(acc)}
                       >
                         <div
                           style={{
@@ -668,6 +754,199 @@ export default function WalletPage() {
           </div>
         </div>
       )}
+      {/* Account Details / Mutation Modal */}
+      {selectedAccount && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "var(--surface)",
+            zIndex: 100,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden"
+          }}
+          className="animate-fade-slide-up"
+        >
+          {/* Header */}
+          <header style={{ padding: "16px 24px", display: "flex", alignItems: "center", gap: 16, borderBottom: "1px solid var(--outline-variant)" }}>
+            <button
+              onClick={() => setSelectedAccount(null)}
+              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center" }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 24, color: "var(--on-surface)" }}>arrow_back</span>
+            </button>
+            <div>
+              <h2 className="text-headline-sm" style={{ margin: 0, fontSize: 18 }}>{selectedAccount.name}</h2>
+              <p className="text-body-sm" style={{ margin: 0, color: "var(--on-surface-variant)" }}>Detail Mutasi Rekening</p>
+            </div>
+          </header>
+
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+            <div className="glass-card" style={{ padding: 24, textAlign: "center", marginBottom: 24 }}>
+              <p className="text-label-md" style={{ color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Saldo Saat Ini</p>
+              <h2 style={{ fontSize: 32, fontWeight: 700, color: "var(--on-surface)", margin: 0 }}>{formatRupiah(selectedAccount.balance)}</h2>
+            </div>
+
+            <h3 className="text-headline-sm" style={{ fontSize: 16, marginBottom: 12 }}>Riwayat Transaksi</h3>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+              {/* Search & Date */}
+              <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ flex: 1, position: "relative" }}>
+                  <span className="material-symbols-outlined" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--on-surface-variant)", fontSize: 20 }}>search</span>
+                  <input 
+                    type="text" 
+                    placeholder="Cari deskripsi..." 
+                    value={txSearch}
+                    onChange={(e) => setTxSearch(e.target.value)}
+                    className="glass-input"
+                    style={{ padding: "10px 12px 10px 40px", width: "100%", borderRadius: 16, fontSize: 14 }}
+                  />
+                </div>
+                
+                <button
+                  onClick={() => setIsTxDatePickerOpen(true)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "0 12px", borderRadius: 16,
+                    border: `1px solid ${txDateRange?.from || txDateRange?.to ? "var(--primary)" : "var(--outline-variant)"}`,
+                    background: txDateRange?.from || txDateRange?.to ? "var(--primary-container)" : "rgba(255,255,255,0.5)",
+                    color: txDateRange?.from || txDateRange?.to ? "var(--on-primary-container)" : "var(--on-surface-variant)",
+                    fontWeight: 600, fontSize: 13, cursor: "pointer", flexShrink: 0
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>calendar_month</span>
+                </button>
+              </div>
+
+              {/* Filters */}
+              <div style={{ 
+                display: "flex", 
+                gap: 8, 
+                overflowX: "auto", 
+                width: "100%",
+                paddingBottom: 4,
+                WebkitOverflowScrolling: "touch",
+                scrollbarWidth: "none",
+                msOverflowStyle: "none"
+              }} className="hide-scrollbar-inline">
+                <style dangerouslySetInnerHTML={{__html: `
+                  .hide-scrollbar-inline::-webkit-scrollbar {
+                    display: none;
+                  }
+                `}} />
+                {[{ label: "Semua", val: "" }, { label: "Pemasukan", val: "INCOME" }, { label: "Pengeluaran", val: "EXPENSE" }].map(f => (
+                  <button
+                    key={f.val}
+                    onClick={() => setTxFilterType(f.val)}
+                    style={{
+                      padding: "6px 16px",
+                      borderRadius: 12,
+                      border: `1px solid ${txFilterType === f.val ? "var(--primary)" : "var(--outline-variant)"}`,
+                      background: txFilterType === f.val ? "var(--primary-container)" : "rgba(255,255,255,0.5)",
+                      color: txFilterType === f.val ? "var(--on-primary-container)" : "var(--on-surface-variant)",
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                      flexShrink: 0
+                    }}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {isLoadingTx ? (
+              <div style={{ textAlign: "center", padding: 32, color: "var(--on-surface-variant)" }}>Memuat mutasi...</div>
+            ) : accountTx.length === 0 ? (
+              <div className="glass-card" style={{ textAlign: "center", padding: 32, color: "var(--on-surface-variant)" }}>
+                Belum ada transaksi di rekening ini.
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {accountTx.map((tx) => {
+                  const isExpense = tx.type === "EXPENSE";
+                  return (
+                    <div 
+                      key={tx.id} 
+                      className="glass-card" 
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 16, gap: 12, cursor: "pointer" }}
+                      onClick={() => setSelectedDetailTxId(tx.id)}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            width: 48, height: 48, borderRadius: 12, flexShrink: 0,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            background: isExpense ? "rgba(244, 67, 54, 0.1)" : "rgba(76, 175, 80, 0.1)",
+                          }}
+                        >
+                          <span
+                            className="material-symbols-outlined"
+                            style={{ color: isExpense ? "rgba(229, 57, 53, 1)" : "rgba(67, 160, 71, 1)" }}
+                          >
+                            {isExpense ? "shopping_cart" : "account_balance_wallet"}
+                          </span>
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <p className="text-body-md" style={{ fontWeight: 700, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {tx.description || "Tanpa deskripsi"}
+                          </p>
+                          <p className="text-body-sm" style={{ color: "var(--on-surface-variant)", margin: "2px 0 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {new Date(tx.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} • {tx.category?.name || "Umum"}
+                          </p>
+                        </div>
+                      </div>
+                      <span style={{ color: isExpense ? "var(--error)" : "var(--primary)", fontWeight: 600, fontSize: "15px", whiteSpace: "nowrap", flexShrink: 0 }}>
+                        {isExpense ? "-" : "+"}{formatRupiah(tx.amount)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {txTotalPages > 1 && (
+              <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 24, paddingBottom: 24 }}>
+                <button
+                  disabled={txPage <= 1}
+                  onClick={() => fetchAccountTransactions(selectedAccount.id, txPage - 1, txFilterType, txSearch, txDateRange?.from?.toISOString() || "", txDateRange?.to?.toISOString() || "")}
+                  style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--outline-variant)", background: "var(--surface)", cursor: txPage <= 1 ? "not-allowed" : "pointer", opacity: txPage <= 1 ? 0.5 : 1 }}
+                >
+                  Sebelumnya
+                </button>
+                <span style={{ alignSelf: "center", fontWeight: 600, color: "var(--on-surface)" }}>Hal {txPage} / {txTotalPages}</span>
+                <button
+                  disabled={txPage >= txTotalPages}
+                  onClick={() => fetchAccountTransactions(selectedAccount.id, txPage + 1, txFilterType, txSearch, txDateRange?.from?.toISOString() || "", txDateRange?.to?.toISOString() || "")}
+                  style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--outline-variant)", background: "var(--surface)", cursor: txPage >= txTotalPages ? "not-allowed" : "pointer", opacity: txPage >= txTotalPages ? 0.5 : 1 }}
+                >
+                  Selanjutnya
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Date Picker Modal for Tx Filter */}
+      <PeriodSelector 
+        isOpen={isTxDatePickerOpen}
+        onClose={() => setIsTxDatePickerOpen(false)}
+        onSelectRange={setTxDateRange}
+        initialRange={txDateRange}
+      />
+
+      {/* Transaction Detail Modal */}
+      <TransactionDetailModal
+        isOpen={!!selectedDetailTxId}
+        transactionId={selectedDetailTxId}
+        onClose={() => setSelectedDetailTxId(null)}
+      />
     </div>
   );
 }
