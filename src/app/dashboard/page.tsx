@@ -581,10 +581,9 @@ export default function DashboardPersonalPage() {
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: 16,
                   }}
                 >
-                  {data.recentTransactions.map((tx) => (
+                  {data.recentTransactions.map((tx, idx) => (
                     <div
                       key={tx.id}
                       className="dashboard-tx-item"
@@ -592,10 +591,8 @@ export default function DashboardPersonalPage() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        padding: 16,
-                        background: "rgba(255, 255, 255, 0.4)",
-                        borderRadius: 16,
-                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        padding: "16px 8px",
+                        borderBottom: idx === data.recentTransactions.length - 1 ? "none" : "1px solid rgba(0, 0, 0, 0.05)",
                         gap: 12,
                         cursor: "pointer"
                       }}
