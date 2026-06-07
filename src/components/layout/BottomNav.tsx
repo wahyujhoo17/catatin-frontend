@@ -76,8 +76,6 @@ export default function BottomNav() {
   // Camera/Scanner state
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [scanPhase, setScanPhase] = useState<ScanPhase>("camera");
-  const [isFlashing, setIsFlashing] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -87,7 +85,6 @@ export default function BottomNav() {
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [userAccounts, setUserAccounts] = useState<{id: string, name: string}[]>([]);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -104,41 +101,6 @@ export default function BottomNav() {
     }
   }, [pathname]);
 
-  const [cameraPermission, setCameraPermission] = useState<
-    "prompt" | "granted" | "denied" | "unavailable"
-  >("prompt");
-  const permissionChecked = useRef(false);
-
-  const startCamera = async () => {
-    try {
-      if (!permissionChecked.current && "permissions" in navigator) {
-        permissionChecked.current = true;
-        const result = await navigator.permissions.query({
-          name: "camera" as PermissionName,
-        });
-        setCameraPermission(result.state as "prompt" | "granted" | "denied");
-        if (result.state === "denied") {
-          return;
-        }
-      }
-
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
-      setStream(mediaStream);
-      setCameraPermission("granted");
-    } catch (err) {
-      console.warn("Camera access denied or unavailable.", err);
-      setCameraPermission("unavailable");
-    }
-  };
-
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      setStream(null);
-    }
-  };
 
   const fetchAccounts = async () => {
     try {
@@ -156,26 +118,20 @@ export default function BottomNav() {
 
   const handleOpenScan = (e: React.MouseEvent) => {
     e.preventDefault();
-    setIsCameraOpen(true);
-    setScanPhase("camera");
-    setCapturedImage(null);
-    setScanResult(null);
-    setScanError(null);
-    setSelectedAccount(null);
-    fetchAccounts();
-    startCamera();
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   const handleCloseScan = () => {
-    stopCamera();
     setIsCameraOpen(false);
     setScanPhase("camera");
     setCapturedImage(null);
     setScanResult(null);
     setScanError(null);
     setSelectedAccount(null);
-    setIsFlashing(false);
     setIsSaving(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // ─── Process receipt with AI ────────────────────────────────
@@ -272,34 +228,22 @@ export default function BottomNav() {
       reader.onloadend = () => {
         const base64 = reader.result as string;
         setCapturedImage(base64);
-        stopCamera();
-        setScanPhase("preview");
+        setIsCameraOpen(true);
+        setScanPhase("processing");
+        fetchAccounts();
+        processReceipt(base64);
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleRetake = () => {
-    setCapturedImage(null);
-    setScanResult(null);
-    setScanError(null);
-    setScanPhase("camera");
-    startCamera();
+    handleCloseScan();
+    setTimeout(() => {
+      if (fileInputRef.current) fileInputRef.current.click();
+    }, 100);
   };
 
-  const handleConfirmCapture = () => {
-    if (capturedImage) {
-      processReceipt(capturedImage);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-    };
-  }, [stream]);
 
   const handleConfirmAndSave = async () => {
     if (!scanResult || !scanResult.transactions || scanResult.transactions.length === 0) {
@@ -463,66 +407,11 @@ export default function BottomNav() {
             </button>
           </div>
 
-          {/* ─── PHASE: Camera / Preview / Processing ─── */}
-          {(scanPhase === "camera" ||
-            scanPhase === "preview" ||
-            scanPhase === "processing") && (
+          {/* ─── PHASE: Preview / Processing ─── */}
+          {(scanPhase === "preview" || scanPhase === "processing") && (
             <div className="camera-viewfinder">
-              {/* Live Camera Feed */}
-              {scanPhase === "camera" && stream ? (
-                <video
-                  ref={(el) => {
-                    if (el) {
-                      el.srcObject = stream;
-                    }
-                    videoRef.current = el;
-                  }}
-                  autoPlay
-                  playsInline
-                  muted
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              ) : scanPhase === "camera" && !stream ? (
-                /* Camera Unavailable Fallback */
-                <div
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    padding: 24,
-                  }}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{
-                      fontSize: 64,
-                      color: "var(--primary-fixed-dim)",
-                      opacity: 0.6,
-                    }}
-                  >
-                    receipt_long
-                  </span>
-                  <p
-                    className="text-body-sm"
-                    style={{
-                      textAlign: "center",
-                      color: "rgba(255,255,255,0.5)",
-                      marginTop: 12,
-                      lineHeight: "20px",
-                    }}
-                  >
-                    {cameraPermission === "denied"
-                      ? "Izin kamera ditolak. Buka Pengaturan > Kamera untuk mengizinkan akses."
-                      : "Kamera tidak tersedia. Silakan unggah foto struk dari galeri."}
-                  </p>
-                </div>
-              ) : (scanPhase === "preview" || scanPhase === "processing") &&
-                capturedImage ? (
-                /* Frozen Captured Image */
+              {/* Frozen Captured Image */}
+              {capturedImage && (
                 <img
                   src={capturedImage}
                   alt="Captured receipt"
@@ -532,7 +421,7 @@ export default function BottomNav() {
                     objectFit: "cover",
                   }}
                 />
-              ) : null}
+              )}
 
               {/* Processing overlay on frozen image */}
               {scanPhase === "processing" && (
@@ -589,76 +478,6 @@ export default function BottomNav() {
                       "0 0 15px rgba(207, 188, 255, 0.9), 0 0 30px var(--primary)",
                     zIndex: 31,
                     animation: "laser-scan 1.5s ease-in-out infinite",
-                  }}
-                />
-              )}
-
-              {/* Target Alignment Guide Corners (camera phase only) */}
-              {scanPhase === "camera" && (
-                <>
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 20,
-                      left: 20,
-                      width: 24,
-                      height: 24,
-                      borderTop: "4px solid white",
-                      borderLeft: "4px solid white",
-                      borderRadius: "6px 0 0 0",
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 20,
-                      right: 20,
-                      width: 24,
-                      height: 24,
-                      borderTop: "4px solid white",
-                      borderRight: "4px solid white",
-                      borderRadius: "0 6px 0 0",
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: 20,
-                      left: 20,
-                      width: 24,
-                      height: 24,
-                      borderBottom: "4px solid white",
-                      borderLeft: "4px solid white",
-                      borderRadius: "0 0 0 6px",
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: 20,
-                      right: 20,
-                      width: 24,
-                      height: 24,
-                      borderBottom: "4px solid white",
-                      borderRight: "4px solid white",
-                      borderRadius: "0 0 6px 0",
-                    }}
-                  />
-                </>
-              )}
-
-              {/* Flash Effect on Capture */}
-              {isFlashing && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                    height: "100%",
-                    background: "white",
-                    zIndex: 20,
-                    animation: "camera-flash 0.15s ease-out forwards",
                   }}
                 />
               )}
@@ -1236,6 +1055,15 @@ export default function BottomNav() {
           </div>
         </div>
       )}
+
+      {/* Hidden Native Camera/Gallery Picker */}
+      <input 
+        type="file" 
+        accept="image/*" 
+        ref={fileInputRef} 
+        onChange={handleFileUpload} 
+        style={{ display: "none" }} 
+      />
     </>
   );
 }
