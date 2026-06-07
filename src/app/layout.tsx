@@ -14,7 +14,9 @@ export const metadata: Metadata = {
     title: "Catatin",
   },
   icons: {
-    icon: "/logo/emblem.png",
+    icon: [
+      { url: "/icon-192.png", type: "image/png" }
+    ],
     apple: "/apple-icon.png",
   },
 };
