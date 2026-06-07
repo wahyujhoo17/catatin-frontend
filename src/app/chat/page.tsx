@@ -830,9 +830,12 @@ export default function ChatPage() {
                   }}
                 >
                   <div className="bubble-user">
-                    <p style={{ margin: 0 }}>
+                    <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
                       {msg.text.includes("Tolong analisis struk/gambar ini dengan detail")
-                        ? "📷 Mengirimkan struk untuk dianalisis..."
+                        ? msg.text.replace(
+                            /Tolong analisis struk.*?sesuai aturan\.?/g,
+                            "📷 Mengirimkan struk untuk dianalisis...\n"
+                          ).trim()
                         : msg.text}
                     </p>
                   </div>
@@ -947,29 +950,19 @@ export default function ChatPage() {
                               return (
                                 <button
                                   key={opt}
-                                  onClick={() =>
-                                    setSelectedAccount(
-                                      isSelected ? null : opt.trim(),
-                                    )
-                                  }
+                                  onClick={() => {
+                                    sendToAI(opt.trim());
+                                  }}
                                   style={{
                                     padding: "6px 16px",
                                     fontSize: 13,
-                                    fontWeight: isSelected ? 600 : 500,
+                                    fontWeight: 500,
                                     borderRadius: 20,
-                                    border: isSelected
-                                      ? "2px solid var(--primary)"
-                                      : "1px solid var(--outline-variant)",
-                                    background: isSelected
-                                      ? "var(--primary-container)"
-                                      : "rgba(255,255,255,0.7)",
-                                    color: isSelected
-                                      ? "var(--on-primary-container)"
-                                      : "var(--on-surface-variant)",
+                                    border: "1px solid var(--outline-variant)",
+                                    background: "rgba(255,255,255,0.7)",
+                                    color: "var(--on-surface-variant)",
                                     cursor: "pointer",
-                                    boxShadow: isSelected
-                                      ? "0 2px 8px rgba(79,55,138,0.2)"
-                                      : "none",
+                                    boxShadow: "none",
                                     transition: "all 0.15s ease",
                                   }}
                                 >
