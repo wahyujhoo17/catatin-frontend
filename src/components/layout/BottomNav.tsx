@@ -197,30 +197,6 @@ export default function BottomNav() {
     }
   };
 
-  const handleCapture = () => {
-    if (!videoRef.current) return;
-
-    // 1. Capture the frame
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      const base64 = canvas.toDataURL("image/jpeg", 0.8);
-      setCapturedImage(base64);
-    }
-
-    // 2. Flash effect
-    setIsFlashing(true);
-    setTimeout(() => {
-      setIsFlashing(false);
-      // 3. Freeze: stop camera stream and show preview
-      stopCamera();
-      setScanPhase("preview");
-    }, 150);
-  };
-
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
