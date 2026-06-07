@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
+import { useState, useRef, useEffect, useCallback, useLayoutEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -238,6 +238,27 @@ export default function ChatPage() {
   // Ref to hold scrollHeight before new messages render
   const previousScrollHeightRef = useRef<number | null>(null);
 
+  // Filter out scanner conversations (the prompt and the immediate AI reply)
+  const displayMessages = useMemo(() => {
+    const filtered = [];
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i];
+      if (
+        msg.type === "user" &&
+        msg.text.includes("Tolong analisis struk/gambar ini dengan detail")
+      ) {
+        // Skip this scanner prompt
+        // Also skip the immediate next bot response
+        if (i + 1 < messages.length && messages[i + 1].type === "bot") {
+          i++; // increment i to skip the bot message too
+        }
+        continue;
+      }
+      filtered.push(msg);
+    }
+    return filtered;
+  }, [messages]);
+
   const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   };
@@ -294,11 +315,7 @@ export default function ChatPage() {
     } finally {
       setIsLoadingHistory(false);
       setInitialLoadDone(true);
-      
-      // Delay releasing the lock slightly to prevent rapid consecutive scroll triggers
-      setTimeout(() => {
-        isFetchingRef.current = false;
-      }, 500);
+      isFetchingRef.current = false;
     }
   }, [hasMore]);
 
@@ -765,18 +782,34 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Welcome Section */}
-        {messages.length <= 1 && initialLoadDone && messages.some(m => m.id === "welcome") && (
-          <div
-            className="animate-fade-slide-up"
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center",
-              marginBottom: "var(--stack-gap-lg)",
-            }}
-          >
+        {/* Loading Skeleton & Welcome Screen */}
+        {!initialLoadDone ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "40px 20px" }}>
+            <div style={{ display: "flex", gap: 8, alignSelf: "flex-end", opacity: 0.4 }}>
+              <div style={{ width: 180, height: 48, borderRadius: 16, background: "var(--outline-variant)", animation: "pulse 1.5s infinite" }} />
+            </div>
+            <div style={{ display: "flex", gap: 8, alignSelf: "flex-start", opacity: 0.4 }}>
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--outline-variant)", animation: "pulse 1.5s infinite" }} />
+              <div style={{ width: 220, height: 60, borderRadius: 16, background: "var(--outline-variant)", animation: "pulse 1.5s infinite" }} />
+            </div>
+            <div style={{ display: "flex", gap: 8, alignSelf: "flex-end", opacity: 0.4 }}>
+              <div style={{ width: 140, height: 48, borderRadius: 16, background: "var(--outline-variant)", animation: "pulse 1.5s infinite" }} />
+            </div>
+          </div>
+        ) : (
+          displayMessages.length === 0 && (
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                alignItems: "center",
+                textAlign: "center",
+                padding: 24,
+                marginTop: "10vh",
+              }}
+            >
             <div
               className="glass-card"
               style={{
@@ -811,11 +844,12 @@ export default function ChatPage() {
               ketik atau kirim foto struk.
             </p>
           </div>
+          )
         )}
 
         {/* Messages */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {messages.map((msg, idx) => (
+          {displayMessages.map((msg, idx) => (
             <div
               key={msg.id}
               className={msg.isHistory ? "" : "animate-fade-slide-up"}
@@ -935,7 +969,7 @@ export default function ChatPage() {
                             <ChartWidget type={chartType} />
                           )}
                         </div>
-                        {options.length > 0 && !msg.isStreaming && idx === messages.length - 1 && (
+                        {options.length > 0 && !msg.isStreaming && idx === displayMessages.length - 1 && (
                           <div
                             style={{
                               display: "flex",
@@ -1213,23 +1247,7 @@ export default function ChatPage() {
                 "0 -4px 30px rgba(0,0,0,0.06), 0 10px 40px rgba(0,0,0,0.06)",
             }}
           >
-            <button
-              type="button"
-              onClick={handleAttachImage}
-              style={{
-                padding: 8,
-                color: capturedImage
-                  ? "var(--primary)"
-                  : "var(--on-surface-variant)",
-                borderRadius: "50%",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-              }}
-              aria-label="Lampirkan gambar"
-            >
-              <span className="material-symbols-outlined">image</span>
-            </button>
+
             <input
               type="text"
               value={input}
@@ -1247,7 +1265,7 @@ export default function ChatPage() {
                 color: "var(--on-surface)",
                 fontSize: 16,
                 lineHeight: "24px",
-                padding: "8px 4px",
+                padding: "8px 4px 8px 16px",
               }}
               id="chat-input"
             />
