@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -70,6 +70,7 @@ interface Message {
   text: string;
   time: string;
   isStreaming?: boolean;
+  isHistory?: boolean;
 }
 
 const suggestions = [
@@ -225,16 +226,118 @@ export default function ChatPage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [isTopIntersecting, setIsTopIntersecting] = useState(false);
+
+  const prevScrollY = useRef(0);
+
+  const scrollToBottom = (behavior: "smooth" | "auto" = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior });
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Only scroll to bottom automatically if we are NOT loading history
+    // (so we don't jump to bottom when older messages are loaded)
+    if (!isLoadingHistory && page === 1) {
+      // Use auto behavior if it's the very first time we have real messages
+      scrollToBottom(initialLoadDone ? "smooth" : "auto");
+    }
+  }, [messages, isLoadingHistory, page, initialLoadDone]);
+  const isFetchingRef = useRef(false);
+
+  // Fetch history function
+  const fetchHistory = useCallback(async (pageToLoad: number) => {
+    if (!hasMore || isFetchingRef.current) return;
+    
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      isFetchingRef.current = true;
+      setIsLoadingHistory(true);
+      const res = await fetch(`${API_BASE}/api/ai/chat/history?page=${pageToLoad}&limit=6`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error("Failed to fetch history");
+      
+      const data = await res.json();
+      const fetchedMessages: Message[] = (data.messages || []).map((m: any) => ({
+        ...m,
+        isHistory: pageToLoad > 1 // only mark older pages as history to bypass animations
+      }));
+      
+      if (fetchedMessages.length > 0) {
+        // Record scroll position before prepending messages
+        const scrollContainer = document.documentElement || document.body;
+        const oldScrollHeight = scrollContainer.scrollHeight;
+
+        setMessages((prev) => {
+          if (pageToLoad === 1) {
+            const filtered = prev.filter(m => m.id !== "welcome");
+            if (filtered.length === 0) return fetchedMessages;
+            return [...fetchedMessages, ...filtered];
+          } else {
+            return [...fetchedMessages, ...prev];
+          }
+        });
+      }
+
+      setHasMore(data.pagination.page < data.pagination.totalPages);
+      setPage(pageToLoad);
+    } catch (err) {
+      console.error("Failed to load chat history:", err);
+    } finally {
+      setIsLoadingHistory(false);
+      setInitialLoadDone(true);
+      
+      // Delay releasing the lock slightly to prevent rapid consecutive scroll triggers
+      setTimeout(() => {
+        isFetchingRef.current = false;
+      }, 500);
+    }
+  }, [hasMore]);
+
+  // Initial load
+  useEffect(() => {
+    if (!initialLoadDone) {
+      fetchHistory(1);
+    }
+  }, [fetchHistory, initialLoadDone]);
+
+  // 1. Always keep observer active to track if top is intersecting
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        setIsTopIntersecting(entries[0].isIntersecting);
+      },
+      {
+        root: null,
+        rootMargin: "250px", // Trigger when top is within 250px
+        threshold: 0,
+      }
+    );
+
+    const target = topRef.current;
+    if (target) observer.observe(target);
+
+    return () => {
+      if (target) observer.unobserve(target);
+    };
+  }, []);
+
+  // 2. Fetch whenever top is intersecting and we are not already loading
+  useEffect(() => {
+    if (isTopIntersecting && !isLoadingHistory && hasMore && initialLoadDone) {
+      fetchHistory(page + 1);
+    }
+  }, [isTopIntersecting, isLoadingHistory, hasMore, initialLoadDone, fetchHistory, page]);
 
   // Handle scanned image from BottomNav
   useEffect(() => {
@@ -613,10 +716,47 @@ export default function ChatPage() {
           display: "flex",
           flexDirection: "column",
           paddingBottom: 100,
+          overflowAnchor: "auto", // explicitly enable native scroll anchoring
         }}
       >
+        <div ref={topRef} />
+        {isLoadingHistory && page > 1 && (
+          <div style={{
+            position: "absolute",
+            top: 96,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "var(--surface-container)",
+            border: "1px solid var(--outline-variant)",
+            backdropFilter: "blur(8px)",
+            padding: "8px 16px",
+            borderRadius: "100px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            zIndex: 40,
+            color: "var(--on-surface)",
+            fontSize: 13,
+            fontWeight: 500,
+          }}>
+            <style>{`
+              @keyframes loader-spin {
+                100% { transform: rotate(360deg); }
+              }
+            `}</style>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: 16, animation: "loader-spin 1s linear infinite", color: "var(--primary)" }}
+            >
+              sync
+            </span>
+            Memuat riwayat...
+          </div>
+        )}
+
         {/* Welcome Section */}
-        {messages.length <= 1 && (
+        {messages.length <= 1 && initialLoadDone && messages.some(m => m.id === "welcome") && (
           <div
             className="animate-fade-slide-up"
             style={{
@@ -668,8 +808,8 @@ export default function ChatPage() {
           {messages.map((msg, idx) => (
             <div
               key={msg.id}
-              className="animate-fade-slide-up"
-              style={{ animationDelay: `${idx * 0.05}s` }}
+              className={msg.isHistory ? "" : "animate-fade-slide-up"}
+              style={msg.isHistory ? {} : { animationDelay: `${idx * 0.05}s` }}
             >
               {msg.type === "user" && (
                 <div
@@ -778,7 +918,7 @@ export default function ChatPage() {
                             <ChartWidget type={chartType} />
                           )}
                         </div>
-                        {options.length > 0 && !msg.isStreaming && (
+                        {options.length > 0 && !msg.isStreaming && idx === messages.length - 1 && (
                           <div
                             style={{
                               display: "flex",
