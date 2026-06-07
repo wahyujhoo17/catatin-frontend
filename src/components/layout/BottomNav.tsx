@@ -233,7 +233,7 @@ export default function BottomNav() {
     // Resolve account ID if user selected one from the UI options
     let finalAccountId: string | undefined;
     if (selectedAccount) {
-      const acc = userAccounts.find(a => a.name === selectedAccount);
+      const acc = userAccounts.find(a => a.name.toLowerCase() === selectedAccount.toLowerCase());
       if (acc) finalAccountId = acc.id;
     }
 
