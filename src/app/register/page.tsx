@@ -8,7 +8,12 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, isLoggedIn, isLoading: authLoading } = useAuth();
+  const {
+    register,
+    loginWithGoogle,
+    isLoggedIn,
+    isLoading: authLoading,
+  } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -536,6 +541,7 @@ export default function RegisterPage() {
                 className="btn-secondary"
                 style={{ borderRadius: 12, width: "100%" }}
                 id="register-google"
+                onClick={loginWithGoogle}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24">
                   <path

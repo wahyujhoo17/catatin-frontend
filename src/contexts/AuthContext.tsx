@@ -49,6 +49,7 @@ interface AuthContextType {
   logout: () => void;
   updateMode: (mode: "POS" | "PERSONAL") => Promise<void>;
   refreshSession: () => Promise<void>;
+  loginWithGoogle: () => void;
 }
 
 // ─── Config ────────────────────────────────────────────────────
@@ -141,7 +142,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(stored);
     } catch (err) {
       // PWA Fix: Do NOT clear tokens on network error (user might be offline)
-      console.warn("[Auth] Network error during session refresh, keeping tokens:", err);
+      console.warn(
+        "[Auth] Network error during session refresh, keeping tokens:",
+        err,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -257,6 +261,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data;
   };
 
+  // ─── Login with Google ──────────────────────────────────────
+  const loginWithGoogle = () => {
+    window.location.href = `${API_BASE}/api/auth/google`;
+  };
+
   // ─── Logout ─────────────────────────────────────────────────
   const logout = () => {
     clearTokens();
@@ -280,6 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         updateMode,
         refreshSession,
+        loginWithGoogle,
       }}
     >
       {children}

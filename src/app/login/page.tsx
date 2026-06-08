@@ -8,7 +8,12 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isLoggedIn, isLoading: authLoading } = useAuth();
+  const {
+    login,
+    loginWithGoogle,
+    isLoggedIn,
+    isLoading: authLoading,
+  } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -70,11 +75,11 @@ export default function LoginPage() {
         <img
           src="/icon-192.png"
           alt="Catatin Logo"
-          style={{ 
-            width: 80, 
-            height: 80, 
+          style={{
+            width: 80,
+            height: 80,
             marginBottom: 32,
-            animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite" 
+            animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
           }}
         />
         <div
@@ -172,7 +177,18 @@ export default function LoginPage() {
               gap: 16,
             }}
           >
-            <div style={{ position: "relative", width: "100%", height: 60, marginBottom: 16, overflow: "hidden", display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                height: 60,
+                marginBottom: 16,
+                overflow: "hidden",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <Image
                 src="/logo/logo.png"
                 alt="Catatin"
@@ -430,9 +446,7 @@ export default function LoginPage() {
               }}
               id="login-google"
               disabled={isLoading}
-              onClick={() => {
-                // Future Google Login Implementation
-              }}
+              onClick={loginWithGoogle}
             >
               <svg width="20" height="20" viewBox="0 0 24 24">
                 <path
@@ -525,7 +539,17 @@ export default function LoginPage() {
         }}
         className="hidden-mobile"
       >
-        <div style={{ position: "relative", width: 100, height: 32, overflow: "hidden", display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+        <div
+          style={{
+            position: "relative",
+            width: 100,
+            height: 32,
+            overflow: "hidden",
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+          }}
+        >
           <Image
             src="/logo/logo.png"
             alt="Catatin Logo"
