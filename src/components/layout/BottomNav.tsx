@@ -83,7 +83,9 @@ export default function BottomNav() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
-  const [userAccounts, setUserAccounts] = useState<{id: string, name: string}[]>([]);
+  const [userAccounts, setUserAccounts] = useState<
+    { id: string; name: string }[]
+  >([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -101,13 +103,12 @@ export default function BottomNav() {
     }
   }, [pathname]);
 
-
   const fetchAccounts = async () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
       const res = await fetch(`${API_BASE}/api/wallet`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (data.accounts) setUserAccounts(data.accounts);
@@ -220,20 +221,25 @@ export default function BottomNav() {
     }, 100);
   };
 
-
   const handleConfirmAndSave = async () => {
-    if (!scanResult || !scanResult.transactions || scanResult.transactions.length === 0) {
+    if (
+      !scanResult ||
+      !scanResult.transactions ||
+      scanResult.transactions.length === 0
+    ) {
       handleCloseScan();
       return;
     }
 
     setIsSaving(true);
     const token = localStorage.getItem("token");
-    
+
     // Resolve account ID if user selected one from the UI options
     let finalAccountId: string | undefined;
     if (selectedAccount) {
-      const acc = userAccounts.find(a => a.name.toLowerCase() === selectedAccount.toLowerCase());
+      const acc = userAccounts.find(
+        (a) => a.name.toLowerCase() === selectedAccount.toLowerCase(),
+      );
       if (acc) finalAccountId = acc.id;
     }
 
@@ -254,25 +260,26 @@ export default function BottomNav() {
             date: (tx as any).date || new Date().toISOString(),
           }),
         });
-        
+
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || "Gagal menyimpan transaksi dari server");
+          throw new Error(
+            errData.error || "Gagal menyimpan transaksi dari server",
+          );
         }
       }
       // Transition smoothly to success phase
       setIsSaving(false);
       setScanPhase("success");
-      
+
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("transactionSaved"));
       }
-      
+
       // Auto-close after animation
       setTimeout(() => {
         handleCloseScan();
       }, 2500);
-
     } catch (e: any) {
       setScanError(e.message || "Gagal menyimpan transaksi");
       setIsSaving(false);
@@ -394,7 +401,8 @@ export default function BottomNav() {
                   style={{
                     width: "100%",
                     height: "100%",
-                    objectFit: "cover",
+                    objectFit: "contain",
+                    background: "#0d0b11",
                   }}
                 />
               )}
@@ -530,20 +538,23 @@ export default function BottomNav() {
                       height: "100%",
                     }}
                   >
-                    <div style={{
-                      width: 80,
-                      height: 80,
-                      borderRadius: "50%",
-                      background: "rgba(76, 175, 80, 0.15)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      animation: "pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
-                    }}>
+                    <div
+                      style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: "50%",
+                        background: "rgba(76, 175, 80, 0.15)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        animation:
+                          "pop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                      }}
+                    >
                       <span
                         className="material-symbols-outlined"
-                        style={{ 
-                          fontSize: 48, 
+                        style={{
+                          fontSize: 48,
                           color: "#4CAF50",
                         }}
                       >
@@ -551,10 +562,20 @@ export default function BottomNav() {
                       </span>
                     </div>
                     <div>
-                      <h3 className="text-headline-sm" style={{ color: "var(--on-surface)", marginBottom: 8, fontWeight: 700 }}>
+                      <h3
+                        className="text-headline-sm"
+                        style={{
+                          color: "var(--on-surface)",
+                          marginBottom: 8,
+                          fontWeight: 700,
+                        }}
+                      >
                         Berhasil Disimpan!
                       </h3>
-                      <p className="text-body-md" style={{ color: "var(--on-surface-variant)" }}>
+                      <p
+                        className="text-body-md"
+                        style={{ color: "var(--on-surface-variant)" }}
+                      >
                         Transaksi Anda sudah aman tercatat.
                       </p>
                     </div>
@@ -813,7 +834,9 @@ export default function BottomNav() {
                       gap: 6,
                       transition: "opacity 0.2s",
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.opacity = "0.9")
+                    }
                     onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                   >
                     <span
@@ -825,8 +848,11 @@ export default function BottomNav() {
                     Scan Lagi
                   </button>
                   {(() => {
-                    const askMatch = scanResult?.content?.match(/\[ASK_ACCOUNT:(.*?)\]/);
-                    const needsAccount = askMatch && askMatch[1].split(",").length > 0;
+                    const askMatch = scanResult?.content?.match(
+                      /\[ASK_ACCOUNT:(.*?)\]/,
+                    );
+                    const needsAccount =
+                      askMatch && askMatch[1].split(",").length > 0;
                     const isReady = !needsAccount || selectedAccount !== null;
 
                     return (
@@ -847,12 +873,20 @@ export default function BottomNav() {
                           alignItems: "center",
                           justifyContent: "center",
                           gap: 6,
-                          boxShadow: isReady ? "0 4px 16px rgba(79, 55, 138, 0.4)" : "none",
+                          boxShadow: isReady
+                            ? "0 4px 16px rgba(79, 55, 138, 0.4)"
+                            : "none",
                           transition: "opacity 0.2s",
                           opacity: isSaving || !isReady ? 0.5 : 1,
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.opacity = isSaving || !isReady ? "0.5" : "0.9")}
-                        onMouseLeave={(e) => (e.currentTarget.style.opacity = isSaving || !isReady ? "0.5" : "1")}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.opacity =
+                            isSaving || !isReady ? "0.5" : "0.9")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.opacity =
+                            isSaving || !isReady ? "0.5" : "1")
+                        }
                       >
                         <span
                           className="material-symbols-outlined"
@@ -869,25 +903,25 @@ export default function BottomNav() {
             </div>
           )}
 
-            {/* Processing Phase: just a subtle hint */}
-            {scanPhase === "processing" && (
-              <p
-                className="text-body-sm"
-                style={{ color: "rgba(255,255,255,0.5)", textAlign: "center" }}
-              >
-                Sedang menganalisa struk dengan AI Vision...
-              </p>
-            )}
+          {/* Processing Phase: just a subtle hint */}
+          {scanPhase === "processing" && (
+            <p
+              className="text-body-sm"
+              style={{ color: "rgba(255,255,255,0.5)", textAlign: "center" }}
+            >
+              Sedang menganalisa struk dengan AI Vision...
+            </p>
+          )}
         </div>
       )}
 
       {/* Hidden Native Camera/Gallery Picker */}
-      <input 
-        type="file" 
-        accept="image/*" 
-        ref={fileInputRef} 
-        onChange={handleFileUpload} 
-        style={{ display: "none" }} 
+      <input
+        type="file"
+        accept="image/*"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        style={{ display: "none" }}
       />
     </>
   );
