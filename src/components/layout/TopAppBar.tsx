@@ -33,7 +33,7 @@ export default function TopAppBar({
             alt="Catatin Logo"
             width={120}
             height={120}
-            style={{ objectFit: "contain" }}
+            style={{ objectFit: "contain", height: "auto" }}
             priority
           />
         </div>

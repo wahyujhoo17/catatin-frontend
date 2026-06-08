@@ -22,6 +22,8 @@ export default function SettingsPage() {
   const [activeWS, setActiveWS] = useState("personal");
   const [isWSOpen, setIsWSOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isClearingChat, setIsClearingChat] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   // Profile states
   const [profileName, setProfileName] = useState("");
@@ -63,6 +65,36 @@ export default function SettingsPage() {
       await updateMode(mode === "pos" ? "POS" : "PERSONAL");
     } catch {
       // silently fail - localStorage is the fallback
+    }
+  };
+
+  const handleClearChat = async () => {
+    setIsClearingChat(true);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+      const res = await fetch(`${API_BASE}/api/ai/chat/clear`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Gagal menghapus riwayat chat");
+      }
+
+      alert("Riwayat obrolan berhasil dibersihkan.");
+      setIsConfirmOpen(false);
+    } catch (err: any) {
+      alert(err.message || "Terjadi kesalahan saat menghapus chat.");
+    } finally {
+      setIsClearingChat(false);
     }
   };
 
@@ -553,7 +585,7 @@ export default function SettingsPage() {
             </Link>
 
             {/* Security Toggle */}
-            <div className="settings-row" style={{ borderBottom: "none" }}>
+            <div className="settings-row">
               <div>
                 <p className="text-body-md" style={{ fontWeight: 600 }}>
                   Keamanan Biometrik
@@ -571,6 +603,44 @@ export default function SettingsPage() {
                 onClick={() => setBiometricSec(!biometricSec)}
                 aria-label="Toggle keamanan biometrik"
               />
+            </div>
+
+            {/* Clear Chat History */}
+            <div className="settings-row" style={{ borderBottom: "none" }}>
+              <div>
+                <p className="text-body-md" style={{ fontWeight: 600, color: "var(--error)" }}>
+                  Hapus Riwayat Chat
+                </p>
+                <p
+                  className="text-body-sm"
+                  style={{ color: "var(--on-surface-variant)" }}
+                >
+                  Bersihkan semua pesan obrolan dengan Catatin AI
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsConfirmOpen(true)}
+                disabled={isClearingChat}
+                style={{
+                  background: "rgba(186, 26, 26, 0.08)",
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--error)",
+                  cursor: isClearingChat ? "not-allowed" : "pointer",
+                  border: "none",
+                  transition: "all 0.2s ease",
+                }}
+                aria-label="Hapus Riwayat Chat"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>
+                  delete
+                </span>
+              </button>
             </div>
           </section>
 
@@ -684,6 +754,130 @@ export default function SettingsPage() {
       </main>
 
       <BottomNav />
+
+      {/* Custom Confirmation Modal */}
+      {isConfirmOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(29, 27, 32, 0.5)", // dark overlay matching var(--on-surface)
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 24,
+          }}
+        >
+          <div
+            className="glass-card animate-fade-slide-up"
+            style={{
+              padding: 24,
+              width: "100%",
+              maxWidth: 380,
+              background: "white",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
+              border: "1px solid rgba(203, 196, 210, 0.4)",
+            }}
+          >
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "rgba(186, 26, 26, 0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px auto",
+                  color: "var(--error)",
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 32 }}>
+                  delete_forever
+                </span>
+              </div>
+              <h3
+                className="text-headline-sm"
+                style={{ fontSize: 18, color: "var(--on-surface)", fontWeight: 700, margin: 0 }}
+              >
+                Hapus Riwayat Chat?
+              </h3>
+              <p
+                className="text-body-sm"
+                style={{ color: "var(--on-surface-variant)", marginTop: 10, lineHeight: "20px" }}
+              >
+                Apakah Anda yakin ingin menghapus seluruh riwayat obrolan dengan Catatin AI? Tindakan ini akan menghapus semua pesan secara permanen dan tidak dapat dibatalkan.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                type="button"
+                onClick={() => setIsConfirmOpen(false)}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: 12,
+                  border: "1px solid var(--outline-variant)",
+                  background: "transparent",
+                  color: "var(--on-surface-variant)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  textAlign: "center",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleClearChat}
+                disabled={isClearingChat}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: "var(--error)",
+                  color: "white",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: isClearingChat ? "not-allowed" : "pointer",
+                  textAlign: "center",
+                  boxShadow: "0 4px 12px rgba(186, 26, 26, 0.2)",
+                  transition: "all 0.15s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                {isClearingChat ? (
+                  <>
+                    <span
+                      className="material-symbols-outlined"
+                      style={{ fontSize: 18, animation: "spin 1s linear infinite" }}
+                    >
+                      progress_activity
+                    </span>
+                    Proses...
+                  </>
+                ) : (
+                  "Ya, Hapus"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
