@@ -725,7 +725,6 @@ export default function TransactionsPage() {
               style={{
                 fontWeight: 600,
                 fontSize: 14,
-                color: "var(--on-surface)",
                 padding: "8px 16px",
                 borderRadius: 10,
                 background: "var(--primary-container)",
