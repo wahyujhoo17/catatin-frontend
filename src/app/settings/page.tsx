@@ -24,6 +24,8 @@ export default function SettingsPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isClearingChat, setIsClearingChat] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
 
   // Profile states
   const [profileName, setProfileName] = useState("");
@@ -77,7 +79,8 @@ export default function SettingsPage() {
     }
 
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+      const API_BASE =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
       const res = await fetch(`${API_BASE}/api/ai/chat/clear`, {
         method: "DELETE",
         headers: {
@@ -89,8 +92,16 @@ export default function SettingsPage() {
         throw new Error("Gagal menghapus riwayat chat");
       }
 
-      alert("Riwayat obrolan berhasil dibersihkan.");
+      // Show success toast with animation
       setIsConfirmOpen(false);
+      setShowSuccessToast(true);
+      // Delay sedikit agar modal close dulu sebelum toast muncul
+      setTimeout(() => setToastVisible(true), 150);
+      // Auto-dismiss setelah 4 detik
+      setTimeout(() => {
+        setToastVisible(false);
+        setTimeout(() => setShowSuccessToast(false), 400);
+      }, 4000);
     } catch (err: any) {
       alert(err.message || "Terjadi kesalahan saat menghapus chat.");
     } finally {
@@ -493,7 +504,8 @@ export default function SettingsPage() {
                     className="text-body-sm"
                     style={{ color: "var(--on-surface-variant)" }}
                   >
-                    Gunakan Catatin AI atau pasang API Key Anda sendiri (OpenRouter, Groq, dll)
+                    Gunakan Catatin AI atau pasang API Key Anda sendiri
+                    (OpenRouter, Groq, dll)
                   </p>
                 </div>
                 <span
@@ -605,42 +617,38 @@ export default function SettingsPage() {
               />
             </div>
 
-            {/* Clear Chat History */}
-            <div className="settings-row" style={{ borderBottom: "none" }}>
-              <div>
-                <p className="text-body-md" style={{ fontWeight: 600, color: "var(--error)" }}>
-                  Hapus Riwayat Chat
+            {/* Chat History */}
+            <div
+              className="settings-row"
+              style={{ borderBottom: "none", cursor: "pointer" }}
+              onClick={() => setIsConfirmOpen(true)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") setIsConfirmOpen(true);
+              }}
+              aria-label="Buka pengaturan riwayat chat"
+            >
+              <div style={{ flex: 1 }}>
+                <p className="text-body-md" style={{ fontWeight: 600 }}>
+                  Riwayat Chat
                 </p>
                 <p
                   className="text-body-sm"
                   style={{ color: "var(--on-surface-variant)" }}
                 >
-                  Bersihkan semua pesan obrolan dengan Catatin AI
+                  Kelola riwayat obrolan dengan Catatin AI
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsConfirmOpen(true)}
-                disabled={isClearingChat}
+              <span
+                className="material-symbols-outlined"
                 style={{
-                  background: "rgba(186, 26, 26, 0.08)",
-                  width: 40,
-                  height: 40,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "var(--error)",
-                  cursor: isClearingChat ? "not-allowed" : "pointer",
-                  border: "none",
-                  transition: "all 0.2s ease",
+                  color: "var(--primary)",
+                  fontSize: 24,
                 }}
-                aria-label="Hapus Riwayat Chat"
               >
-                <span className="material-symbols-outlined" style={{ fontSize: 22 }}>
-                  delete
-                </span>
-              </button>
+                chevron_right
+              </span>
             </div>
           </section>
 
@@ -719,7 +727,7 @@ export default function SettingsPage() {
             onClick={async () => {
               setIsLoggingOut(true);
               // Tambahkan sedikit delay agar animasi loading terlihat
-              await new Promise(resolve => setTimeout(resolve, 800));
+              await new Promise((resolve) => setTimeout(resolve, 800));
               logout();
               router.push("/login");
             }}
@@ -755,7 +763,7 @@ export default function SettingsPage() {
 
       <BottomNav />
 
-      {/* Custom Confirmation Modal */}
+      {/* Chat History Modal */}
       {isConfirmOpen && (
         <div
           style={{
@@ -764,72 +772,310 @@ export default function SettingsPage() {
             left: 0,
             right: 0,
             bottom: 0,
-            background: "rgba(29, 27, 32, 0.5)", // dark overlay matching var(--on-surface)
+            background: "rgba(29, 27, 32, 0.5)",
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 1000,
-            padding: 24,
+            padding: 16,
           }}
         >
           <div
-            className="glass-card animate-fade-slide-up"
+            className="animate-fade-slide-up"
             style={{
-              padding: 24,
               width: "100%",
-              maxWidth: 380,
-              background: "white",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
-              border: "1px solid rgba(203, 196, 210, 0.4)",
+              maxWidth: 400,
+              maxHeight: "88dvh",
+              background: "var(--surface-container-lowest)",
+              borderRadius: 28,
+              boxShadow: "0 20px 48px rgba(0,0,0,0.18)",
+              border: "1px solid var(--outline-variant)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
             }}
           >
-            <div style={{ textAlign: "center", marginBottom: 20 }}>
-              <div
+            {/* ── Header ── */}
+            <div
+              style={{
+                padding: "28px 24px 8px",
+                textAlign: "center",
+                flexShrink: 0,
+              }}
+            >
+              {/* Close button */}
+              <button
+                type="button"
+                onClick={() => setIsConfirmOpen(false)}
                 style={{
-                  width: 56,
-                  height: 56,
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  width: 32,
+                  height: 32,
                   borderRadius: "50%",
-                  background: "rgba(186, 26, 26, 0.1)",
+                  border: "none",
+                  background: "var(--surface-container-high)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  margin: "0 auto 16px auto",
+                  cursor: "pointer",
+                  color: "var(--on-surface-variant)",
+                }}
+                aria-label="Tutup"
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 18 }}
+                >
+                  close
+                </span>
+              </button>
+
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: "50%",
+                  background:
+                    "linear-gradient(135deg, rgba(186, 26, 26, 0.08), rgba(186, 26, 26, 0.15))",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 20px auto",
                   color: "var(--error)",
                 }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: 32 }}>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 36 }}
+                >
                   delete_forever
                 </span>
               </div>
               <h3
-                className="text-headline-sm"
-                style={{ fontSize: 18, color: "var(--on-surface)", fontWeight: 700, margin: 0 }}
+                style={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: "var(--on-surface)",
+                  margin: "0 0 6px 0",
+                  letterSpacing: "-0.3px",
+                }}
               >
-                Hapus Riwayat Chat?
+                Hapus Riwayat Chat
               </h3>
               <p
-                className="text-body-sm"
-                style={{ color: "var(--on-surface-variant)", marginTop: 10, lineHeight: "20px" }}
+                style={{
+                  fontSize: 14,
+                  color: "var(--on-surface-variant)",
+                  margin: 0,
+                  lineHeight: "22px",
+                  padding: "0 8px",
+                }}
               >
-                Apakah Anda yakin ingin menghapus seluruh riwayat obrolan dengan Catatin AI? Tindakan ini akan menghapus semua pesan secara permanen dan tidak dapat dibatalkan.
+                Semua percakapan dengan AI akan dihapus secara permanen dan
+                tidak dapat dikembalikan.
               </p>
             </div>
 
-            <div style={{ display: "flex", gap: 12 }}>
+            {/* ── Scrollable content ── */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                WebkitOverflowScrolling: "touch",
+                padding: "8px 24px 4px",
+              }}
+            >
+              {/* Info card: What gets deleted */}
+              <div
+                style={{
+                  background: "var(--surface-container-low)",
+                  borderRadius: 16,
+                  padding: 16,
+                  marginBottom: 12,
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "flex-start",
+                }}
+              >
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    background: "rgba(79, 55, 138, 0.1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    color: "var(--primary)",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 18 }}
+                  >
+                    chat_bubble
+                  </span>
+                </div>
+                <div>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--on-surface)",
+                      margin: "0 0 6px",
+                    }}
+                  >
+                    Data yang akan dihapus:
+                  </p>
+                  <ul
+                    style={{
+                      fontSize: 13,
+                      color: "var(--on-surface-variant)",
+                      margin: 0,
+                      paddingLeft: 18,
+                      lineHeight: "24px",
+                      listStyleType: "disc",
+                    }}
+                  >
+                    <li>Semua pesan dan balasan chat</li>
+                    <li>Riwayat percakapan dengan AI</li>
+                    <li>Konteks &amp; memori percakapan</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Info card: What stays */}
+              <div
+                style={{
+                  background: "var(--surface-container-low)",
+                  borderRadius: 16,
+                  padding: 16,
+                  marginBottom: 12,
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "flex-start",
+                }}
+              >
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    background: "rgba(56, 142, 60, 0.1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    color: "#388e3c",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 18 }}
+                  >
+                    shield
+                  </span>
+                </div>
+                <div>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--on-surface)",
+                      margin: "0 0 6px",
+                    }}
+                  >
+                    Data yang tetap aman:
+                  </p>
+                  <ul
+                    style={{
+                      fontSize: 13,
+                      color: "var(--on-surface-variant)",
+                      margin: 0,
+                      paddingLeft: 18,
+                      lineHeight: "24px",
+                      listStyleType: "disc",
+                    }}
+                  >
+                    <li>Akun &amp; data profil Anda</li>
+                    <li>Transaksi &amp; keuangan</li>
+                    <li>Pengaturan &amp; preferensi</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Warning card */}
+              <div
+                style={{
+                  background: "rgba(186, 26, 26, 0.05)",
+                  borderRadius: 16,
+                  padding: 16,
+                  marginBottom: 8,
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "flex-start",
+                  border: "1px solid rgba(186, 26, 26, 0.15)",
+                }}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{
+                    color: "var(--error)",
+                    fontSize: 20,
+                    flexShrink: 0,
+                    marginTop: 1,
+                  }}
+                >
+                  warning
+                </span>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "var(--on-surface-variant)",
+                    margin: 0,
+                    lineHeight: "20px",
+                  }}
+                >
+                  <strong style={{ color: "var(--error)" }}>
+                    Tindakan ini tidak dapat dibatalkan.
+                  </strong>{" "}
+                  Setelah dihapus, seluruh riwayat chat akan hilang selamanya.
+                  Pastikan Anda sudah menyimpan informasi penting sebelum
+                  melanjutkan.
+                </p>
+              </div>
+            </div>
+
+            {/* ── Bottom actions ── */}
+            <div
+              style={{
+                padding: "12px 20px 20px",
+                borderTop: "1px solid var(--outline-variant)",
+                display: "flex",
+                gap: 10,
+                flexShrink: 0,
+                background: "var(--surface-container-lowest)",
+                borderBottomLeftRadius: 28,
+                borderBottomRightRadius: 28,
+              }}
+            >
               <button
                 type="button"
                 onClick={() => setIsConfirmOpen(false)}
                 style={{
                   flex: 1,
-                  padding: "12px",
+                  padding: "10px 14px",
                   borderRadius: 12,
                   border: "1px solid var(--outline-variant)",
                   background: "transparent",
                   color: "var(--on-surface-variant)",
-                  fontSize: 14,
-                  fontWeight: 600,
+                  fontSize: 13,
+                  fontWeight: 500,
                   cursor: "pointer",
                   textAlign: "center",
                   transition: "all 0.15s ease",
@@ -843,37 +1089,160 @@ export default function SettingsPage() {
                 disabled={isClearingChat}
                 style={{
                   flex: 1,
-                  padding: "12px",
+                  padding: "10px 14px",
                   borderRadius: 12,
                   border: "none",
-                  background: "var(--error)",
+                  background: "linear-gradient(135deg, #ba1a1a, #d32f2f)",
                   color: "white",
-                  fontSize: 14,
-                  fontWeight: 600,
+                  fontSize: 13,
+                  fontWeight: 500,
                   cursor: isClearingChat ? "not-allowed" : "pointer",
                   textAlign: "center",
-                  boxShadow: "0 4px 12px rgba(186, 26, 26, 0.2)",
+                  boxShadow: "0 2px 8px rgba(186, 26, 26, 0.2)",
                   transition: "all 0.15s ease",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 6,
+                  opacity: isClearingChat ? 0.7 : 1,
                 }}
               >
                 {isClearingChat ? (
                   <>
                     <span
                       className="material-symbols-outlined"
-                      style={{ fontSize: 18, animation: "spin 1s linear infinite" }}
+                      style={{
+                        fontSize: 16,
+                        animation: "spin 1s linear infinite",
+                      }}
                     >
                       progress_activity
                     </span>
-                    Proses...
+                    Menghapus...
                   </>
                 ) : (
-                  "Ya, Hapus"
+                  <>
+                    <span
+                      className="material-symbols-outlined"
+                      style={{ fontSize: 16 }}
+                    >
+                      delete
+                    </span>
+                    Hapus Semua
+                  </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Success Toast ── */}
+      {showSuccessToast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 96,
+            left: 16,
+            right: 16,
+            transform: toastVisible
+              ? "translateY(0) scale(1)"
+              : "translateY(20px) scale(0.94)",
+            opacity: toastVisible ? 1 : 0,
+            transition: "all 0.45s cubic-bezier(0.16, 1, 0.3, 1)",
+            zIndex: 2000,
+            pointerEvents: "none",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              background: "var(--surface-container-lowest)",
+              borderRadius: 18,
+              padding: "14px 18px",
+              boxShadow:
+                "0 8px 30px rgba(79, 55, 138, 0.18), 0 2px 6px rgba(0,0,0,0.04)",
+              border: "1px solid var(--outline-variant)",
+              maxWidth: 380,
+              width: "100%",
+            }}
+          >
+            {/* Icon */}
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                background: "linear-gradient(135deg, #4f378a, #6750a4)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                boxShadow: "0 4px 12px rgba(79, 55, 138, 0.25)",
+              }}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{
+                  fontSize: 20,
+                  color: "white",
+                }}
+              >
+                check
+              </span>
+            </div>
+
+            {/* Text */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "var(--on-surface)",
+                  letterSpacing: "-0.2px",
+                }}
+              >
+                Riwayat berhasil dibersihkan
+              </p>
+              <p
+                style={{
+                  margin: "2px 0 0",
+                  fontSize: 12,
+                  color: "var(--on-surface-variant)",
+                  lineHeight: "16px",
+                }}
+              >
+                Semua chat telah dihapus permanen
+              </p>
+            </div>
+
+            {/* Progress bar */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 18,
+                right: 18,
+                height: 3,
+                background: "var(--surface-container-highest)",
+                borderRadius: "0 0 18px 18px",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  background: "linear-gradient(90deg, #4f378a, #6750a4)",
+                  borderRadius: "0 0 18px 18px",
+                  animation: "toastProgress 3.8s linear forwards",
+                  width: "100%",
+                }}
+              />
             </div>
           </div>
         </div>

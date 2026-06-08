@@ -1335,3 +1335,14 @@ img {
     padding-left: 56px !important;
   }
 }
+
+/* ── Toast progress bar ── */
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+
+  to {
+    width: 0%;
+  }
+}
