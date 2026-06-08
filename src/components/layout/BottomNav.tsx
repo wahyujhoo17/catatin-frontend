@@ -156,7 +156,7 @@ export default function BottomNav() {
 
     try {
       let promptMsg =
-        "Tolong analisis struk/gambar ini dengan detail. Ekstrak total akhir belanja sebagai transaksi. Tentukan secara mandiri jenisnya (Pengeluaran/Pemasukan, struk belanja biasanya Pengeluaran). Pastikan nominal 'amount' akurat. Jika ada logo/nama bank/dompet yang cocok dengan akun saya, asumsikan akun tersebut otomatis tanpa bertanya. Jika tidak ada petunjuk dompet di struk, bertanyalah dompet mana yang akan digunakan sesuai aturan.";
+        "Tolong analisis struk/gambar ini dengan detail. Ekstrak total akhir belanja sebagai transaksi. Tentukan secara mandiri jenisnya (Pengeluaran/Pemasukan, struk belanja biasanya Pengeluaran). Pastikan nominal 'amount' akurat. Untuk description: gunakan format deskriptif lengkap dengan awalan konteks, contoh: 'Pembelian Thai Tea Kenangan', 'Pembayaran Domain obs.my.id', 'Makan Siang di Warteg', 'Bayar Parkir Mall', 'Top up GoPay 50rb'. JANGAN pakai deskripsi terlalu pendek seperti hanya 'Thai Tea'. Jika ada logo/nama bank/dompet yang cocok dengan akun saya, asumsikan akun tersebut otomatis tanpa bertanya. Jika tidak ada petunjuk dompet di struk, bertanyalah dompet mana yang akan digunakan sesuai aturan.";
       if (extraInstruction) {
         promptMsg += " " + extraInstruction;
       }
