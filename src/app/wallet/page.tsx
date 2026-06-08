@@ -93,7 +93,9 @@ export default function WalletPage() {
   const [error, setError] = useState("");
 
   // Details Modal
-  const [selectedAccount, setSelectedAccount] = useState<BackendAccount | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<BackendAccount | null>(
+    null,
+  );
   const [accountTx, setAccountTx] = useState<Transaction[]>([]);
   const [isLoadingTx, setIsLoadingTx] = useState(false);
 
@@ -104,7 +106,9 @@ export default function WalletPage() {
   const [txSearch, setTxSearch] = useState("");
   const [txDateRange, setTxDateRange] = useState<DateRange | undefined>();
   const [isTxDatePickerOpen, setIsTxDatePickerOpen] = useState(false);
-  const [selectedDetailTxId, setSelectedDetailTxId] = useState<string | null>(null);
+  const [selectedDetailTxId, setSelectedDetailTxId] = useState<string | null>(
+    null,
+  );
 
   // Form
   const [newName, setNewName] = useState("");
@@ -138,51 +142,67 @@ export default function WalletPage() {
   }, [fetchAccounts]);
 
   // ─── Fetch transactions for account ───────────────────────
-  const fetchAccountTransactions = useCallback(async (
-    accountId: string,
-    pageNum: number = 1,
-    type: string = "",
-    search: string = "",
-    startDate: string = "",
-    endDate: string = ""
-  ) => {
-    const token = getToken();
-    if (!token) return;
-    setIsLoadingTx(true);
-    try {
-      const url = new URL(`${API_BASE}/api/transactions`);
-      url.searchParams.append("accountId", accountId);
-      url.searchParams.append("page", pageNum.toString());
-      url.searchParams.append("limit", "15");
-      if (type) url.searchParams.append("type", type);
-      if (search) url.searchParams.append("search", search);
-      if (startDate) url.searchParams.append("startDate", startDate);
-      if (endDate) url.searchParams.append("endDate", endDate);
+  const fetchAccountTransactions = useCallback(
+    async (
+      accountId: string,
+      pageNum: number = 1,
+      type: string = "",
+      search: string = "",
+      startDate: string = "",
+      endDate: string = "",
+    ) => {
+      const token = getToken();
+      if (!token) return;
+      setIsLoadingTx(true);
+      try {
+        const url = new URL(`${API_BASE}/api/transactions`);
+        url.searchParams.append("accountId", accountId);
+        url.searchParams.append("page", pageNum.toString());
+        url.searchParams.append("limit", "15");
+        if (type) url.searchParams.append("type", type);
+        if (search) url.searchParams.append("search", search);
+        if (startDate) url.searchParams.append("startDate", startDate);
+        if (endDate) url.searchParams.append("endDate", endDate);
 
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Gagal memuat mutasi");
-      const json = await res.json();
-      setAccountTx(json.transactions || []);
-      setTxTotalPages(json.pagination?.totalPages || 1);
-      setTxPage(pageNum);
-    } catch (err: any) {
-      console.error(err);
-    } finally {
-      setIsLoadingTx(false);
-    }
-  }, []);
+        const res = await fetch(url.toString(), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Gagal memuat mutasi");
+        const json = await res.json();
+        setAccountTx(json.transactions || []);
+        setTxTotalPages(json.pagination?.totalPages || 1);
+        setTxPage(pageNum);
+      } catch (err: any) {
+        console.error(err);
+      } finally {
+        setIsLoadingTx(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!selectedAccount) return;
     const timer = setTimeout(() => {
       const startStr = txDateRange?.from ? txDateRange.from.toISOString() : "";
       const endStr = txDateRange?.to ? txDateRange.to.toISOString() : "";
-      fetchAccountTransactions(selectedAccount.id, 1, txFilterType, txSearch, startStr, endStr);
+      fetchAccountTransactions(
+        selectedAccount.id,
+        1,
+        txFilterType,
+        txSearch,
+        startStr,
+        endStr,
+      );
     }, 300);
     return () => clearTimeout(timer);
-  }, [selectedAccount, txFilterType, txSearch, txDateRange, fetchAccountTransactions]);
+  }, [
+    selectedAccount,
+    txFilterType,
+    txSearch,
+    txDateRange,
+    fetchAccountTransactions,
+  ]);
 
   const handleOpenAccountDetails = (acc: BackendAccount) => {
     setSelectedAccount(acc);
@@ -411,7 +431,7 @@ export default function WalletPage() {
                           gap: 16,
                           flex: 1,
                           minWidth: 0,
-                          cursor: "pointer"
+                          cursor: "pointer",
                         }}
                         onClick={() => handleOpenAccountDetails(acc)}
                       >
@@ -764,79 +784,187 @@ export default function WalletPage() {
             zIndex: 100,
             display: "flex",
             flexDirection: "column",
-            overflow: "hidden"
+            overflow: "hidden",
           }}
           className="animate-fade-slide-up"
         >
           {/* Header */}
-          <header style={{ padding: "16px 24px", display: "flex", alignItems: "center", gap: 16, borderBottom: "1px solid var(--outline-variant)" }}>
+          <header
+            style={{
+              padding: "16px 24px",
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+              borderBottom: "1px solid var(--outline-variant)",
+            }}
+          >
             <button
               onClick={() => setSelectedAccount(null)}
-              style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center" }}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+              }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 24, color: "var(--on-surface)" }}>arrow_back</span>
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 24, color: "var(--on-surface)" }}
+              >
+                arrow_back
+              </span>
             </button>
             <div>
-              <h2 className="text-headline-sm" style={{ margin: 0, fontSize: 18 }}>{selectedAccount.name}</h2>
-              <p className="text-body-sm" style={{ margin: 0, color: "var(--on-surface-variant)" }}>Detail Mutasi Rekening</p>
+              <h2
+                className="text-headline-sm"
+                style={{ margin: 0, fontSize: 18 }}
+              >
+                {selectedAccount.name}
+              </h2>
+              <p
+                className="text-body-sm"
+                style={{ margin: 0, color: "var(--on-surface-variant)" }}
+              >
+                Detail Mutasi Rekening
+              </p>
             </div>
           </header>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
-            <div className="glass-card" style={{ padding: 24, textAlign: "center", marginBottom: 24 }}>
-              <p className="text-label-md" style={{ color: "var(--on-surface-variant)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Saldo Saat Ini</p>
-              <h2 style={{ fontSize: 32, fontWeight: 700, color: "var(--on-surface)", margin: 0 }}>{formatRupiah(selectedAccount.balance)}</h2>
+            <div
+              className="glass-card"
+              style={{ padding: 24, textAlign: "center", marginBottom: 24 }}
+            >
+              <p
+                className="text-label-md"
+                style={{
+                  color: "var(--on-surface-variant)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  marginBottom: 8,
+                }}
+              >
+                Saldo Saat Ini
+              </p>
+              <h2
+                style={{
+                  fontSize: 32,
+                  fontWeight: 700,
+                  color: "var(--on-surface)",
+                  margin: 0,
+                }}
+              >
+                {formatRupiah(selectedAccount.balance)}
+              </h2>
             </div>
 
-            <h3 className="text-headline-sm" style={{ fontSize: 16, marginBottom: 12 }}>Riwayat Transaksi</h3>
-            
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+            <h3
+              className="text-headline-sm"
+              style={{ fontSize: 16, marginBottom: 12 }}
+            >
+              Riwayat Transaksi
+            </h3>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
               {/* Search & Date */}
               <div style={{ display: "flex", gap: 8 }}>
                 <div style={{ flex: 1, position: "relative" }}>
-                  <span className="material-symbols-outlined" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--on-surface-variant)", fontSize: 20 }}>search</span>
-                  <input 
-                    type="text" 
-                    placeholder="Cari deskripsi..." 
+                  <span
+                    className="material-symbols-outlined"
+                    style={{
+                      position: "absolute",
+                      left: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--on-surface-variant)",
+                      fontSize: 20,
+                    }}
+                  >
+                    search
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Cari deskripsi..."
                     value={txSearch}
                     onChange={(e) => setTxSearch(e.target.value)}
                     className="glass-input"
-                    style={{ padding: "10px 12px 10px 40px", width: "100%", borderRadius: 16, fontSize: 14 }}
+                    style={{
+                      padding: "10px 12px 10px 40px",
+                      width: "100%",
+                      borderRadius: 16,
+                      fontSize: 14,
+                    }}
                   />
                 </div>
-                
+
                 <button
                   onClick={() => setIsTxDatePickerOpen(true)}
                   style={{
-                    display: "flex", alignItems: "center", gap: 6,
-                    padding: "0 12px", borderRadius: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "0 12px",
+                    borderRadius: 16,
                     border: `1px solid ${txDateRange?.from || txDateRange?.to ? "var(--primary)" : "var(--outline-variant)"}`,
-                    background: txDateRange?.from || txDateRange?.to ? "var(--primary-container)" : "rgba(255,255,255,0.5)",
-                    color: txDateRange?.from || txDateRange?.to ? "var(--on-primary-container)" : "var(--on-surface-variant)",
-                    fontWeight: 600, fontSize: 13, cursor: "pointer", flexShrink: 0
+                    background:
+                      txDateRange?.from || txDateRange?.to
+                        ? "var(--primary-container)"
+                        : "rgba(255,255,255,0.5)",
+                    color:
+                      txDateRange?.from || txDateRange?.to
+                        ? "var(--on-primary-container)"
+                        : "var(--on-surface-variant)",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    flexShrink: 0,
                   }}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>calendar_month</span>
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 18 }}
+                  >
+                    calendar_month
+                  </span>
                 </button>
               </div>
 
               {/* Filters */}
-              <div style={{ 
-                display: "flex", 
-                gap: 8, 
-                overflowX: "auto", 
-                width: "100%",
-                paddingBottom: 4,
-                WebkitOverflowScrolling: "touch",
-                scrollbarWidth: "none",
-                msOverflowStyle: "none"
-              }} className="hide-scrollbar-inline">
-                <style dangerouslySetInnerHTML={{__html: `
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  overflowX: "auto",
+                  width: "100%",
+                  paddingBottom: 4,
+                  WebkitOverflowScrolling: "touch",
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                }}
+                className="hide-scrollbar-inline"
+              >
+                <style
+                  dangerouslySetInnerHTML={{
+                    __html: `
                   .hide-scrollbar-inline::-webkit-scrollbar {
                     display: none;
                   }
-                `}} />
-                {[{ label: "Semua", val: "" }, { label: "Pemasukan", val: "INCOME" }, { label: "Pengeluaran", val: "EXPENSE" }].map(f => (
+                `,
+                  }}
+                />
+                {[
+                  { label: "Semua", val: "" },
+                  { label: "Pemasukan", val: "INCOME" },
+                  { label: "Pengeluaran", val: "EXPENSE" },
+                ].map((f) => (
                   <button
                     key={f.val}
                     onClick={() => setTxFilterType(f.val)}
@@ -844,13 +972,19 @@ export default function WalletPage() {
                       padding: "6px 16px",
                       borderRadius: 12,
                       border: `1px solid ${txFilterType === f.val ? "var(--primary)" : "var(--outline-variant)"}`,
-                      background: txFilterType === f.val ? "var(--primary-container)" : "rgba(255,255,255,0.5)",
-                      color: txFilterType === f.val ? "var(--on-primary-container)" : "var(--on-surface-variant)",
+                      background:
+                        txFilterType === f.val
+                          ? "var(--primary-container)"
+                          : "rgba(255,255,255,0.5)",
+                      color:
+                        txFilterType === f.val
+                          ? "var(--on-primary-container)"
+                          : "var(--on-surface-variant)",
                       fontWeight: 600,
                       fontSize: 13,
                       cursor: "pointer",
                       whiteSpace: "nowrap",
-                      flexShrink: 0
+                      flexShrink: 0,
                     }}
                   >
                     {f.label}
@@ -858,108 +992,408 @@ export default function WalletPage() {
                 ))}
               </div>
             </div>
-            
+
             {isLoadingTx ? (
-              <div style={{ textAlign: "center", padding: 32, color: "var(--on-surface-variant)" }}>Memuat mutasi...</div>
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: 32,
+                  color: "var(--on-surface-variant)",
+                }}
+              >
+                Memuat mutasi...
+              </div>
             ) : accountTx.length === 0 ? (
-              <div className="glass-card" style={{ textAlign: "center", padding: 32, color: "var(--on-surface-variant)" }}>
+              <div
+                className="glass-card"
+                style={{
+                  textAlign: "center",
+                  padding: 32,
+                  color: "var(--on-surface-variant)",
+                }}
+              >
                 Belum ada transaksi di rekening ini.
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 12 }}
+              >
                 {accountTx.map((tx) => {
                   const isExpense = tx.type === "EXPENSE";
                   return (
-                    <div 
-                      key={tx.id} 
-                      className="glass-card" 
-                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 16, gap: 12, cursor: "pointer" }}
+                    <div
+                      key={tx.id}
+                      className="glass-card"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: 16,
+                        gap: 12,
+                        cursor: "pointer",
+                      }}
                       onClick={() => setSelectedDetailTxId(tx.id)}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          flex: 1,
+                          minWidth: 0,
+                        }}
+                      >
                         <div
                           style={{
-                            width: 48, height: 48, borderRadius: 12, flexShrink: 0,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            background: isExpense ? "rgba(244, 67, 54, 0.1)" : "rgba(76, 175, 80, 0.1)",
+                            width: 48,
+                            height: 48,
+                            borderRadius: 12,
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            background: isExpense
+                              ? "rgba(244, 67, 54, 0.1)"
+                              : "rgba(76, 175, 80, 0.1)",
                           }}
                         >
                           <span
                             className="material-symbols-outlined"
-                            style={{ color: isExpense ? "rgba(229, 57, 53, 1)" : "rgba(67, 160, 71, 1)" }}
+                            style={{
+                              color: isExpense
+                                ? "rgba(229, 57, 53, 1)"
+                                : "rgba(67, 160, 71, 1)",
+                            }}
                           >
                             {(() => {
                               const desc = (tx.description || "").toLowerCase();
-                              const cat = (tx.category?.name || "").toLowerCase();
+                              const cat = (
+                                tx.category?.name || ""
+                              ).toLowerCase();
                               const combined = desc + " " + cat;
 
                               // ── Income types ──
-                              if (combined.includes("gaji") || combined.includes("upah") || combined.includes("honor") || combined.includes("freelance")) return "payments";
-                              if (combined.includes("bonus") || combined.includes("thr") || combined.includes("hadiah") || combined.includes("giveaway")) return "redeem";
-                              if (combined.includes("refund")) return "currency_exchange";
-                              if (combined.includes("investasi") || combined.includes("saham") || combined.includes("crypto") || combined.includes("reksadana") || combined.includes("dividen")) return "trending_up";
-                              if (combined.includes("tabungan") || combined.includes("nabung") || combined.includes("menabung")) return "savings";
+                              if (
+                                combined.includes("gaji") ||
+                                combined.includes("upah") ||
+                                combined.includes("honor") ||
+                                combined.includes("freelance")
+                              )
+                                return "payments";
+                              if (
+                                combined.includes("bonus") ||
+                                combined.includes("thr") ||
+                                combined.includes("hadiah") ||
+                                combined.includes("giveaway")
+                              )
+                                return "redeem";
+                              if (combined.includes("refund"))
+                                return "currency_exchange";
+                              if (
+                                combined.includes("investasi") ||
+                                combined.includes("saham") ||
+                                combined.includes("crypto") ||
+                                combined.includes("reksadana") ||
+                                combined.includes("dividen")
+                              )
+                                return "trending_up";
+                              if (
+                                combined.includes("tabungan") ||
+                                combined.includes("nabung") ||
+                                combined.includes("menabung")
+                              )
+                                return "savings";
 
                               // ── Food & Drink ──
-                              if (combined.includes("makan") || combined.includes("minum") || combined.includes("makanan") || combined.includes("ngemil") || combined.includes("catering")) return "restaurant";
-                              if (combined.includes("kopi") || combined.includes("ngopi") || combined.includes("kafe") || combined.includes("starbucks") || combined.includes("coffee")) return "coffee";
-                              if (combined.includes("bakso") || combined.includes("mie") || combined.includes("soto") || combined.includes("nasi") || combined.includes("ayam") || combined.includes("martabak")) return "ramen_dining";
+                              if (
+                                combined.includes("makan") ||
+                                combined.includes("minum") ||
+                                combined.includes("makanan") ||
+                                combined.includes("ngemil") ||
+                                combined.includes("catering")
+                              )
+                                return "restaurant";
+                              if (
+                                combined.includes("kopi") ||
+                                combined.includes("ngopi") ||
+                                combined.includes("kafe") ||
+                                combined.includes("starbucks") ||
+                                combined.includes("coffee")
+                              )
+                                return "coffee";
+                              if (
+                                combined.includes("bakso") ||
+                                combined.includes("mie") ||
+                                combined.includes("soto") ||
+                                combined.includes("nasi") ||
+                                combined.includes("ayam") ||
+                                combined.includes("martabak")
+                              )
+                                return "ramen_dining";
 
                               // ── Shopping ──
-                              if (combined.includes("belanja") || combined.includes("beli") || combined.includes("casing") || combined.includes("marketplace") || combined.includes("tokped") || combined.includes("shopee") || combined.includes("tokopedia") || combined.includes("bukalapak")) return "shopping_bag";
-                              if (combined.includes("baju") || combined.includes("pakaian") || combined.includes("sepatu") || combined.includes("fashion") || combined.includes("celana")) return "checkroom";
-                              if (combined.includes("gadget") || combined.includes("hp") || combined.includes("laptop") || combined.includes("elektronik")) return "devices";
-                              if (combined.includes("grocer") || combined.includes("sembako") || combined.includes("supermarket") || combined.includes("indomaret") || combined.includes("alfamart")) return "grocery";
+                              if (
+                                combined.includes("belanja") ||
+                                combined.includes("beli") ||
+                                combined.includes("casing") ||
+                                combined.includes("marketplace") ||
+                                combined.includes("tokped") ||
+                                combined.includes("shopee") ||
+                                combined.includes("tokopedia") ||
+                                combined.includes("bukalapak")
+                              )
+                                return "shopping_bag";
+                              if (
+                                combined.includes("baju") ||
+                                combined.includes("pakaian") ||
+                                combined.includes("sepatu") ||
+                                combined.includes("fashion") ||
+                                combined.includes("celana")
+                              )
+                                return "checkroom";
+                              if (
+                                combined.includes("gadget") ||
+                                combined.includes("hp") ||
+                                combined.includes("laptop") ||
+                                combined.includes("elektronik")
+                              )
+                                return "devices";
+                              if (
+                                combined.includes("grocer") ||
+                                combined.includes("sembako") ||
+                                combined.includes("supermarket") ||
+                                combined.includes("indomaret") ||
+                                combined.includes("alfamart")
+                              )
+                                return "grocery";
 
                               // ── Utilities ──
-                              if (combined.includes("pulsa") || combined.includes("listrik") || combined.includes("token") || combined.includes("pln")) return "bolt";
-                              if (combined.includes("internet") || combined.includes("wifi") || combined.includes("indihome") || combined.includes("biznet")) return "wifi";
-                              if (combined.includes("air") || combined.includes("pdam") || combined.includes("ledeng")) return "water_drop";
-                              if (combined.includes("telp") || combined.includes("seluler")) return "phone_iphone";
+                              if (
+                                combined.includes("pulsa") ||
+                                combined.includes("listrik") ||
+                                combined.includes("token") ||
+                                combined.includes("pln")
+                              )
+                                return "bolt";
+                              if (
+                                combined.includes("internet") ||
+                                combined.includes("wifi") ||
+                                combined.includes("indihome") ||
+                                combined.includes("biznet")
+                              )
+                                return "wifi";
+                              if (
+                                combined.includes("air") ||
+                                combined.includes("pdam") ||
+                                combined.includes("ledeng")
+                              )
+                                return "water_drop";
+                              if (
+                                combined.includes("telp") ||
+                                combined.includes("seluler")
+                              )
+                                return "phone_iphone";
 
                               // ── Transport ──
-                              if (combined.includes("transport") || combined.includes("gojek") || combined.includes("grab") || combined.includes("ojek") || combined.includes("taxi") || combined.includes("maxim")) return "directions_car";
-                              if (combined.includes("bensin") || combined.includes("bbm") || combined.includes("pertamina") || combined.includes("pertamax") || combined.includes("spbu")) return "local_gas_station";
-                              if (combined.includes("parkir") || combined.includes("tol") || combined.includes("etoll")) return "local_parking";
-                              if (combined.includes("kereta") || combined.includes("mrt") || combined.includes("lrt") || combined.includes("commuter")) return "train";
-                              if (combined.includes("pesawat") || combined.includes("tiket") || combined.includes("travel") || combined.includes("liburan") || combined.includes("hotel")) return "flight";
+                              if (
+                                combined.includes("transport") ||
+                                combined.includes("gojek") ||
+                                combined.includes("grab") ||
+                                combined.includes("ojek") ||
+                                combined.includes("taxi") ||
+                                combined.includes("maxim")
+                              )
+                                return "directions_car";
+                              if (
+                                combined.includes("bensin") ||
+                                combined.includes("bbm") ||
+                                combined.includes("pertamina") ||
+                                combined.includes("pertamax") ||
+                                combined.includes("spbu")
+                              )
+                                return "local_gas_station";
+                              if (
+                                combined.includes("parkir") ||
+                                combined.includes("tol") ||
+                                combined.includes("etoll")
+                              )
+                                return "local_parking";
+                              if (
+                                combined.includes("kereta") ||
+                                combined.includes("mrt") ||
+                                combined.includes("lrt") ||
+                                combined.includes("commuter")
+                              )
+                                return "train";
+                              if (
+                                combined.includes("pesawat") ||
+                                combined.includes("tiket") ||
+                                combined.includes("travel") ||
+                                combined.includes("liburan") ||
+                                combined.includes("hotel")
+                              )
+                                return "flight";
 
                               // ── Health ──
-                              if (combined.includes("kesehatan") || combined.includes("obat") || combined.includes("rs ") || combined.includes("rumah sakit") || combined.includes("apotek") || combined.includes("dokter") || combined.includes("klinik") || combined.includes("bpjs")) return "medical_services";
-                              if (combined.includes("gym") || combined.includes("fitness") || combined.includes("olahraga")) return "fitness_center";
+                              if (
+                                combined.includes("kesehatan") ||
+                                combined.includes("obat") ||
+                                combined.includes("rs ") ||
+                                combined.includes("rumah sakit") ||
+                                combined.includes("apotek") ||
+                                combined.includes("dokter") ||
+                                combined.includes("klinik") ||
+                                combined.includes("bpjs")
+                              )
+                                return "medical_services";
+                              if (
+                                combined.includes("gym") ||
+                                combined.includes("fitness") ||
+                                combined.includes("olahraga")
+                              )
+                                return "fitness_center";
 
                               // ── Bills & Subscriptions ──
-                              if (combined.includes("langganan") || combined.includes("subscription") || combined.includes("netflix") || combined.includes("spotify") || combined.includes("disney") || combined.includes("youtube") || combined.includes("hbo") || combined.includes("vidio")) return "subscriptions";
-                              if (combined.includes("tagihan") || combined.includes("invoice") || combined.includes("bill")) return "receipt_long";
+                              if (
+                                combined.includes("langganan") ||
+                                combined.includes("subscription") ||
+                                combined.includes("netflix") ||
+                                combined.includes("spotify") ||
+                                combined.includes("disney") ||
+                                combined.includes("youtube") ||
+                                combined.includes("hbo") ||
+                                combined.includes("vidio")
+                              )
+                                return "subscriptions";
+                              if (
+                                combined.includes("tagihan") ||
+                                combined.includes("invoice") ||
+                                combined.includes("bill")
+                              )
+                                return "receipt_long";
 
                               // ── Housing ──
-                              if (combined.includes("sewa") || combined.includes("kost") || combined.includes("kontrak") || combined.includes("kos ")) return "bed";
-                              if (combined.includes("rumah") || combined.includes("renovasi") || combined.includes("perbaikan") || combined.includes("service") || combined.includes("tukang")) return "home";
+                              if (
+                                combined.includes("sewa") ||
+                                combined.includes("kost") ||
+                                combined.includes("kontrak") ||
+                                combined.includes("kos ")
+                              )
+                                return "bed";
+                              if (
+                                combined.includes("rumah") ||
+                                combined.includes("renovasi") ||
+                                combined.includes("perbaikan") ||
+                                combined.includes("service") ||
+                                combined.includes("tukang")
+                              )
+                                return "home";
 
                               // ── Education ──
-                              if (combined.includes("sekolah") || combined.includes("kuliah") || combined.includes("buku") || combined.includes("kursus") || combined.includes("les ") || combined.includes("spp") || combined.includes("ujian")) return "school";
+                              if (
+                                combined.includes("sekolah") ||
+                                combined.includes("kuliah") ||
+                                combined.includes("buku") ||
+                                combined.includes("kursus") ||
+                                combined.includes("les ") ||
+                                combined.includes("spp") ||
+                                combined.includes("ujian")
+                              )
+                                return "school";
 
                               // ── Entertainment ──
-                              if (combined.includes("game") || combined.includes("steam") || combined.includes("playstation") || combined.includes("top up game") || combined.includes("mlbb")) return "sports_esports";
-                              if (combined.includes("film") || combined.includes("nonton") || combined.includes("bioskop") || combined.includes("cinema")) return "movie";
-                              if (combined.includes("musik") || combined.includes("konser") || combined.includes("festival")) return "music_note";
+                              if (
+                                combined.includes("game") ||
+                                combined.includes("steam") ||
+                                combined.includes("playstation") ||
+                                combined.includes("top up game") ||
+                                combined.includes("mlbb")
+                              )
+                                return "sports_esports";
+                              if (
+                                combined.includes("film") ||
+                                combined.includes("nonton") ||
+                                combined.includes("bioskop") ||
+                                combined.includes("cinema")
+                              )
+                                return "movie";
+                              if (
+                                combined.includes("musik") ||
+                                combined.includes("konser") ||
+                                combined.includes("festival")
+                              )
+                                return "music_note";
 
                               // ── Financial ──
-                              if (combined.includes("transfer") || combined.includes("tf ") || combined.includes("kirim") || combined.includes("antar bank")) return "sync_alt";
-                              if (combined.includes("pinjam") || combined.includes("hutang") || combined.includes("utang") || combined.includes("kredit") || combined.includes("pinjaman")) return "handshake";
-                              if (combined.includes("cicilan") || combined.includes("angsuran") || combined.includes("kpr") || combined.includes("leasing")) return "schedule";
-                              if (combined.includes("topup") || combined.includes("top up") || combined.includes("e-wallet") || combined.includes("gopay") || combined.includes("ovo") || combined.includes("dana") || combined.includes("shopeepay")) return "account_balance_wallet";
-                              if (combined.includes("donasi") || combined.includes("sedekah") || combined.includes("sumbangan") || combined.includes("zakat") || combined.includes("infaq")) return "volunteer_activism";
-                              if (combined.includes("pajak") || combined.includes("npwp") || combined.includes("pbb")) return "account_balance";
+                              if (
+                                combined.includes("transfer") ||
+                                combined.includes("tf ") ||
+                                combined.includes("kirim") ||
+                                combined.includes("antar bank")
+                              )
+                                return "sync_alt";
+                              if (
+                                combined.includes("pinjam") ||
+                                combined.includes("hutang") ||
+                                combined.includes("utang") ||
+                                combined.includes("kredit") ||
+                                combined.includes("pinjaman")
+                              )
+                                return "handshake";
+                              if (
+                                combined.includes("cicilan") ||
+                                combined.includes("angsuran") ||
+                                combined.includes("kpr") ||
+                                combined.includes("leasing")
+                              )
+                                return "schedule";
+                              if (
+                                combined.includes("topup") ||
+                                combined.includes("top up") ||
+                                combined.includes("e-wallet") ||
+                                combined.includes("gopay") ||
+                                combined.includes("ovo") ||
+                                combined.includes("dana") ||
+                                combined.includes("shopeepay")
+                              )
+                                return "account_balance_wallet";
+                              if (
+                                combined.includes("donasi") ||
+                                combined.includes("sedekah") ||
+                                combined.includes("sumbangan") ||
+                                combined.includes("zakat") ||
+                                combined.includes("infaq")
+                              )
+                                return "volunteer_activism";
+                              if (
+                                combined.includes("pajak") ||
+                                combined.includes("npwp") ||
+                                combined.includes("pbb")
+                              )
+                                return "account_balance";
 
                               // ── Beauty ──
-                              if (combined.includes("salon") || combined.includes("barber") || combined.includes("cukur") || combined.includes("skincare") || combined.includes("makeup")) return "content_cut";
+                              if (
+                                combined.includes("salon") ||
+                                combined.includes("barber") ||
+                                combined.includes("cukur") ||
+                                combined.includes("skincare") ||
+                                combined.includes("makeup")
+                              )
+                                return "content_cut";
 
                               // ── Pet ──
-                              if (combined.includes("kucing") || combined.includes("anjing") || combined.includes("peliharaan") || combined.includes("pet")) return "pets";
+                              if (
+                                combined.includes("kucing") ||
+                                combined.includes("anjing") ||
+                                combined.includes("peliharaan") ||
+                                combined.includes("pet")
+                              )
+                                return "pets";
 
                               // ── Debt specific defaults ──
-                              if (tx.type === "DEBT") return "real_estate_agent";
+                              if (tx.type === "DEBT")
+                                return "real_estate_agent";
                               if (tx.type === "DEBT_PAYMENT") return "payments";
 
                               // ── Fallback ──
@@ -969,16 +1403,47 @@ export default function WalletPage() {
                           </span>
                         </div>
                         <div style={{ minWidth: 0 }}>
-                          <p className="text-body-md" style={{ fontWeight: 700, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <p
+                            className="text-body-md"
+                            style={{
+                              fontWeight: 700,
+                              margin: 0,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
                             {tx.description || "Tanpa deskripsi"}
                           </p>
-                          <p className="text-body-sm" style={{ color: "var(--on-surface-variant)", margin: "2px 0 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {new Date(tx.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} • {tx.category?.name || "Umum"}
+                          <p
+                            className="text-body-sm"
+                            style={{
+                              color: "var(--on-surface-variant)",
+                              margin: "2px 0 0 0",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {new Date(tx.date).toLocaleDateString("id-ID", {
+                              day: "numeric",
+                              month: "short",
+                            })}{" "}
+                            • {tx.category?.name || "Umum"}
                           </p>
                         </div>
                       </div>
-                      <span style={{ color: isExpense ? "var(--error)" : "var(--primary)", fontWeight: 600, fontSize: "15px", whiteSpace: "nowrap", flexShrink: 0 }}>
-                        {isExpense ? "-" : "+"}{formatRupiah(tx.amount)}
+                      <span
+                        style={{
+                          color: isExpense ? "var(--error)" : "var(--primary)",
+                          fontWeight: 600,
+                          fontSize: "15px",
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {isExpense ? "-" : "+"}
+                        {formatRupiah(tx.amount)}
                       </span>
                     </div>
                   );
@@ -988,19 +1453,67 @@ export default function WalletPage() {
 
             {/* Pagination */}
             {txTotalPages > 1 && (
-              <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 24, paddingBottom: 24 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: 16,
+                  marginTop: 24,
+                  paddingBottom: 24,
+                }}
+              >
                 <button
                   disabled={txPage <= 1}
-                  onClick={() => fetchAccountTransactions(selectedAccount.id, txPage - 1, txFilterType, txSearch, txDateRange?.from?.toISOString() || "", txDateRange?.to?.toISOString() || "")}
-                  style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--outline-variant)", background: "var(--surface)", cursor: txPage <= 1 ? "not-allowed" : "pointer", opacity: txPage <= 1 ? 0.5 : 1 }}
+                  onClick={() =>
+                    fetchAccountTransactions(
+                      selectedAccount.id,
+                      txPage - 1,
+                      txFilterType,
+                      txSearch,
+                      txDateRange?.from?.toISOString() || "",
+                      txDateRange?.to?.toISOString() || "",
+                    )
+                  }
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    border: "1px solid var(--outline-variant)",
+                    background: "var(--surface)",
+                    cursor: txPage <= 1 ? "not-allowed" : "pointer",
+                    opacity: txPage <= 1 ? 0.5 : 1,
+                  }}
                 >
                   Sebelumnya
                 </button>
-                <span style={{ alignSelf: "center", fontWeight: 600, color: "var(--on-surface)" }}>Hal {txPage} / {txTotalPages}</span>
+                <span
+                  style={{
+                    alignSelf: "center",
+                    fontWeight: 600,
+                    color: "var(--on-surface)",
+                  }}
+                >
+                  Hal {txPage} / {txTotalPages}
+                </span>
                 <button
                   disabled={txPage >= txTotalPages}
-                  onClick={() => fetchAccountTransactions(selectedAccount.id, txPage + 1, txFilterType, txSearch, txDateRange?.from?.toISOString() || "", txDateRange?.to?.toISOString() || "")}
-                  style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--outline-variant)", background: "var(--surface)", cursor: txPage >= txTotalPages ? "not-allowed" : "pointer", opacity: txPage >= txTotalPages ? 0.5 : 1 }}
+                  onClick={() =>
+                    fetchAccountTransactions(
+                      selectedAccount.id,
+                      txPage + 1,
+                      txFilterType,
+                      txSearch,
+                      txDateRange?.from?.toISOString() || "",
+                      txDateRange?.to?.toISOString() || "",
+                    )
+                  }
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    border: "1px solid var(--outline-variant)",
+                    background: "var(--surface)",
+                    cursor: txPage >= txTotalPages ? "not-allowed" : "pointer",
+                    opacity: txPage >= txTotalPages ? 0.5 : 1,
+                  }}
                 >
                   Selanjutnya
                 </button>
@@ -1011,7 +1524,7 @@ export default function WalletPage() {
       )}
 
       {/* Date Picker Modal for Tx Filter */}
-      <PeriodSelector 
+      <PeriodSelector
         isOpen={isTxDatePickerOpen}
         onClose={() => setIsTxDatePickerOpen(false)}
         onSelectRange={setTxDateRange}

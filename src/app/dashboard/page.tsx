@@ -88,7 +88,9 @@ export default function DashboardPersonalPage() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [fetchError, setFetchError] = useState("");
-  const [selectedDetailTxId, setSelectedDetailTxId] = useState<string | null>(null);
+  const [selectedDetailTxId, setSelectedDetailTxId] = useState<string | null>(
+    null,
+  );
   const displayName = user?.name?.split(" ")[0] || "";
 
   // Redirect to workspace if mode not set or to POS dashboard if POS mode
@@ -592,9 +594,12 @@ export default function DashboardPersonalPage() {
                         alignItems: "center",
                         justifyContent: "space-between",
                         padding: "16px 8px",
-                        borderBottom: idx === data.recentTransactions.length - 1 ? "none" : "1px solid rgba(0, 0, 0, 0.05)",
+                        borderBottom:
+                          idx === data.recentTransactions.length - 1
+                            ? "none"
+                            : "1px solid rgba(0, 0, 0, 0.05)",
                         gap: 12,
-                        cursor: "pointer"
+                        cursor: "pointer",
                       }}
                       onClick={() => setSelectedDetailTxId(tx.id)}
                     >
@@ -631,78 +636,339 @@ export default function DashboardPersonalPage() {
                             }}
                           >
                             {(() => {
-                              if (tx.categoryIcon && tx.categoryIcon !== "receipt_long" && tx.categoryIcon !== "category") return tx.categoryIcon;
+                              if (
+                                tx.categoryIcon &&
+                                tx.categoryIcon !== "receipt_long" &&
+                                tx.categoryIcon !== "category"
+                              )
+                                return tx.categoryIcon;
                               const desc = (tx.description || "").toLowerCase();
                               const cat = (tx.category || "").toLowerCase();
                               const combined = desc + " " + cat;
 
                               // ── Income types ──
-                              if (combined.includes("gaji") || combined.includes("upah") || combined.includes("honor") || combined.includes("freelance")) return "payments";
-                              if (combined.includes("bonus") || combined.includes("thr") || combined.includes("hadiah") || combined.includes("giveaway")) return "redeem";
-                              if (combined.includes("refund")) return "currency_exchange";
-                              if (combined.includes("investasi") || combined.includes("saham") || combined.includes("crypto") || combined.includes("reksadana") || combined.includes("dividen")) return "trending_up";
-                              if (combined.includes("tabungan") || combined.includes("nabung") || combined.includes("menabung")) return "savings";
+                              if (
+                                combined.includes("gaji") ||
+                                combined.includes("upah") ||
+                                combined.includes("honor") ||
+                                combined.includes("freelance")
+                              )
+                                return "payments";
+                              if (
+                                combined.includes("bonus") ||
+                                combined.includes("thr") ||
+                                combined.includes("hadiah") ||
+                                combined.includes("giveaway")
+                              )
+                                return "redeem";
+                              if (combined.includes("refund"))
+                                return "currency_exchange";
+                              if (
+                                combined.includes("investasi") ||
+                                combined.includes("saham") ||
+                                combined.includes("crypto") ||
+                                combined.includes("reksadana") ||
+                                combined.includes("dividen")
+                              )
+                                return "trending_up";
+                              if (
+                                combined.includes("tabungan") ||
+                                combined.includes("nabung") ||
+                                combined.includes("menabung")
+                              )
+                                return "savings";
 
                               // ── Food & Drink ──
-                              if (combined.includes("makan") || combined.includes("minum") || combined.includes("makanan") || combined.includes("ngemil") || combined.includes("catering")) return "restaurant";
-                              if (combined.includes("kopi") || combined.includes("ngopi") || combined.includes("kafe") || combined.includes("starbucks") || combined.includes("coffee")) return "coffee";
-                              if (combined.includes("bakso") || combined.includes("mie") || combined.includes("soto") || combined.includes("nasi") || combined.includes("ayam") || combined.includes("martabak")) return "ramen_dining";
+                              if (
+                                combined.includes("makan") ||
+                                combined.includes("minum") ||
+                                combined.includes("makanan") ||
+                                combined.includes("ngemil") ||
+                                combined.includes("catering")
+                              )
+                                return "restaurant";
+                              if (
+                                combined.includes("kopi") ||
+                                combined.includes("ngopi") ||
+                                combined.includes("kafe") ||
+                                combined.includes("starbucks") ||
+                                combined.includes("coffee")
+                              )
+                                return "coffee";
+                              if (
+                                combined.includes("bakso") ||
+                                combined.includes("mie") ||
+                                combined.includes("soto") ||
+                                combined.includes("nasi") ||
+                                combined.includes("ayam") ||
+                                combined.includes("martabak")
+                              )
+                                return "ramen_dining";
 
                               // ── Shopping ──
-                              if (combined.includes("belanja") || combined.includes("beli") || combined.includes("casing") || combined.includes("marketplace") || combined.includes("tokped") || combined.includes("shopee") || combined.includes("tokopedia") || combined.includes("bukalapak")) return "shopping_bag";
-                              if (combined.includes("baju") || combined.includes("pakaian") || combined.includes("sepatu") || combined.includes("fashion") || combined.includes("celana")) return "checkroom";
-                              if (combined.includes("gadget") || combined.includes("hp") || combined.includes("laptop") || combined.includes("elektronik")) return "devices";
-                              if (combined.includes("grocer") || combined.includes("sembako") || combined.includes("supermarket") || combined.includes("indomaret") || combined.includes("alfamart")) return "grocery";
+                              if (
+                                combined.includes("belanja") ||
+                                combined.includes("beli") ||
+                                combined.includes("casing") ||
+                                combined.includes("marketplace") ||
+                                combined.includes("tokped") ||
+                                combined.includes("shopee") ||
+                                combined.includes("tokopedia") ||
+                                combined.includes("bukalapak")
+                              )
+                                return "shopping_bag";
+                              if (
+                                combined.includes("baju") ||
+                                combined.includes("pakaian") ||
+                                combined.includes("sepatu") ||
+                                combined.includes("fashion") ||
+                                combined.includes("celana")
+                              )
+                                return "checkroom";
+                              if (
+                                combined.includes("gadget") ||
+                                combined.includes("hp") ||
+                                combined.includes("laptop") ||
+                                combined.includes("elektronik")
+                              )
+                                return "devices";
+                              if (
+                                combined.includes("grocer") ||
+                                combined.includes("sembako") ||
+                                combined.includes("supermarket") ||
+                                combined.includes("indomaret") ||
+                                combined.includes("alfamart")
+                              )
+                                return "grocery";
 
                               // ── Utilities ──
-                              if (combined.includes("pulsa") || combined.includes("listrik") || combined.includes("token") || combined.includes("pln")) return "bolt";
-                              if (combined.includes("internet") || combined.includes("wifi") || combined.includes("indihome") || combined.includes("biznet")) return "wifi";
-                              if (combined.includes("air") || combined.includes("pdam") || combined.includes("ledeng")) return "water_drop";
-                              if (combined.includes("telp") || combined.includes("seluler")) return "phone_iphone";
+                              if (
+                                combined.includes("pulsa") ||
+                                combined.includes("listrik") ||
+                                combined.includes("token") ||
+                                combined.includes("pln")
+                              )
+                                return "bolt";
+                              if (
+                                combined.includes("internet") ||
+                                combined.includes("wifi") ||
+                                combined.includes("indihome") ||
+                                combined.includes("biznet")
+                              )
+                                return "wifi";
+                              if (
+                                combined.includes("air") ||
+                                combined.includes("pdam") ||
+                                combined.includes("ledeng")
+                              )
+                                return "water_drop";
+                              if (
+                                combined.includes("telp") ||
+                                combined.includes("seluler")
+                              )
+                                return "phone_iphone";
 
                               // ── Transport ──
-                              if (combined.includes("transport") || combined.includes("gojek") || combined.includes("grab") || combined.includes("ojek") || combined.includes("taxi") || combined.includes("maxim")) return "directions_car";
-                              if (combined.includes("bensin") || combined.includes("bbm") || combined.includes("pertamina") || combined.includes("pertamax") || combined.includes("spbu")) return "local_gas_station";
-                              if (combined.includes("parkir") || combined.includes("tol") || combined.includes("etoll")) return "local_parking";
-                              if (combined.includes("kereta") || combined.includes("mrt") || combined.includes("lrt") || combined.includes("commuter")) return "train";
-                              if (combined.includes("pesawat") || combined.includes("tiket") || combined.includes("travel") || combined.includes("liburan") || combined.includes("hotel")) return "flight";
+                              if (
+                                combined.includes("transport") ||
+                                combined.includes("gojek") ||
+                                combined.includes("grab") ||
+                                combined.includes("ojek") ||
+                                combined.includes("taxi") ||
+                                combined.includes("maxim")
+                              )
+                                return "directions_car";
+                              if (
+                                combined.includes("bensin") ||
+                                combined.includes("bbm") ||
+                                combined.includes("pertamina") ||
+                                combined.includes("pertamax") ||
+                                combined.includes("spbu")
+                              )
+                                return "local_gas_station";
+                              if (
+                                combined.includes("parkir") ||
+                                combined.includes("tol") ||
+                                combined.includes("etoll")
+                              )
+                                return "local_parking";
+                              if (
+                                combined.includes("kereta") ||
+                                combined.includes("mrt") ||
+                                combined.includes("lrt") ||
+                                combined.includes("commuter")
+                              )
+                                return "train";
+                              if (
+                                combined.includes("pesawat") ||
+                                combined.includes("tiket") ||
+                                combined.includes("travel") ||
+                                combined.includes("liburan") ||
+                                combined.includes("hotel")
+                              )
+                                return "flight";
 
                               // ── Health ──
-                              if (combined.includes("kesehatan") || combined.includes("obat") || combined.includes("rs ") || combined.includes("rumah sakit") || combined.includes("apotek") || combined.includes("dokter") || combined.includes("klinik") || combined.includes("bpjs")) return "medical_services";
-                              if (combined.includes("gym") || combined.includes("fitness") || combined.includes("olahraga")) return "fitness_center";
+                              if (
+                                combined.includes("kesehatan") ||
+                                combined.includes("obat") ||
+                                combined.includes("rs ") ||
+                                combined.includes("rumah sakit") ||
+                                combined.includes("apotek") ||
+                                combined.includes("dokter") ||
+                                combined.includes("klinik") ||
+                                combined.includes("bpjs")
+                              )
+                                return "medical_services";
+                              if (
+                                combined.includes("gym") ||
+                                combined.includes("fitness") ||
+                                combined.includes("olahraga")
+                              )
+                                return "fitness_center";
 
                               // ── Bills & Subscriptions ──
-                              if (combined.includes("langganan") || combined.includes("subscription") || combined.includes("netflix") || combined.includes("spotify") || combined.includes("disney") || combined.includes("youtube") || combined.includes("hbo") || combined.includes("vidio")) return "subscriptions";
-                              if (combined.includes("tagihan") || combined.includes("invoice") || combined.includes("bill")) return "receipt_long";
+                              if (
+                                combined.includes("langganan") ||
+                                combined.includes("subscription") ||
+                                combined.includes("netflix") ||
+                                combined.includes("spotify") ||
+                                combined.includes("disney") ||
+                                combined.includes("youtube") ||
+                                combined.includes("hbo") ||
+                                combined.includes("vidio")
+                              )
+                                return "subscriptions";
+                              if (
+                                combined.includes("tagihan") ||
+                                combined.includes("invoice") ||
+                                combined.includes("bill")
+                              )
+                                return "receipt_long";
 
                               // ── Housing ──
-                              if (combined.includes("sewa") || combined.includes("kost") || combined.includes("kontrak") || combined.includes("kos ")) return "bed";
-                              if (combined.includes("rumah") || combined.includes("renovasi") || combined.includes("perbaikan") || combined.includes("service") || combined.includes("tukang")) return "home";
+                              if (
+                                combined.includes("sewa") ||
+                                combined.includes("kost") ||
+                                combined.includes("kontrak") ||
+                                combined.includes("kos ")
+                              )
+                                return "bed";
+                              if (
+                                combined.includes("rumah") ||
+                                combined.includes("renovasi") ||
+                                combined.includes("perbaikan") ||
+                                combined.includes("service") ||
+                                combined.includes("tukang")
+                              )
+                                return "home";
 
                               // ── Education ──
-                              if (combined.includes("sekolah") || combined.includes("kuliah") || combined.includes("buku") || combined.includes("kursus") || combined.includes("les ") || combined.includes("spp") || combined.includes("ujian")) return "school";
+                              if (
+                                combined.includes("sekolah") ||
+                                combined.includes("kuliah") ||
+                                combined.includes("buku") ||
+                                combined.includes("kursus") ||
+                                combined.includes("les ") ||
+                                combined.includes("spp") ||
+                                combined.includes("ujian")
+                              )
+                                return "school";
 
                               // ── Entertainment ──
-                              if (combined.includes("game") || combined.includes("steam") || combined.includes("playstation") || combined.includes("top up game") || combined.includes("mlbb")) return "sports_esports";
-                              if (combined.includes("film") || combined.includes("nonton") || combined.includes("bioskop") || combined.includes("cinema")) return "movie";
-                              if (combined.includes("musik") || combined.includes("konser") || combined.includes("festival")) return "music_note";
+                              if (
+                                combined.includes("game") ||
+                                combined.includes("steam") ||
+                                combined.includes("playstation") ||
+                                combined.includes("top up game") ||
+                                combined.includes("mlbb")
+                              )
+                                return "sports_esports";
+                              if (
+                                combined.includes("film") ||
+                                combined.includes("nonton") ||
+                                combined.includes("bioskop") ||
+                                combined.includes("cinema")
+                              )
+                                return "movie";
+                              if (
+                                combined.includes("musik") ||
+                                combined.includes("konser") ||
+                                combined.includes("festival")
+                              )
+                                return "music_note";
 
                               // ── Financial ──
-                              if (combined.includes("transfer") || combined.includes("tf ") || combined.includes("kirim") || combined.includes("antar bank")) return "sync_alt";
-                              if (combined.includes("pinjam") || combined.includes("hutang") || combined.includes("utang") || combined.includes("kredit") || combined.includes("pinjaman")) return "handshake";
-                              if (combined.includes("cicilan") || combined.includes("angsuran") || combined.includes("kpr") || combined.includes("leasing")) return "schedule";
-                              if (combined.includes("topup") || combined.includes("top up") || combined.includes("e-wallet") || combined.includes("gopay") || combined.includes("ovo") || combined.includes("dana") || combined.includes("shopeepay")) return "account_balance_wallet";
-                              if (combined.includes("donasi") || combined.includes("sedekah") || combined.includes("sumbangan") || combined.includes("zakat") || combined.includes("infaq")) return "volunteer_activism";
-                              if (combined.includes("pajak") || combined.includes("npwp") || combined.includes("pbb")) return "account_balance";
+                              if (
+                                combined.includes("transfer") ||
+                                combined.includes("tf ") ||
+                                combined.includes("kirim") ||
+                                combined.includes("antar bank")
+                              )
+                                return "sync_alt";
+                              if (
+                                combined.includes("pinjam") ||
+                                combined.includes("hutang") ||
+                                combined.includes("utang") ||
+                                combined.includes("kredit") ||
+                                combined.includes("pinjaman")
+                              )
+                                return "handshake";
+                              if (
+                                combined.includes("cicilan") ||
+                                combined.includes("angsuran") ||
+                                combined.includes("kpr") ||
+                                combined.includes("leasing")
+                              )
+                                return "schedule";
+                              if (
+                                combined.includes("topup") ||
+                                combined.includes("top up") ||
+                                combined.includes("e-wallet") ||
+                                combined.includes("gopay") ||
+                                combined.includes("ovo") ||
+                                combined.includes("dana") ||
+                                combined.includes("shopeepay")
+                              )
+                                return "account_balance_wallet";
+                              if (
+                                combined.includes("donasi") ||
+                                combined.includes("sedekah") ||
+                                combined.includes("sumbangan") ||
+                                combined.includes("zakat") ||
+                                combined.includes("infaq")
+                              )
+                                return "volunteer_activism";
+                              if (
+                                combined.includes("pajak") ||
+                                combined.includes("npwp") ||
+                                combined.includes("pbb")
+                              )
+                                return "account_balance";
 
                               // ── Beauty ──
-                              if (combined.includes("salon") || combined.includes("barber") || combined.includes("cukur") || combined.includes("skincare") || combined.includes("makeup")) return "content_cut";
+                              if (
+                                combined.includes("salon") ||
+                                combined.includes("barber") ||
+                                combined.includes("cukur") ||
+                                combined.includes("skincare") ||
+                                combined.includes("makeup")
+                              )
+                                return "content_cut";
 
                               // ── Pet ──
-                              if (combined.includes("kucing") || combined.includes("anjing") || combined.includes("peliharaan") || combined.includes("pet")) return "pets";
+                              if (
+                                combined.includes("kucing") ||
+                                combined.includes("anjing") ||
+                                combined.includes("peliharaan") ||
+                                combined.includes("pet")
+                              )
+                                return "pets";
 
                               // ── Fallback ──
-                              return tx.isExpense ? "credit_card" : "trending_up";
+                              return tx.isExpense
+                                ? "credit_card"
+                                : "trending_up";
                             })()}
                           </span>
                         </div>
@@ -729,7 +995,11 @@ export default function DashboardPersonalPage() {
                               whiteSpace: "nowrap",
                             }}
                           >
-                            {new Date(tx.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} • {tx.category} • {timeAgo(tx.date)}
+                            {new Date(tx.date).toLocaleDateString("id-ID", {
+                              day: "numeric",
+                              month: "short",
+                            })}{" "}
+                            • {tx.category} • {timeAgo(tx.date)}
                           </p>
                         </div>
                       </div>
