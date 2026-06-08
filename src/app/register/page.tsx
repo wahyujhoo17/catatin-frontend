@@ -15,6 +15,11 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string;
+    email?: string;
+    password?: string;
+  }>({});
   const [isLoading, setIsLoading] = useState(false);
 
   // ─── Guard: redirect if already logged in ─────────────────
@@ -24,8 +29,44 @@ export default function RegisterPage() {
     }
   }, [authLoading, isLoggedIn, router]);
 
+  const validateForm = (): boolean => {
+    const errors: { name?: string; email?: string; password?: string } = {};
+
+    if (!name.trim()) {
+      errors.name = "Nama lengkap wajib diisi";
+    } else if (name.trim().length < 2) {
+      errors.name = "Nama minimal 2 karakter";
+    }
+
+    if (!email.trim()) {
+      errors.email = "Email atau nomor telepon wajib diisi";
+    }
+
+    if (!password) {
+      errors.password = "Password wajib diisi";
+    } else if (password.length < 6) {
+      errors.password = "Password minimal 6 karakter";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const clearFieldError = (field: keyof typeof fieldErrors) => {
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateForm()) return;
+
     if (!agreed) {
       setError("Silakan setujui Syarat & Ketentuan terlebih dahulu");
       return;
@@ -130,7 +171,18 @@ export default function RegisterPage() {
               gap: 12,
             }}
           >
-            <div style={{ position: "relative", width: "100%", height: 60, marginBottom: 16, overflow: "hidden", display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                height: 60,
+                marginBottom: 16,
+                overflow: "hidden",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <Image
                 src="/logo/logo.png"
                 alt="Catatin"
@@ -185,7 +237,7 @@ export default function RegisterPage() {
                     left: 16,
                     top: "50%",
                     transform: "translateY(-50%)",
-                    color: "var(--outline)",
+                    color: fieldErrors.name ? "var(--error)" : "var(--outline)",
                   }}
                 >
                   person
@@ -195,10 +247,29 @@ export default function RegisterPage() {
                   type="text"
                   placeholder="Budi Santoso"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    clearFieldError("name");
+                  }}
+                  style={
+                    fieldErrors.name
+                      ? {
+                          borderColor: "var(--error)",
+                          boxShadow: "0 0 0 1px var(--error)",
+                        }
+                      : undefined
+                  }
                   id="register-name"
                 />
               </div>
+              {fieldErrors.name && (
+                <span
+                  className="text-body-sm"
+                  style={{ color: "var(--error)", marginLeft: 4 }}
+                >
+                  {fieldErrors.name}
+                </span>
+              )}
             </div>
 
             {/* Email / Telepon */}
@@ -221,7 +292,9 @@ export default function RegisterPage() {
                     left: 16,
                     top: "50%",
                     transform: "translateY(-50%)",
-                    color: "var(--outline)",
+                    color: fieldErrors.email
+                      ? "var(--error)"
+                      : "var(--outline)",
                   }}
                 >
                   alternate_email
@@ -231,10 +304,29 @@ export default function RegisterPage() {
                   type="text"
                   placeholder="contoh@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    clearFieldError("email");
+                  }}
+                  style={
+                    fieldErrors.email
+                      ? {
+                          borderColor: "var(--error)",
+                          boxShadow: "0 0 0 1px var(--error)",
+                        }
+                      : undefined
+                  }
                   id="register-email"
                 />
               </div>
+              {fieldErrors.email && (
+                <span
+                  className="text-body-sm"
+                  style={{ color: "var(--error)", marginLeft: 4 }}
+                >
+                  {fieldErrors.email}
+                </span>
+              )}
             </div>
 
             {/* Password */}
@@ -257,7 +349,9 @@ export default function RegisterPage() {
                     left: 16,
                     top: "50%",
                     transform: "translateY(-50%)",
-                    color: "var(--outline)",
+                    color: fieldErrors.password
+                      ? "var(--error)"
+                      : "var(--outline)",
                   }}
                 >
                   lock
@@ -267,8 +361,19 @@ export default function RegisterPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{ paddingRight: 48 }}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    clearFieldError("password");
+                  }}
+                  style={{
+                    paddingRight: 48,
+                    ...(fieldErrors.password
+                      ? {
+                          borderColor: "var(--error)",
+                          boxShadow: "0 0 0 1px var(--error)",
+                        }
+                      : {}),
+                  }}
                   id="register-password"
                 />
                 <button
@@ -291,6 +396,14 @@ export default function RegisterPage() {
                   </span>
                 </button>
               </div>
+              {fieldErrors.password && (
+                <span
+                  className="text-body-sm"
+                  style={{ color: "var(--error)", marginLeft: 4 }}
+                >
+                  {fieldErrors.password}
+                </span>
+              )}
             </div>
 
             {/* T&C Checkbox */}
@@ -414,15 +527,14 @@ export default function RegisterPage() {
             {/* Social Registration */}
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 16,
+                display: "flex",
+                justifyContent: "center",
               }}
             >
               <button
                 type="button"
                 className="btn-secondary"
-                style={{ borderRadius: 12 }}
+                style={{ borderRadius: 12, width: "100%" }}
                 id="register-google"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24">
@@ -444,15 +556,6 @@ export default function RegisterPage() {
                   />
                 </svg>
                 <span className="text-label-md">Google</span>
-              </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                style={{ borderRadius: 12 }}
-                id="register-apple"
-              >
-                <span className="material-symbols-outlined">apps</span>
-                <span className="text-label-md">Apple</span>
               </button>
             </div>
           </form>
@@ -487,7 +590,17 @@ export default function RegisterPage() {
         }}
         className="hidden-mobile"
       >
-        <div style={{ position: "relative", width: 100, height: 32, overflow: "hidden", display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+        <div
+          style={{
+            position: "relative",
+            width: 100,
+            height: 32,
+            overflow: "hidden",
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+          }}
+        >
           <Image
             src="/logo/logo.png"
             alt="Catatin Logo"
