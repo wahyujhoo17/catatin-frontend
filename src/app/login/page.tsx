@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // ─── Guard: redirect if already logged in ─────────────────
   useEffect(() => {
@@ -41,7 +43,7 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      await login(trimmedEmail, trimmedPassword);
+      await login(trimmedEmail, trimmedPassword, turnstileToken || undefined);
       router.push("/workspace");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login gagal";
@@ -192,8 +194,8 @@ export default function LoginPage() {
               <Image
                 src="/logo/logo.png"
                 alt="Catatin"
-                width={240}
-                height={240}
+                fill
+                sizes="240px"
                 style={{ objectFit: "contain" }}
                 priority
               />
@@ -364,6 +366,19 @@ export default function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Turnstile — only in production */}
+              {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  <Turnstile
+                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                    onSuccess={setTurnstileToken}
+                    onError={() => setTurnstileToken(null)}
+                    onExpire={() => setTurnstileToken(null)}
+                    options={{ theme: "auto", size: "normal" }}
+                  />
+                </div>
+              )}
 
               {/* Submit Button */}
               <button
@@ -553,8 +568,8 @@ export default function LoginPage() {
           <Image
             src="/logo/logo.png"
             alt="Catatin Logo"
-            width={120}
-            height={120}
+            fill
+            sizes="100px"
             style={{ objectFit: "contain" }}
             priority
           />

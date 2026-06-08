@@ -4,21 +4,30 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export default function ForgotPasswordPage() {
   const { forgotPassword } = useAuth();
-  const [email, setEmail] = useState("");
+  const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [sentVia, setSentVia] = useState<"email" | "phone">("email");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  const isEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!input.trim()) return;
     setError("");
     setIsLoading(true);
     try {
-      await forgotPassword(email);
+      const result = await forgotPassword(
+        input.trim(),
+        turnstileToken || undefined,
+      );
+      setSentVia(result.type || "email");
       setSubmitted(true);
     } catch (err: unknown) {
       setError(
@@ -110,12 +119,23 @@ export default function ForgotPasswordPage() {
               gap: 16,
             }}
           >
-            <div style={{ position: "relative", width: "100%", height: 60, marginBottom: 16, overflow: "hidden", display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                height: 60,
+                marginBottom: 16,
+                overflow: "hidden",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <Image
                 src="/logo/logo.png"
                 alt="Catatin"
-                width={240}
-                height={240}
+                fill
+                sizes="240px"
                 style={{ objectFit: "contain" }}
                 priority
               />
@@ -130,8 +150,8 @@ export default function ForgotPasswordPage() {
               className="text-body-lg"
               style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}
             >
-              Masukkan email yang terdaftar untuk menerima tautan pemulihan kata
-              sandi.
+              Masukkan email atau nomor telepon yang terdaftar untuk memulihkan
+              kata sandi Anda.
             </p>
           </div>
 
@@ -182,7 +202,7 @@ export default function ForgotPasswordPage() {
                   </div>
                 )}
 
-                {/* Email Field */}
+                {/* Email / Phone Field */}
                 <div
                   style={{ display: "flex", flexDirection: "column", gap: 8 }}
                 >
@@ -194,7 +214,7 @@ export default function ForgotPasswordPage() {
                       marginLeft: 4,
                     }}
                   >
-                    Alamat Email
+                    Email atau Nomor Telepon
                   </label>
                   <div style={{ position: "relative" }}>
                     <span
@@ -207,18 +227,31 @@ export default function ForgotPasswordPage() {
                         color: "var(--outline)",
                       }}
                     >
-                      mail
+                      alternate_email
                     </span>
                     <input
                       className="glass-input"
-                      type="email"
+                      type="text"
                       required
-                      placeholder="nama@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="nama@email.com atau 0812xxxx"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
                     />
                   </div>
                 </div>
+
+                {/* Turnstile — only in production */}
+                {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+                  <div style={{ display: "flex", justifyContent: "center" }}>
+                    <Turnstile
+                      siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                      onSuccess={setTurnstileToken}
+                      onError={() => setTurnstileToken(null)}
+                      onExpire={() => setTurnstileToken(null)}
+                      options={{ theme: "auto", size: "normal" }}
+                    />
+                  </div>
+                )}
 
                 {/* Submit Button */}
                 <button
@@ -251,6 +284,7 @@ export default function ForgotPasswordPage() {
                 </button>
               </form>
             ) : (
+              /* ─── Success Step ──────────────────────────── */
               <div
                 className="animate-fade-in"
                 style={{
@@ -272,14 +306,17 @@ export default function ForgotPasswordPage() {
                   className="text-body-lg"
                   style={{ color: "var(--on-surface)" }}
                 >
-                  Tautan pemulihan telah dikirim ke <strong>{email}</strong>.
+                  Tautan pemulihan telah dikirim
+                  {sentVia === "phone" ? " via WhatsApp" : ""} ke{" "}
+                  <strong>{input}</strong>.
                 </p>
                 <p
                   className="text-body-sm"
                   style={{ color: "var(--on-surface-variant)" }}
                 >
-                  Cek kotak masuk (dan folder spam) email Anda. Klik tautan di
-                  dalamnya untuk membuat kata sandi baru.
+                  {sentVia === "phone"
+                    ? "Cek WhatsApp Anda. Klik tautan di dalamnya untuk membuat kata sandi baru."
+                    : "Cek kotak masuk (dan folder spam) email Anda. Klik tautan di dalamnya untuk membuat kata sandi baru."}
                 </p>
               </div>
             )}
@@ -325,12 +362,22 @@ export default function ForgotPasswordPage() {
         }}
         className="hidden-mobile"
       >
-        <div style={{ position: "relative", width: 100, height: 32, overflow: "hidden", display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+        <div
+          style={{
+            position: "relative",
+            width: 100,
+            height: 32,
+            overflow: "hidden",
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+          }}
+        >
           <Image
             src="/logo/logo.png"
             alt="Catatin Logo"
-            width={120}
-            height={120}
+            fill
+            sizes="100px"
             style={{ objectFit: "contain" }}
             priority
           />

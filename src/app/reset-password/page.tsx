@@ -142,12 +142,23 @@ function ResetForm() {
               gap: 16,
             }}
           >
-            <div style={{ position: "relative", width: "100%", height: 60, marginBottom: 16, overflow: "hidden", display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                height: 60,
+                marginBottom: 16,
+                overflow: "hidden",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <Image
                 src="/logo/logo.png"
                 alt="Catatin"
-                width={240}
-                height={240}
+                fill
+                sizes="240px"
                 style={{ objectFit: "contain" }}
                 priority
               />

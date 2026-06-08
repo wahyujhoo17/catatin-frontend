@@ -27,13 +27,22 @@ export default function TopAppBar({
           textDecoration: "none",
         }}
       >
-        <div style={{ position: "relative", width: 120, height: 32, overflow: "hidden", display: "flex", alignItems: "center" }}>
+        <div
+          style={{
+            position: "relative",
+            width: 120,
+            height: 32,
+            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
           <Image
             src="/logo/logo.png"
             alt="Catatin Logo"
-            width={120}
-            height={120}
-            style={{ objectFit: "contain", height: "auto" }}
+            fill
+            sizes="120px"
+            style={{ objectFit: "contain" }}
             priority
           />
         </div>

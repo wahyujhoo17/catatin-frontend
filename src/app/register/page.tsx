@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function RegisterPage() {
     password?: string;
   }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // ─── Guard: redirect if already logged in ─────────────────
   useEffect(() => {
@@ -79,7 +81,13 @@ export default function RegisterPage() {
     setError("");
     setIsLoading(true);
     try {
-      const result = await register(name, email, password);
+      const result = await register(
+        name,
+        email,
+        password,
+        undefined,
+        turnstileToken || undefined,
+      );
       // Store the backend response for OTP verification
       localStorage.setItem("pending_email", result.email);
       localStorage.setItem(
@@ -191,8 +199,8 @@ export default function RegisterPage() {
               <Image
                 src="/logo/logo.png"
                 alt="Catatin"
-                width={240}
-                height={240}
+                fill
+                sizes="240px"
                 style={{ objectFit: "contain" }}
                 priority
               />
@@ -454,6 +462,19 @@ export default function RegisterPage() {
               </label>
             </div>
 
+            {/* Turnstile — only in production */}
+            {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <Turnstile
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                  onSuccess={setTurnstileToken}
+                  onError={() => setTurnstileToken(null)}
+                  onExpire={() => setTurnstileToken(null)}
+                  options={{ theme: "auto", size: "normal" }}
+                />
+              </div>
+            )}
+
             {/* Error Message */}
             {error && (
               <div
@@ -610,8 +631,8 @@ export default function RegisterPage() {
           <Image
             src="/logo/logo.png"
             alt="Catatin Logo"
-            width={120}
-            height={120}
+            fill
+            sizes="100px"
             style={{ objectFit: "contain" }}
             priority
           />

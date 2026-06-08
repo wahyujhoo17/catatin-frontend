@@ -30,18 +30,26 @@ interface AuthContextType {
   login: (
     email: string,
     password: string,
+    cfTurnstileToken?: string,
   ) => Promise<{ token: string; refreshToken: string; user: User }>;
   register: (
     name: string,
     email: string,
     password: string,
     phone?: string,
+    cfTurnstileToken?: string,
   ) => Promise<{ message: string; email: string; registrationType?: string }>;
   verifyOtp: (
     email: string,
     code: string,
   ) => Promise<{ token: string; refreshToken: string; user: User }>;
-  forgotPassword: (email: string) => Promise<{ message: string }>;
+  forgotPassword: (
+    email: string,
+    cfTurnstileToken?: string,
+  ) => Promise<{
+    message: string;
+    type?: "email" | "phone";
+  }>;
   resetPassword: (
     token: string,
     password: string,
@@ -50,6 +58,7 @@ interface AuthContextType {
   updateMode: (mode: "POS" | "PERSONAL") => Promise<void>;
   refreshSession: () => Promise<void>;
   loginWithGoogle: () => void;
+  updateUser: (user: User) => void;
 }
 
 // ─── Config ────────────────────────────────────────────────────
@@ -156,11 +165,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshSession]);
 
   // ─── Login ──────────────────────────────────────────────────
-  const login = async (email: string, password: string) => {
+  const login = async (
+    email: string,
+    password: string,
+    cfTurnstileToken?: string,
+  ) => {
     const res = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, cfTurnstileToken }),
     });
 
     const data = await res.json();
@@ -179,11 +192,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     phone?: string,
+    cfTurnstileToken?: string,
   ) => {
     const res = await fetch(`${API_BASE}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, phone, password }),
+      body: JSON.stringify({ name, email, phone, password, cfTurnstileToken }),
     });
 
     const data = await res.json();
@@ -211,15 +225,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // ─── Forgot Password ────────────────────────────────────────
-  const forgotPassword = async (email: string) => {
+  const forgotPassword = async (email: string, cfTurnstileToken?: string) => {
     const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, cfTurnstileToken }),
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Gagal mengirim OTP");
+    if (!res.ok)
+      throw new Error(data.error || "Gagal mengirim permintaan reset");
 
     return data;
   };
@@ -261,7 +276,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data;
   };
 
-  // ─── Login with Google ──────────────────────────────────────
+  // ─── Update User (from profile change) ────────────────────
+  const updateUser = useCallback((updated: User) => {
+    setUser(updated);
+    // Sync localStorage
+    if (typeof window !== "undefined") {
+      localStorage.setItem("profile_name", updated.name || "");
+      localStorage.setItem("profile_email", updated.email || "");
+    }
+  }, []);
   const loginWithGoogle = () => {
     window.location.href = `${API_BASE}/api/auth/google`;
   };
@@ -290,6 +313,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateMode,
         refreshSession,
         loginWithGoogle,
+        updateUser,
       }}
     >
       {children}
