@@ -112,10 +112,9 @@ async function registerDeviceToken(
 
   try {
     // Dynamic import — Firebase SDK tidak boleh di-load saat SSR
-    const { requestNotificationPermission, sendTokenToBackend } =
-      await import("@/lib/firebase");
+    const { getFCMToken, sendTokenToBackend } = await import("@/lib/firebase");
 
-    const fcmToken = await requestNotificationPermission();
+    const fcmToken = await getFCMToken();
     if (fcmToken) {
       const success = await sendTokenToBackend(fcmToken, authToken, apiBase);
       if (success) {
@@ -240,6 +239,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     cfTurnstileToken?: string,
   ) => {
+    // ⚠️ Minta izin notifikasi SEBELUM await fetch() — harus dalam user gesture!
+    // Setelah await, browser menganggap user gesture sudah selesai.
+    const { requestAndGetPermission } = await import("@/lib/firebase");
+    const permission = await requestAndGetPermission();
+    if (permission === "granted") {
+      console.log("[Auth] ✅ Izin notifikasi diberikan.");
+    } else if (permission === "denied") {
+      // Ditolak atau incognito — tidak bisa munculkan popup lagi
+    }
+
     const res = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -283,6 +292,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ─── Verify OTP ─────────────────────────────────────────────
   const verifyOtp = async (email: string, code: string) => {
+    // ⚠️ Minta izin notifikasi SEBELUM await fetch() — harus dalam user gesture!
+    const { requestAndGetPermission } = await import("@/lib/firebase");
+    const permission = await requestAndGetPermission();
+    if (permission === "granted") {
+      console.log("[Auth] ✅ Izin notifikasi diberikan.");
+    }
+
     const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -366,6 +382,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
   const loginWithGoogle = () => {
+    // Fire-and-forget notification permission — browser shows popup
+    // synchronously during user gesture; choice persists across redirects.
+    if (
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "default"
+    ) {
+      Notification.requestPermission();
+    }
     window.location.href = `${API_BASE}/api/auth/google`;
   };
 

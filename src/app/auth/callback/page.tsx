@@ -33,8 +33,8 @@ function CallbackContent() {
       const API_BASE =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
       import("@/lib/firebase")
-        .then(({ requestNotificationPermission, sendTokenToBackend }) =>
-          requestNotificationPermission().then((fcmToken) => {
+        .then(({ getFCMToken, sendTokenToBackend }) =>
+          getFCMToken().then((fcmToken) => {
             if (fcmToken) {
               sendTokenToBackend(fcmToken, token, API_BASE);
             }

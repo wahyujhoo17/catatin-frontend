@@ -67,40 +67,66 @@ function getFirebaseMessaging(): Messaging | null {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Minta izin notifikasi & dapatkan FCM token.
- * Hanya panggil setelah user login.
+ * Minta izin notifikasi SAJA — HARUS dipanggil langsung dari
+ * user gesture (click/tap handler), SEBELUM await fetch() apapun.
+ * Jika dipanggil setelah await, browser akan silent-ignore.
  *
- * ⚠️ Penting: Di iOS PWA / mobile Safari, wajib dipanggil
- * dari direct user gesture (click/tap), jadi pastikan caller-nya
- * adalah handler onSubmit form login, bukan callback async setelah fetch.
+ * Return value: "granted" | "denied" | "default" | null
+ * null artinya browser tidak support / terjadi error.
  */
-export async function requestNotificationPermission(): Promise<string | null> {
+export function requestPermissionOnly(): NotificationPermission | null {
   if (typeof window === "undefined") return null;
+  if (!("Notification" in window)) return null;
 
-  // 1. Cek Notification API support
+  // Already granted — no need to ask again
+  if (Notification.permission === "granted") return "granted";
+
+  // Already denied — return as-is, browser won't show popup again
+  if (Notification.permission === "denied") return "denied";
+
+  // "default" — browser hasn't been asked yet, this will trigger popup
+  // (dies inside the sync call, which is why this MUST be in a user gesture)
+  return Notification.permission; // tetap "default", caller akan trigger requestPermission()
+}
+
+/**
+ * Trigger popup izin notifikasi — HARUS dipanggil dalam user gesture.
+ * Panggil ini di dalam click handler, SEBELUM await fetch().
+ */
+export async function requestAndGetPermission(): Promise<NotificationPermission> {
+  if (typeof window === "undefined") return "denied";
+  if (!("Notification" in window)) return "denied";
+  if (Notification.permission === "granted") return "granted";
+  if (Notification.permission === "denied") return "denied";
+
+  try {
+    return await Notification.requestPermission();
+  } catch {
+    return "denied";
+  }
+}
+
+/**
+ * Dapatkan FCM token (asumsi izin notifikasi sudah granted).
+ * Bisa dipanggil kapan saja — tidak perlu user gesture.
+ */
+export async function getFCMToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
   if (!("Notification" in window)) {
     console.warn("[FCM] Browser tidak support Notification API.");
     return null;
   }
-
-  // 2. Jika permission sudah granted, skip minta izin ulang
-  if (Notification.permission === "denied") {
-    console.warn("[FCM] Izin notifikasi sudah ditolak permanen.");
+  if (Notification.permission !== "granted") {
+    console.warn(
+      "[FCM] Izin notifikasi belum diberikan (status: %s).\n" +
+        "🔧 Cara reset di Chrome: klik gembok di address bar → Notifications → Allow\n" +
+        "   Atau buka: chrome://settings/content/siteDetails?site=%s",
+      Notification.permission,
+      window.location.origin,
+    );
     return null;
   }
 
-  // 3. Minta izin (hanya jika belum granted, di iOS wajib user gesture)
-  if (Notification.permission !== "granted") {
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      console.warn("[FCM] Izin notifikasi ditolak:", permission);
-      return null;
-    }
-  }
-
-  // 4. Dapatkan FCM token — Firebase SDK akan otomatis mendaftarkan
-  //    service worker (/firebase-messaging-sw.js) dengan scope yang benar
-  //    (/firebase-cloud-messaging-push-scope) saat getToken() dipanggil.
   const msg = getFirebaseMessaging();
   if (!msg) return null;
 
