@@ -102,8 +102,13 @@ async function registerDeviceToken(
   authToken: string,
   apiBase: string,
 ): Promise<void> {
-  if (deviceTokenRegistrationRef.current) return;
+  if (deviceTokenRegistrationRef.current) {
+    console.log("[Auth] Device token registration sudah berjalan, skip.");
+    return;
+  }
   deviceTokenRegistrationRef.current = true;
+
+  console.log("[Auth] Memulai registrasi device token...");
 
   try {
     // Dynamic import — Firebase SDK tidak boleh di-load saat SSR
@@ -112,10 +117,19 @@ async function registerDeviceToken(
 
     const fcmToken = await requestNotificationPermission();
     if (fcmToken) {
-      await sendTokenToBackend(fcmToken, authToken, apiBase);
+      const success = await sendTokenToBackend(fcmToken, authToken, apiBase);
+      if (success) {
+        console.log("[Auth] ✅ Device token berhasil terdaftar.");
+      } else {
+        console.warn("[Auth] ⚠️ Device token gagal disimpan ke backend.");
+      }
+    } else {
+      console.warn(
+        "[Auth] ⚠️ Tidak mendapatkan FCM token — izin notifikasi belum diberikan atau SW belum siap.",
+      );
     }
   } catch (err) {
-    console.warn("[Auth] Gagal registrasi device token:", err);
+    console.error("[Auth] ❌ Gagal registrasi device token:", err);
   }
 }
 
@@ -175,8 +189,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       setToken(stored);
 
-      // ─── Register device for push notifications ──────────
-      registerDeviceToken(stored, API_BASE);
+      // ─── Register device for push notifications (fire-and-forget) ───
+      registerDeviceToken(stored, API_BASE).catch((err) =>
+        console.error("[Auth] registerDeviceToken on refresh failed:", err),
+      );
     } catch (err) {
       // PWA Fix: Do NOT clear tokens on network error (user might be offline)
       console.warn(
@@ -211,8 +227,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
     setToken(data.token);
 
-    // ─── Register device for push notifications ──────────
-    registerDeviceToken(data.token, API_BASE);
+    // ─── Register device for push notifications (fire-and-forget) ───
+    registerDeviceToken(data.token, API_BASE).catch((err) =>
+      console.error("[Auth] registerDeviceToken failed:", err),
+    );
 
     return data;
   };
@@ -252,8 +270,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
     setToken(data.token);
 
-    // ─── Register device for push notifications ──────────
-    registerDeviceToken(data.token, API_BASE);
+    // ─── Register device for push notifications (fire-and-forget) ───
+    registerDeviceToken(data.token, API_BASE).catch((err) =>
+      console.error("[Auth] registerDeviceToken failed:", err),
+    );
 
     return data;
   };

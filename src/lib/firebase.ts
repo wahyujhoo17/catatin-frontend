@@ -69,6 +69,10 @@ function getFirebaseMessaging(): Messaging | null {
 /**
  * Minta izin notifikasi & dapatkan FCM token.
  * Hanya panggil setelah user login.
+ *
+ * ⚠️ Penting: Di iOS PWA / mobile Safari, wajib dipanggil
+ * dari direct user gesture (click/tap), jadi pastikan caller-nya
+ * adalah handler onSubmit form login, bukan callback async setelah fetch.
  */
 export async function requestNotificationPermission(): Promise<string | null> {
   if (typeof window === "undefined") return null;
@@ -79,28 +83,71 @@ export async function requestNotificationPermission(): Promise<string | null> {
     return null;
   }
 
-  // 2. Minta izin
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") {
-    console.warn("[FCM] Izin notifikasi ditolak:", permission);
+  // 2. Jika permission sudah granted, skip minta izin ulang
+  if (Notification.permission === "denied") {
+    console.warn("[FCM] Izin notifikasi sudah ditolak permanen.");
     return null;
   }
 
-  // 3. Pastikan Service Worker terdaftar
-  const registration = await navigator.serviceWorker.ready;
-  if (!registration) {
-    console.warn("[FCM] Service Worker belum siap.");
-    return null;
+  // 3. Minta izin (hanya jika belum granted, di iOS wajib user gesture)
+  if (Notification.permission !== "granted") {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.warn("[FCM] Izin notifikasi ditolak:", permission);
+      return null;
+    }
   }
 
-  // 4. Dapatkan FCM token
+  // 4. Cari Service Worker FCM yang spesifik
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  const swReg = registrations.find((r) =>
+    r.scope.includes("firebase-messaging"),
+  );
+
+  if (!swReg) {
+    // Fallback: tunggu sebentar lalu coba lagi (SW mungkin belum selesai register)
+    console.warn("[FCM] Firebase Messaging SW belum terdaftar, menunggu...");
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const retryRegistrations = await navigator.serviceWorker.getRegistrations();
+    const retrySwReg = retryRegistrations.find((r) =>
+      r.scope.includes("firebase-messaging"),
+    );
+
+    if (!retrySwReg) {
+      console.warn("[FCM] Firebase Messaging SW tetap tidak ditemukan.");
+      return null;
+    }
+
+    console.log("[FCM] SW ditemukan setelah retry:", retrySwReg.scope);
+    const msg = getFirebaseMessaging();
+    if (!msg) return null;
+
+    try {
+      const currentToken = await getToken(msg, {
+        vapidKey: VAPID_KEY,
+        serviceWorkerRegistration: retrySwReg,
+      });
+      if (currentToken) {
+        console.log("[FCM] Token didapat:", currentToken.slice(0, 20) + "...");
+        return currentToken;
+      }
+      return null;
+    } catch (err) {
+      console.error("[FCM] Error getToken:", err);
+      return null;
+    }
+  }
+
+  console.log("[FCM] Menggunakan SW:", swReg.scope);
+
+  // 5. Dapatkan FCM token dengan SW registration yang benar
   const msg = getFirebaseMessaging();
   if (!msg) return null;
 
   try {
     const currentToken = await getToken(msg, {
       vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: registration,
+      serviceWorkerRegistration: swReg,
     });
 
     if (currentToken) {
