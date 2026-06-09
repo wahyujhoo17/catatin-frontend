@@ -54,17 +54,27 @@ function renderMarkdown(text: string): string {
       "<strong style='font-size:1.1em;display:block;margin:8px 0 4px'>$1</strong>",
     );
 
-  // Unordered list items: group consecutive bullet lines into one container
-  // so there's zero newline/br between adjacent items.
+  // ── Ordered list: group consecutive "1. ", "2. " lines ──
+  // Process BEFORE unordered so sub-bullets inside numbered items work
+  html = html.replace(/(?:^|\n)((?:\d+\.\s+.+?(?:\n|$))+)/gm, (match) => {
+    const lines = match.split("\n").filter((l) => /^\d+\.\s+/.test(l));
+    const items = lines.map((line, i) => {
+      const content = line.replace(/^\d+\.\s+/, "");
+      return `<span style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px"><span style="flex-shrink:0;min-width:18px;font-weight:600;color:var(--primary,#2563eb);line-height:1.4">${i + 1}.</span><span style="line-height:1.4">${content}</span></span>`;
+    });
+    return `\n<div style="display:flex;flex-direction:column;margin:4px 0">${items.join("")}</div>`;
+  });
+
+  // ── Unordered list: group consecutive bullet lines ──────
   html = html.replace(/(?:^|\n)((?:[-*•] .+?(?:\n|$))+)/g, (match) => {
     const items = match
       .split("\n")
       .filter(Boolean)
       .map((line) => {
         const content = line.replace(/^[-*•] /, "");
-        return `<span style="display:flex;gap:5px;align-items:flex-start"><span style="flex-shrink:0;line-height:1.3">•</span><span style="line-height:1.3">${content}</span></span>`;
+        return `<span style="display:flex;gap:5px;align-items:flex-start;margin-bottom:3px"><span style="flex-shrink:0;line-height:1.4">•</span><span style="line-height:1.4">${content}</span></span>`;
       });
-    return `\n<div style="display:flex;flex-direction:column;gap:1px">${items.join("")}</div>`;
+    return `\n<div style="display:flex;flex-direction:column;margin:4px 0">${items.join("")}</div>`;
   });
 
   // Newlines: double (or more) → paragraph break, single → space (prose flows naturally)
