@@ -149,6 +149,32 @@ export async function getFCMToken(): Promise<string | null> {
 }
 
 /**
+ * Deteksi platform: "ios", "android", atau "web".
+ * Memprioritaskan PWA standalone mode + navigator standlone di iOS.
+ */
+function detectPlatform(): "ios" | "android" | "web" {
+  if (typeof window === "undefined") return "web";
+  const ua = navigator.userAgent.toLowerCase();
+
+  // iOS: iPhone / iPad / iPod, atau Safari standalone mode
+  const isIOS =
+    /iphone|ipad|ipod/.test(ua) ||
+    // @ts-ignore — Safari standalone
+    navigator.standalone === true;
+
+  if (isIOS) return "ios";
+
+  // Android: device Android, atau Android PWA standalone
+  const isAndroid =
+    /android/.test(ua) ||
+    window.matchMedia("(display-mode: standalone)").matches;
+
+  if (isAndroid) return "android";
+
+  return "web";
+}
+
+/**
  * Kirim FCM token ke backend untuk disimpan.
  */
 export async function sendTokenToBackend(
@@ -157,13 +183,15 @@ export async function sendTokenToBackend(
   apiBase: string,
 ): Promise<boolean> {
   try {
+    const platform = detectPlatform();
+
     const res = await fetch(`${apiBase}/api/auth/device-token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${authToken}`,
       },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ token, platform }),
     });
 
     if (!res.ok) {
@@ -172,7 +200,9 @@ export async function sendTokenToBackend(
       return false;
     }
 
-    console.log("[FCM] Token berhasil disimpan di backend.");
+    console.log(
+      `[FCM] Token berhasil disimpan di backend (platform: ${platform}).`,
+    );
     return true;
   } catch (err) {
     console.error("[FCM] Error menyimpan token:", err);

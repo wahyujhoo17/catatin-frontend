@@ -21,11 +21,19 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 // ─── Background message handler ──────────────────────────────
-// Dipanggil saat app di background / tertutup
+// HANYA dipanggil untuk data-only messages.
+// Jika message punya `notification` / `webpush.notification`, Firebase SDK
+// akan auto-display dan handler ini TIDAK dipanggil — jadi tidak double.
 messaging.onBackgroundMessage((payload) => {
-    console.log("[FCM SW] Pesan background diterima:", payload);
+    console.log("[FCM SW] Pesan background data-only diterima:", payload);
 
-    const { title, body, icon, data } = payload.notification || payload.data || {};
+    // Safety guard: jika payload.notification sudah ada, Firebase sudah handle
+    if (payload.notification) {
+        console.log("[FCM SW] Skip — notifikasi sudah ditampilkan otomatis oleh Firebase SDK.");
+        return;
+    }
+
+    const { title, body, icon, data } = payload.data || {};
     const clickAction = data?.click_action || "/dashboard";
 
     const options = {
