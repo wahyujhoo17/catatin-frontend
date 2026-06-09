@@ -7,11 +7,6 @@ import BottomNav from "@/components/layout/BottomNav";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import TransactionDetailModal from "@/components/ui/TransactionDetailModal";
-import {
-  requestNotificationPermission,
-  sendTokenToBackend,
-} from "@/lib/firebase";
-
 // ─── Config ──────────────────────────────────────────────────
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -95,38 +90,7 @@ export default function DashboardPersonalPage() {
   const [selectedDetailTxId, setSelectedDetailTxId] = useState<string | null>(
     null,
   );
-  const [showNotifBanner, setShowNotifBanner] = useState(false);
-  const [notifLoading, setNotifLoading] = useState(false);
   const displayName = user?.name?.split(" ")[0] || "";
-
-  // Cek apakah notifikasi sudah granted — kalau belum, tampilkan banner
-  useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      "Notification" in window &&
-      Notification.permission === "default"
-    ) {
-      setShowNotifBanner(true);
-    }
-  }, []);
-
-  const handleEnableNotification = async () => {
-    setNotifLoading(true);
-    try {
-      const fcmToken = await requestNotificationPermission();
-      if (fcmToken) {
-        const stored = localStorage.getItem("token");
-        if (stored) {
-          await sendTokenToBackend(fcmToken, stored, API_BASE);
-        }
-        setShowNotifBanner(false);
-      }
-    } catch (err) {
-      console.error("[Dashboard] Gagal enable notifikasi:", err);
-    } finally {
-      setNotifLoading(false);
-    }
-  };
 
   // Redirect to workspace if mode not set or to POS dashboard if POS mode
   useEffect(() => {
@@ -212,94 +176,6 @@ export default function DashboardPersonalPage() {
               Ini status keuanganmu bulan {currentMonth}.
             </p>
           </header>
-
-          {/* Notifikasi Banner — iOS/PWA butuh user gesture langsung */}
-          {showNotifBanner && (
-            <div
-              className="animate-fade-slide-up"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-                padding: "14px 18px",
-                borderRadius: 16,
-                background: "var(--primary-container)",
-                border: "1px solid rgba(79, 55, 138, 0.2)",
-                animationDelay: "0.05s",
-                flexWrap: "wrap",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  flex: 1,
-                  minWidth: 200,
-                }}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ color: "var(--primary)", fontSize: 28 }}
-                >
-                  notifications_active
-                </span>
-                <div>
-                  <p
-                    className="text-label-lg"
-                    style={{ color: "var(--on-primary-container)" }}
-                  >
-                    Aktifkan Notifikasi
-                  </p>
-                  <p
-                    className="text-body-sm"
-                    style={{
-                      color: "var(--on-primary-container)",
-                      opacity: 0.7,
-                      marginTop: 2,
-                    }}
-                  >
-                    Dapatkan insight AI & pengingat budget langsung
-                  </p>
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <button
-                  onClick={() => setShowNotifBanner(false)}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    color: "var(--on-primary-container)",
-                    opacity: 0.6,
-                    fontSize: 13,
-                    cursor: "pointer",
-                    padding: "6px 8px",
-                  }}
-                >
-                  Nanti
-                </button>
-                <button
-                  onClick={handleEnableNotification}
-                  disabled={notifLoading}
-                  style={{
-                    background: "var(--primary)",
-                    color: "var(--on-primary)",
-                    border: "none",
-                    borderRadius: 9999,
-                    padding: "10px 20px",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: notifLoading ? "wait" : "pointer",
-                    opacity: notifLoading ? 0.7 : 1,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {notifLoading ? "..." : "Aktifkan"}
-                </button>
-              </div>
-            </div>
-          )}
 
           {fetchError && (
             <div

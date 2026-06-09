@@ -29,6 +29,19 @@ function CallbackContent() {
         document.cookie = `catatin-mode=${mode === "POS" ? "pos" : "personal"}; ${COOKIE_FLAGS}; max-age=2592000`;
       }
 
+      // ─── Register device token (fire-and-forget) ──────────
+      const API_BASE =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+      import("@/lib/firebase")
+        .then(({ requestNotificationPermission, sendTokenToBackend }) =>
+          requestNotificationPermission().then((fcmToken) => {
+            if (fcmToken) {
+              sendTokenToBackend(fcmToken, token, API_BASE);
+            }
+          }),
+        )
+        .catch(() => {}); // best-effort, jangan block redirect
+
       router.replace("/workspace");
     } else {
       const error = searchParams.get("error") || "Google login gagal";
