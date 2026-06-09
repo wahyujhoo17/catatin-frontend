@@ -7,6 +7,7 @@ import React, {
   useEffect,
   ReactNode,
   useCallback,
+  useRef,
 } from "react";
 import { useRouter } from "next/navigation";
 
@@ -94,6 +95,30 @@ function clearTokens() {
   document.cookie = `catatin-mode=; ${COOKIE_FLAGS}; max-age=0`;
 }
 
+// ─── Device Token Registration (Firebase Cloud Messaging) ──────
+const deviceTokenRegistrationRef = { current: false };
+
+async function registerDeviceToken(
+  authToken: string,
+  apiBase: string,
+): Promise<void> {
+  if (deviceTokenRegistrationRef.current) return;
+  deviceTokenRegistrationRef.current = true;
+
+  try {
+    // Dynamic import — Firebase SDK tidak boleh di-load saat SSR
+    const { requestNotificationPermission, sendTokenToBackend } =
+      await import("@/lib/firebase");
+
+    const fcmToken = await requestNotificationPermission();
+    if (fcmToken) {
+      await sendTokenToBackend(fcmToken, authToken, apiBase);
+    }
+  } catch (err) {
+    console.warn("[Auth] Gagal registrasi device token:", err);
+  }
+}
+
 // ─── Context ──────────────────────────────────────────────────
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -149,6 +174,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
       setUser(data.user);
       setToken(stored);
+
+      // ─── Register device for push notifications ──────────
+      registerDeviceToken(stored, API_BASE);
     } catch (err) {
       // PWA Fix: Do NOT clear tokens on network error (user might be offline)
       console.warn(
@@ -182,6 +210,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     storeTokens(data.token, data.refreshToken);
     setUser(data.user);
     setToken(data.token);
+
+    // ─── Register device for push notifications ──────────
+    registerDeviceToken(data.token, API_BASE);
 
     return data;
   };
@@ -220,6 +251,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     storeTokens(data.token, data.refreshToken);
     setUser(data.user);
     setToken(data.token);
+
+    // ─── Register device for push notifications ──────────
+    registerDeviceToken(data.token, API_BASE);
 
     return data;
   };
