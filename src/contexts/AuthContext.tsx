@@ -130,6 +130,8 @@ async function registerDeviceToken(
     }
   } catch (err) {
     console.error("[Auth] ❌ Gagal registrasi device token:", err);
+  } finally {
+    deviceTokenRegistrationRef.current = false;
   }
 }
 
@@ -207,6 +209,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshSession();
   }, [refreshSession]);
+
+  // ─── Re-sync device token when user returns to tab/PWA ──────
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const stored = getStoredToken();
+        if (stored) {
+          registerDeviceToken(stored, API_BASE).catch((err) =>
+            console.error(
+              "[Auth] Visibility re-sync device token failed:",
+              err,
+            ),
+          );
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isLoggedIn]);
 
   // ─── Login ──────────────────────────────────────────────────
   const login = async (
