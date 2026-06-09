@@ -98,10 +98,10 @@ export async function requestNotificationPermission(): Promise<string | null> {
     }
   }
 
-  // 4. Cari Service Worker FCM yang spesifik
+  // 4. Cari Service Worker FCM yang spesifik (via scriptURL, bukan scope!)
   const registrations = await navigator.serviceWorker.getRegistrations();
   const swReg = registrations.find((r) =>
-    r.scope.includes("firebase-messaging"),
+    r.active?.scriptURL.includes("firebase-messaging"),
   );
 
   if (!swReg) {
@@ -110,7 +110,7 @@ export async function requestNotificationPermission(): Promise<string | null> {
     await new Promise((resolve) => setTimeout(resolve, 2000));
     const retryRegistrations = await navigator.serviceWorker.getRegistrations();
     const retrySwReg = retryRegistrations.find((r) =>
-      r.scope.includes("firebase-messaging"),
+      r.active?.scriptURL.includes("firebase-messaging"),
     );
 
     if (!retrySwReg) {
