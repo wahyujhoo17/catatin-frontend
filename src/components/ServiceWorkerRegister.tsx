@@ -10,17 +10,9 @@ export function ServiceWorkerRegister() {
         // Silently fail — SW is optional
       });
 
-      // ─── Firebase Messaging Service Worker ────────────────────
-      // Daftarkan SW terpisah untuk FCM background messages.
-      // Scope menggunakan path agar tidak bentrok dengan SW utama.
-      navigator.serviceWorker
-        .register("/firebase-messaging-sw.js")
-        .then((reg) => {
-          console.log("[SW] Firebase Messaging SW terdaftar:", reg.scope);
-        })
-        .catch((err) => {
-          console.warn("[SW] Gagal mendaftarkan Firebase Messaging SW:", err);
-        });
+      // Firebase Messaging SW didaftarkan otomatis oleh Firebase SDK
+      // saat getToken() dipanggil — tidak perlu registrasi manual di sini
+      // karena akan konflik scope dengan Firebase SDK.
     }
   }, []);
 

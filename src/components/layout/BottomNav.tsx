@@ -88,6 +88,8 @@ export default function BottomNav() {
   >([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const [showScanOptions, setShowScanOptions] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -119,13 +121,16 @@ export default function BottomNav() {
 
   const handleOpenScan = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    setShowScanOptions(true);
+  };
+
+  const handleCloseScanOptions = () => {
+    setShowScanOptions(false);
   };
 
   const handleCloseScan = () => {
     setIsCameraOpen(false);
+    setShowScanOptions(false);
     setScanPhase("camera");
     setCapturedImage(null);
     setScanResult(null);
@@ -133,6 +138,7 @@ export default function BottomNav() {
     setSelectedAccount(null);
     setIsSaving(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (galleryInputRef.current) galleryInputRef.current.value = "";
   };
 
   // ─── Process receipt with AI ────────────────────────────────
@@ -201,6 +207,7 @@ export default function BottomNav() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setShowScanOptions(false); // close options sheet now that user picked a file
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64 = reader.result as string;
@@ -217,7 +224,7 @@ export default function BottomNav() {
   const handleRetake = () => {
     handleCloseScan();
     setTimeout(() => {
-      if (fileInputRef.current) fileInputRef.current.click();
+      setShowScanOptions(true);
     }, 100);
   };
 
@@ -915,14 +922,224 @@ export default function BottomNav() {
         </div>
       )}
 
-      {/* Hidden Native Camera/Gallery Picker */}
+      {/* Hidden Native Camera Picker */}
       <input
+        id="camera-input"
         type="file"
         accept="image/*"
+        capture="environment"
         ref={fileInputRef}
         onChange={handleFileUpload}
         style={{ display: "none" }}
       />
+
+      {/* Hidden Native Gallery/File Picker */}
+      <input
+        id="gallery-input"
+        type="file"
+        accept="image/*"
+        ref={galleryInputRef}
+        onChange={handleFileUpload}
+        style={{ display: "none" }}
+      />
+
+      {/* ─── Scan Options Bottom Sheet ─── */}
+      {showScanOptions && (
+        <div
+          className="scan-options-overlay"
+          onClick={handleCloseScanOptions}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            animation: "fadeIn 0.2s ease",
+          }}
+        >
+          <div
+            className="scan-options-sheet"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              background: "var(--surface)",
+              borderRadius: "24px 24px 0 0",
+              padding: "8px 0 32px 0",
+              animation: "slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+            }}
+          >
+            {/* Drag Handle */}
+            <div
+              style={{
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                background: "var(--outline-variant)",
+                margin: "0 auto 16px auto",
+              }}
+            />
+
+            <h3
+              className="text-headline-sm"
+              style={{
+                textAlign: "center",
+                color: "var(--on-surface)",
+                fontWeight: 700,
+                marginBottom: 16,
+                padding: "0 20px",
+              }}
+            >
+              Pindai Struk
+            </h3>
+
+            {/* Camera Option — label triggers hidden camera input via user gesture */}
+            <label
+              htmlFor="camera-input"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                width: "100%",
+                padding: "16px 20px",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                transition: "background 0.15s",
+                boxSizing: "border-box",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "var(--surface-variant)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "transparent")
+              }
+            >
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: "var(--primary-container)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 28, color: "var(--on-primary-container)" }}
+                >
+                  photo_camera
+                </span>
+              </div>
+              <div style={{ textAlign: "left" }}>
+                <p
+                  className="text-body-lg"
+                  style={{
+                    color: "var(--on-surface)",
+                    fontWeight: 600,
+                  }}
+                >
+                  Ambil Foto
+                </p>
+                <p
+                  className="text-body-sm"
+                  style={{ color: "var(--on-surface-variant)" }}
+                >
+                  Buka kamera untuk memotret struk
+                </p>
+              </div>
+            </label>
+
+            {/* Gallery Option — label triggers hidden gallery input via user gesture */}
+            <label
+              htmlFor="gallery-input"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                width: "100%",
+                padding: "16px 20px",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                transition: "background 0.15s",
+                boxSizing: "border-box",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "var(--surface-variant)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = "transparent")
+              }
+            >
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: "var(--secondary-container)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{
+                    fontSize: 28,
+                    color: "var(--on-secondary-container)",
+                  }}
+                >
+                  photo_library
+                </span>
+              </div>
+              <div style={{ textAlign: "left" }}>
+                <p
+                  className="text-body-lg"
+                  style={{
+                    color: "var(--on-surface)",
+                    fontWeight: 600,
+                  }}
+                >
+                  Pilih dari Galeri
+                </p>
+                <p
+                  className="text-body-sm"
+                  style={{ color: "var(--on-surface-variant)" }}
+                >
+                  Unggah foto struk dari galeri atau file
+                </p>
+              </div>
+            </label>
+
+            {/* Cancel */}
+            <button
+              onClick={handleCloseScanOptions}
+              style={{
+                display: "block",
+                width: "calc(100% - 40px)",
+                margin: "8px 20px 0 20px",
+                padding: "14px 0",
+                border: "none",
+                borderRadius: 12,
+                background: "var(--surface-variant)",
+                color: "var(--on-surface-variant)",
+                fontWeight: 600,
+                fontSize: "0.95rem",
+                cursor: "pointer",
+              }}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
