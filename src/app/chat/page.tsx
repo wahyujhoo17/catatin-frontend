@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useLayoutEffect, useMemo } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+} from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -125,18 +132,6 @@ function ChartWidget({ type }: { type: string }) {
       .then(setData)
       .catch(console.error);
   }, [type]);
-
-  useEffect(() => {
-    if (data) {
-      setTimeout(() => {
-        const scrollContainer = document.documentElement || document.body;
-        window.scrollTo({
-          top: scrollContainer.scrollHeight,
-          behavior: "smooth"
-        });
-      }, 100);
-    }
-  }, [data]);
 
   if (!data)
     return (
@@ -268,35 +263,41 @@ export default function ChatPage() {
     return filtered;
   }, [messages]);
 
-  const scrollToBottom = useCallback((behavior: "smooth" | "auto" = "smooth", force = false) => {
-    const now = Date.now();
-    // Only throttle smooth scrolling to prevent animation cancellation. Instant scrolling ("auto") has no animation and can be called as fast as needed.
-    if (behavior === "smooth" && !force && now - lastScrollTime.current < 100) return;
-    
-    if (behavior === "smooth") {
-      lastScrollTime.current = now;
-    }
-    
-    // Defer the scroll calculation to next frame to ensure browser has updated layout height
-    setTimeout(() => {
-      const scrollContainer = document.documentElement || document.body;
-      const targetScrollTop = scrollContainer.scrollHeight;
-      
-      const originalScrollBehavior = document.documentElement.style.scrollBehavior;
-      if (behavior === "auto") {
-        document.documentElement.style.scrollBehavior = "auto";
+  const scrollToBottom = useCallback(
+    (behavior: "smooth" | "auto" = "smooth", force = false) => {
+      const now = Date.now();
+      // Only throttle smooth scrolling to prevent animation cancellation. Instant scrolling ("auto") has no animation and can be called as fast as needed.
+      if (behavior === "smooth" && !force && now - lastScrollTime.current < 100)
+        return;
+
+      if (behavior === "smooth") {
+        lastScrollTime.current = now;
       }
-      
-      window.scrollTo({
-        top: targetScrollTop,
-        behavior
-      });
-      
-      if (behavior === "auto") {
-        document.documentElement.style.scrollBehavior = originalScrollBehavior;
-      }
-    }, 0);
-  }, []);
+
+      // Defer the scroll calculation to next frame to ensure browser has updated layout height
+      setTimeout(() => {
+        const scrollContainer = document.documentElement || document.body;
+        const targetScrollTop = scrollContainer.scrollHeight;
+
+        const originalScrollBehavior =
+          document.documentElement.style.scrollBehavior;
+        if (behavior === "auto") {
+          document.documentElement.style.scrollBehavior = "auto";
+        }
+
+        window.scrollTo({
+          top: targetScrollTop,
+          behavior,
+        });
+
+        if (behavior === "auto") {
+          document.documentElement.style.scrollBehavior =
+            originalScrollBehavior;
+        }
+      }, 0);
+    },
+    [],
+  );
 
   useEffect(() => {
     // Only scroll to bottom automatically if we are NOT loading history
@@ -321,67 +322,85 @@ export default function ChatPage() {
     }
   }, [messages, isLoadingHistory, page, scrollToBottom]);
   const isFetchingRef = useRef(false);
+  const isRestoringScrollRef = useRef(false);
 
   // Fetch history function
-  const fetchHistory = useCallback(async (pageToLoad: number) => {
-    if (!hasMore || isFetchingRef.current) return;
-    
-    const token = getToken();
-    if (!token) return;
+  const fetchHistory = useCallback(
+    async (pageToLoad: number) => {
+      if (!hasMore || isFetchingRef.current) return;
 
-    try {
-      isFetchingRef.current = true;
-      setIsLoadingHistory(true);
-      const res = await fetch(`${API_BASE}/api/ai/chat/history?page=${pageToLoad}&limit=6`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error("Failed to fetch history");
-      
-      const data = await res.json();
-      const fetchedMessages: Message[] = (data.messages || []).map((m: any) => ({
-        ...m,
-        isHistory: pageToLoad > 1 // only mark older pages as history to bypass animations
-      }));
-      
-      if (fetchedMessages.length > 0) {
-        setMessages((prev) => {
-          if (pageToLoad === 1) {
-            const filtered = prev.filter(m => m.id !== "welcome");
-            if (filtered.length === 0) return fetchedMessages;
-            return [...fetchedMessages, ...filtered];
-          } else {
-            // Save scrollHeight synchronously before React renders the new elements
-            previousScrollHeightRef.current = document.documentElement.scrollHeight || document.body.scrollHeight;
-            return [...fetchedMessages, ...prev];
-          }
-        });
-      } else if (pageToLoad === 1) {
-        setMessages((prev) => {
-          if (prev.length === 0) {
-            return [{
-              id: "welcome",
-              type: "bot",
-              text: 'Hai! 👋 Aku Catatin AI, asisten keuangan pribadimu.\n\nKamu bisa:\n• Catat pengeluaran: "Makan siang 50rb"\n• Catat pemasukan: "Gaji 5jt masuk"\n• Tanya saldo: "Berapa sisa saldo saya?"\n• Minta analisis keuangan\n\n⚠️ Aku hanya bisa bantu urusan keuangan dan aplikasi Catatin ya!',
-              time: new Date().toLocaleTimeString("id-ID", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            }];
-          }
-          return prev;
-        });
+      const token = getToken();
+      if (!token) return;
+
+      try {
+        isFetchingRef.current = true;
+        setIsLoadingHistory(true);
+        const res = await fetch(
+          `${API_BASE}/api/ai/chat/history?page=${pageToLoad}&limit=6`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        if (!res.ok) throw new Error("Failed to fetch history");
+
+        const data = await res.json();
+        const fetchedMessages: Message[] = (data.messages || []).map(
+          (m: any) => ({
+            ...m,
+            isHistory: pageToLoad > 1, // only mark older pages as history to bypass animations
+          }),
+        );
+
+        if (fetchedMessages.length > 0) {
+          setMessages((prev) => {
+            if (pageToLoad === 1) {
+              const filtered = prev.filter((m) => m.id !== "welcome");
+              if (filtered.length === 0) return fetchedMessages;
+              return [...fetchedMessages, ...filtered];
+            } else {
+              // Save scrollHeight synchronously before React renders the new elements
+              previousScrollHeightRef.current =
+                document.documentElement.scrollHeight ||
+                document.body.scrollHeight;
+              return [...fetchedMessages, ...prev];
+            }
+          });
+        } else if (pageToLoad === 1) {
+          setMessages((prev) => {
+            if (prev.length === 0) {
+              return [
+                {
+                  id: "welcome",
+                  type: "bot",
+                  text: 'Hai! 👋 Aku Catatin AI, asisten keuangan pribadimu.\n\nKamu bisa:\n• Catat pengeluaran: "Makan siang 50rb"\n• Catat pemasukan: "Gaji 5jt masuk"\n• Tanya saldo: "Berapa sisa saldo saya?"\n• Minta analisis keuangan\n\n⚠️ Aku hanya bisa bantu urusan keuangan dan aplikasi Catatin ya!',
+                  time: new Date().toLocaleTimeString("id-ID", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }),
+                },
+              ];
+            }
+            return prev;
+          });
+        }
+
+        setHasMore(data.pagination.page < data.pagination.totalPages);
+        setPage(pageToLoad);
+      } catch (err) {
+        console.error("Failed to load chat history:", err);
+      } finally {
+        setIsLoadingHistory(false);
+        setInitialLoadDone(true);
+        // Defer resetting fetch guard until after React commits DOM and
+        // useLayoutEffect has restored scroll position, so the scroll handler
+        // doesn't immediately trigger another fetch during restoration.
+        setTimeout(() => {
+          isFetchingRef.current = false;
+        }, 0);
       }
-
-      setHasMore(data.pagination.page < data.pagination.totalPages);
-      setPage(pageToLoad);
-    } catch (err) {
-      console.error("Failed to load chat history:", err);
-    } finally {
-      setIsLoadingHistory(false);
-      setInitialLoadDone(true);
-      isFetchingRef.current = false;
-    }
-  }, [hasMore]);
+    },
+    [hasMore],
+  );
 
   // Initial load
   useEffect(() => {
@@ -395,35 +414,52 @@ export default function ChatPage() {
     if (previousScrollHeightRef.current !== null) {
       const scrollContainer = document.documentElement || document.body;
       const newScrollHeight = scrollContainer.scrollHeight;
-      
+
+      // Flag to prevent scroll handler from triggering during restoration
+      isRestoringScrollRef.current = true;
+
       // Temporarily disable smooth scrolling to prevent bouncy animated scroll
-      const originalScrollBehavior = document.documentElement.style.scrollBehavior;
-      document.documentElement.style.scrollBehavior = 'auto';
-      
+      const originalScrollBehavior =
+        document.documentElement.style.scrollBehavior;
+      document.documentElement.style.scrollBehavior = "auto";
+
       window.scrollBy({
         top: newScrollHeight - previousScrollHeightRef.current,
         left: 0,
-        behavior: 'instant' as any
+        behavior: "instant" as any,
       });
-      
+
       // Restore original scroll behavior
       document.documentElement.style.scrollBehavior = originalScrollBehavior;
-      
+
       previousScrollHeightRef.current = null;
+
+      // Clear restoration flag after a short macrotask delay so both the
+      // synchronous scroll event AND the React useEffect callbacks have processed
+      setTimeout(() => {
+        isRestoringScrollRef.current = false;
+      }, 150);
     }
   }, [messages]);
 
   // Infinite scroll listener based on exact coordinates (100% reliable)
   useEffect(() => {
     const handleScroll = () => {
+      // Skip if we're in the middle of restoring scroll position or fetching history
+      if (isRestoringScrollRef.current || isFetchingRef.current) return;
       // If we are within 250px of the top, trigger fetch
-      if (window.scrollY <= 250 && !isLoadingHistory && hasMore && initialLoadDone) {
+      if (
+        window.scrollY <= 250 &&
+        !isLoadingHistory &&
+        hasMore &&
+        initialLoadDone
+      ) {
         fetchHistory(page + 1);
       }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    
+
     // Also check immediately in case the screen is already at the top
     handleScroll();
 
@@ -837,25 +873,27 @@ export default function ChatPage() {
       >
         <div ref={topRef} />
         {isLoadingHistory && page > 1 && (
-          <div style={{
-            position: "absolute",
-            top: 96,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "var(--surface-container)",
-            border: "1px solid var(--outline-variant)",
-            backdropFilter: "blur(8px)",
-            padding: "8px 16px",
-            borderRadius: "100px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            zIndex: 40,
-            color: "var(--on-surface)",
-            fontSize: 13,
-            fontWeight: 500,
-          }}>
+          <div
+            style={{
+              position: "absolute",
+              top: 96,
+              left: "50%",
+              transform: "translateX(-50%)",
+              background: "var(--surface-container)",
+              border: "1px solid var(--outline-variant)",
+              backdropFilter: "blur(8px)",
+              padding: "8px 16px",
+              borderRadius: "100px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              zIndex: 40,
+              color: "var(--on-surface)",
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          >
             <style>{`
               @keyframes loader-spin {
                 100% { transform: rotate(360deg); }
@@ -863,7 +901,11 @@ export default function ChatPage() {
             `}</style>
             <span
               className="material-symbols-outlined"
-              style={{ fontSize: 16, animation: "loader-spin 1s linear infinite", color: "var(--primary)" }}
+              style={{
+                fontSize: 16,
+                animation: "loader-spin 1s linear infinite",
+                color: "var(--primary)",
+              }}
             >
               sync
             </span>
@@ -873,16 +915,76 @@ export default function ChatPage() {
 
         {/* Loading Skeleton & Welcome Screen */}
         {!initialLoadDone ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "40px 20px" }}>
-            <div style={{ display: "flex", gap: 8, alignSelf: "flex-end", opacity: 0.4 }}>
-              <div style={{ width: 180, height: 48, borderRadius: 16, background: "var(--outline-variant)", animation: "pulse 1.5s infinite" }} />
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+              padding: "40px 20px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                alignSelf: "flex-end",
+                opacity: 0.4,
+              }}
+            >
+              <div
+                style={{
+                  width: 180,
+                  height: 48,
+                  borderRadius: 16,
+                  background: "var(--outline-variant)",
+                  animation: "pulse 1.5s infinite",
+                }}
+              />
             </div>
-            <div style={{ display: "flex", gap: 8, alignSelf: "flex-start", opacity: 0.4 }}>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--outline-variant)", animation: "pulse 1.5s infinite" }} />
-              <div style={{ width: 220, height: 60, borderRadius: 16, background: "var(--outline-variant)", animation: "pulse 1.5s infinite" }} />
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                alignSelf: "flex-start",
+                opacity: 0.4,
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: "50%",
+                  background: "var(--outline-variant)",
+                  animation: "pulse 1.5s infinite",
+                }}
+              />
+              <div
+                style={{
+                  width: 220,
+                  height: 60,
+                  borderRadius: 16,
+                  background: "var(--outline-variant)",
+                  animation: "pulse 1.5s infinite",
+                }}
+              />
             </div>
-            <div style={{ display: "flex", gap: 8, alignSelf: "flex-end", opacity: 0.4 }}>
-              <div style={{ width: 140, height: 48, borderRadius: 16, background: "var(--outline-variant)", animation: "pulse 1.5s infinite" }} />
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                alignSelf: "flex-end",
+                opacity: 0.4,
+              }}
+            >
+              <div
+                style={{
+                  width: 140,
+                  height: 48,
+                  borderRadius: 16,
+                  background: "var(--outline-variant)",
+                  animation: "pulse 1.5s infinite",
+                }}
+              />
             </div>
           </div>
         ) : (
@@ -899,40 +1001,40 @@ export default function ChatPage() {
                 marginTop: "10vh",
               }}
             >
-            <div
-              className="glass-card"
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
-                marginBottom: 16,
-              }}
-            >
-              <span
-                className="material-symbols-outlined filled"
-                style={{ color: "var(--primary)", fontSize: 40 }}
+              <div
+                className="glass-card"
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 8px 30px rgba(0,0,0,0.06)",
+                  marginBottom: 16,
+                }}
               >
-                auto_awesome
-              </span>
+                <span
+                  className="material-symbols-outlined filled"
+                  style={{ color: "var(--primary)", fontSize: 40 }}
+                >
+                  auto_awesome
+                </span>
+              </div>
+              <h1
+                className="text-headline-md"
+                style={{ color: "var(--on-surface)", marginBottom: 8 }}
+              >
+                Halo, Saya Catatin AI
+              </h1>
+              <p
+                className="text-body-md"
+                style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}
+              >
+                Membantu kamu mencatat keuangan dengan bahasa sehari-hari. Cukup
+                ketik atau kirim foto struk.
+              </p>
             </div>
-            <h1
-              className="text-headline-md"
-              style={{ color: "var(--on-surface)", marginBottom: 8 }}
-            >
-              Halo, Saya Catatin AI
-            </h1>
-            <p
-              className="text-body-md"
-              style={{ color: "var(--on-surface-variant)", maxWidth: 320 }}
-            >
-              Membantu kamu mencatat keuangan dengan bahasa sehari-hari. Cukup
-              ketik atau kirim foto struk.
-            </p>
-          </div>
           )
         )}
 
@@ -942,7 +1044,11 @@ export default function ChatPage() {
             <div
               key={msg.id}
               className={msg.isHistory ? "" : "animate-fade-slide-up"}
-              style={msg.isHistory || msg.isNew ? {} : { animationDelay: `${idx * 0.05}s` }}
+              style={
+                msg.isHistory || msg.isNew
+                  ? {}
+                  : { animationDelay: `${idx * 0.05}s` }
+              }
             >
               {msg.type === "user" && (
                 <div
@@ -954,11 +1060,15 @@ export default function ChatPage() {
                 >
                   <div className="bubble-user">
                     <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>
-                      {msg.text.includes("Tolong analisis struk/gambar ini dengan detail")
-                        ? msg.text.replace(
-                            /Tolong analisis struk.*?sesuai aturan\.?/g,
-                            "📷 Mengirimkan struk untuk dianalisis...\n"
-                          ).trim()
+                      {msg.text.includes(
+                        "Tolong analisis struk/gambar ini dengan detail",
+                      )
+                        ? msg.text
+                            .replace(
+                              /Tolong analisis struk.*?sesuai aturan\.?/g,
+                              "📷 Mengirimkan struk untuk dianalisis...\n",
+                            )
+                            .trim()
                         : msg.text}
                     </p>
                   </div>
@@ -1022,13 +1132,29 @@ export default function ChatPage() {
 
                     return (
                       <>
-                        <div className="bubble-bot" style={isProcessing ? { padding: "6px 12px" } : {}}>
+                        <div
+                          className="bubble-bot"
+                          style={isProcessing ? { padding: "6px 12px" } : {}}
+                        >
                           {isProcessing ? (
-                            <div style={{ width: 70, height: 22, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                            <div
+                              style={{
+                                width: 70,
+                                height: 22,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                overflow: "hidden",
+                              }}
+                            >
                               <Lottie
                                 animationData={loadingJson}
                                 loop={true}
-                                style={{ width: 220, height: 124, flexShrink: 0 }}
+                                style={{
+                                  width: 220,
+                                  height: 124,
+                                  flexShrink: 0,
+                                }}
                               />
                             </div>
                           ) : (
@@ -1056,43 +1182,47 @@ export default function ChatPage() {
                             <ChartWidget type={chartType} />
                           )}
                         </div>
-                        {options.length > 0 && !msg.isStreaming && idx === displayMessages.length - 1 && (
-                          <div
-                            style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: 8,
-                              marginTop: 8,
-                              marginLeft: 8,
-                            }}
-                          >
-                            {options.map((opt) => {
-                              const isSelected = selectedAccount === opt.trim();
-                              return (
-                                <button
-                                  key={opt}
-                                  onClick={() => {
-                                    sendToAI(opt.trim());
-                                  }}
-                                  style={{
-                                    padding: "6px 16px",
-                                    fontSize: 13,
-                                    fontWeight: 500,
-                                    borderRadius: 20,
-                                    border: "1px solid var(--outline-variant)",
-                                    background: "rgba(255,255,255,0.7)",
-                                    color: "var(--on-surface-variant)",
-                                    cursor: "pointer",
-                                    boxShadow: "none",
-                                    transition: "all 0.15s ease",
-                                  }}
-                                >
-                                  {opt.trim()}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
+                        {options.length > 0 &&
+                          !msg.isStreaming &&
+                          idx === displayMessages.length - 1 && (
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 8,
+                                marginTop: 8,
+                                marginLeft: 8,
+                              }}
+                            >
+                              {options.map((opt) => {
+                                const isSelected =
+                                  selectedAccount === opt.trim();
+                                return (
+                                  <button
+                                    key={opt}
+                                    onClick={() => {
+                                      sendToAI(opt.trim());
+                                    }}
+                                    style={{
+                                      padding: "6px 16px",
+                                      fontSize: 13,
+                                      fontWeight: 500,
+                                      borderRadius: 20,
+                                      border:
+                                        "1px solid var(--outline-variant)",
+                                      background: "rgba(255,255,255,0.7)",
+                                      color: "var(--on-surface-variant)",
+                                      cursor: "pointer",
+                                      boxShadow: "none",
+                                      transition: "all 0.15s ease",
+                                    }}
+                                  >
+                                    {opt.trim()}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
                         {options.length > 0 &&
                           !msg.isStreaming &&
                           selectedAccount && (
@@ -1233,7 +1363,16 @@ export default function ChatPage() {
                   justifyContent: "center",
                 }}
               >
-                <div style={{ width: 70, height: 22, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                <div
+                  style={{
+                    width: 70,
+                    height: 22,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                  }}
+                >
                   <Lottie
                     animationData={loadingJson}
                     loop={true}
@@ -1245,7 +1384,10 @@ export default function ChatPage() {
           )}
 
           {/* Invisible spacer to ensure last message clears the fixed input box when scrolled into view */}
-          <div ref={messagesEndRef} style={{ height: 160, flexShrink: 0, width: "100%" }} />
+          <div
+            ref={messagesEndRef}
+            style={{ height: 160, flexShrink: 0, width: "100%" }}
+          />
         </div>
       </main>
 
@@ -1330,7 +1472,6 @@ export default function ChatPage() {
                 "0 -4px 30px rgba(0,0,0,0.06), 0 10px 40px rgba(0,0,0,0.06)",
             }}
           >
-
             <input
               type="text"
               value={input}
@@ -1371,12 +1512,14 @@ export default function ChatPage() {
                 }}
                 aria-label="Batal"
               >
-                <div style={{
-                  width: 12,
-                  height: 12,
-                  backgroundColor: "#1d1b20", // dark charcoal / on-surface
-                  borderRadius: 2,
-                }} />
+                <div
+                  style={{
+                    width: 12,
+                    height: 12,
+                    backgroundColor: "#1d1b20", // dark charcoal / on-surface
+                    borderRadius: 2,
+                  }}
+                />
               </button>
             ) : (
               <button
@@ -1397,7 +1540,10 @@ export default function ChatPage() {
                 }}
                 aria-label="Kirim"
               >
-                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 20 }}
+                >
                   send
                 </span>
               </button>
