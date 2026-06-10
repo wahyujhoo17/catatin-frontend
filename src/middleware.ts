@@ -9,6 +9,7 @@ const PUBLIC_ROUTES = [
   "/forgot-password",
   "/reset-password",
   "/verify-otp",
+  "/auth/callback",
 ];
 
 const PROTECTED_ROUTES = ["/dashboard", "/chat", "/settings", "/wallet"];
