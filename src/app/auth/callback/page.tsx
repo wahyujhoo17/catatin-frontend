@@ -2,10 +2,12 @@
 
 import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 function CallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refreshSession } = useAuth();
 
   useEffect(() => {
     const token = searchParams.get("token");
@@ -42,12 +44,14 @@ function CallbackContent() {
         )
         .catch(() => {}); // best-effort, jangan block redirect
 
-      router.replace("/workspace");
+      refreshSession().then(() => {
+        router.replace("/workspace");
+      });
     } else {
       const error = searchParams.get("error") || "Google login gagal";
       router.replace(`/login?error=${encodeURIComponent(error)}`);
     }
-  }, [router, searchParams]);
+  }, [router, searchParams, refreshSession]);
 
   return (
     <div
