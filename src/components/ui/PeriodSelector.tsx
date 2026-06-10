@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   format,
   startOfWeek,
@@ -41,6 +42,25 @@ export default function PeriodSelector({
 
   const [currentDate] = useState(new Date());
   
+  // Client-side portal mounting check
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  // Self-contained scroll lock
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   // Weekly calculations
   const weeklyMonths = useMemo(() => {
     const months = [];
@@ -90,7 +110,7 @@ export default function PeriodSelector({
     }));
   }, [selectedYear]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const handleApply = () => {
     onSelectRange(tempRange);
@@ -103,29 +123,60 @@ export default function PeriodSelector({
     onClose();
   };
 
-  return (
-    <>
-      {/* Overlay */}
-      <div 
-        className="period-selector-overlay"
+  return createPortal(
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 200,
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+      }}
+    >
+      {/* Backdrop */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.4)",
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+        }}
         onClick={onClose}
+        className="animate-fade-in"
       />
 
       {/* Modal Content */}
-      <div className="period-selector-modal">
+      <div
+        className="animate-fade-slide-up"
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: 500,
+          background: "var(--surface)",
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          padding: "24px 24px 32px",
+          maxHeight: "90vh",
+          overflowY: "auto",
+        }}
+      >
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-          <h3 className="text-title-lg" style={{ color: "var(--on-surface)", fontWeight: 700 }}>
+          <h3 className="text-headline-sm" style={{ margin: 0 }}>
             Pilih Periode
           </h3>
           <button 
             onClick={onClose}
             style={{ 
-              background: "transparent", border: "none", cursor: "pointer", 
-              color: "var(--on-surface-variant)", padding: 4 
+              background: "var(--surface-variant)", border: "none", cursor: "pointer", 
+              borderRadius: "50%", width: 32, height: 32,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "var(--on-surface-variant)"
             }}
           >
-            <span className="material-symbols-outlined">close</span>
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
           </button>
         </div>
 
@@ -319,6 +370,7 @@ export default function PeriodSelector({
           </button>
         </div>
       </div>
-    </>
+    </div>,
+    document.body
   );
 }

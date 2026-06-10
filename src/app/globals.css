@@ -1126,13 +1126,13 @@ img {
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(4px);
-  z-index: 1000;
+  z-index: 100000;
   animation: fadeIn 0.3s ease;
 }
 
 .period-selector-modal {
   position: fixed;
-  z-index: 1001;
+  z-index: 100001;
   background: var(--surface);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   display: flex;

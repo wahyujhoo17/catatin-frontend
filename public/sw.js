@@ -33,14 +33,26 @@ self.addEventListener("activate", (event) => {
 
 // Fetch event — network-first strategy
 self.addEventListener("fetch", (event) => {
+    // Only intercept GET requests
+    if (event.request.method !== "GET") {
+        return;
+    }
+
+    // Only intercept HTTP/HTTPS schemes (avoid chrome-extension:// etc.)
+    if (!event.request.url.startsWith("http")) {
+        return;
+    }
+
     event.respondWith(
         fetch(event.request)
             .then((response) => {
                 // Cache successful responses
-                const clone = response.clone();
-                caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(event.request, clone);
-                });
+                if (response.status === 200) {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, clone);
+                    });
+                }
                 return response;
             })
             .catch(() => {

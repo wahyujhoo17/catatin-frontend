@@ -7,6 +7,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import TransactionDetailModal from "@/components/ui/TransactionDetailModal";
+import DashboardChart from "@/components/ui/DashboardChart";
 // ─── Config ──────────────────────────────────────────────────
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -549,6 +550,11 @@ export default function DashboardPersonalPage() {
                   Tanya AI Catatin
                 </Link>
               </div>
+            </div>
+
+            {/* Financial Chart */}
+            <div style={{ gridColumn: "span 12" }}>
+              <DashboardChart />
             </div>
 
             {/* Recent Transactions */}
