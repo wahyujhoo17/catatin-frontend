@@ -110,7 +110,10 @@ export default function DashboardChart() {
         url += `&start=${start}&end=${end}`;
       }
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "x-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
       });
       if (!res.ok) throw new Error("Gagal mengambil data grafik");
       const json = await res.json();
