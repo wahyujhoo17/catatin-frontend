@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 export const metadata: Metadata = {
   title: "Catatin — Asisten Keuangan AI",
@@ -45,6 +46,7 @@ export default function RootLayout({
       <body>
         <AuthProvider>{children}</AuthProvider>
         <ServiceWorkerRegister />
+        <PWAInstallPrompt />
       </body>
     </html>
   );
