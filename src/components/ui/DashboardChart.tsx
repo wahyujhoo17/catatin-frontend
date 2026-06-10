@@ -768,6 +768,10 @@ export default function DashboardChart() {
             setCustomRange(selectedRange);
             setRange("custom");
             setActiveIdx(null);
+          } else {
+            setCustomRange(undefined);
+            setRange("today");
+            setActiveIdx(null);
           }
         }}
         initialRange={customRange}

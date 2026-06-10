@@ -95,6 +95,42 @@ export default function PeriodSelector({
 
   // Monthly calculations
   const [selectedYear, setSelectedYear] = useState(getYear(currentDate));
+
+  // Sync state when modal is opened or initialRange changes
+  useEffect(() => {
+    if (isOpen) {
+      setTempRange(initialRange);
+      
+      if (!initialRange) {
+        setActiveTab("Daily");
+      } else {
+        const from = initialRange.from;
+        const to = initialRange.to;
+        if (from && to) {
+          const startOfM = startOfMonth(from);
+          const endOfM = endOfMonth(from);
+          
+          if (isSameDay(from, startOfM) && isSameDay(to, endOfM)) {
+            setActiveTab("Monthly");
+            setSelectedYear(getYear(from));
+          } else {
+            // Check if it matches a week in weeklyMonths
+            const isWeek = weeklyMonths.some(m => 
+              m.weeks.some(w => isSameDay(from, w.start) && isSameDay(to, w.end))
+            );
+            if (isWeek) {
+              setActiveTab("Weekly");
+            } else {
+              setActiveTab("Daily");
+            }
+          }
+        } else {
+          setActiveTab("Daily");
+        }
+      }
+    }
+  }, [isOpen, initialRange, weeklyMonths]);
+
   const monthlyYears = useMemo(() => {
     return [getYear(currentDate), getYear(currentDate) - 1, getYear(currentDate) - 2];
   }, [currentDate]);
