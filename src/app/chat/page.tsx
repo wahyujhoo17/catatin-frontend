@@ -1172,7 +1172,6 @@ export default function ChatPage() {
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "flex-start",
-                    maxWidth: "85%",
                   }}
                 >
                   {msg.type === "bot" && (
