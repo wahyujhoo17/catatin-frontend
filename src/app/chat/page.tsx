@@ -54,16 +54,88 @@ function renderMarkdown(text: string): string {
       "<strong style='font-size:1.1em;display:block;margin:8px 0 4px'>$1</strong>",
     );
 
-  // ── Ordered list: group consecutive "1. ", "2. " lines ──
-  // Process BEFORE unordered so sub-bullets inside numbered items work
-  html = html.replace(/(?:^|\n)((?:\d+\.\s+.+?(?:\n|$))+)/gm, (match) => {
-    const lines = match.split("\n").filter((l) => /^\d+\.\s+/.test(l));
-    const items = lines.map((line, i) => {
-      const content = line.replace(/^\d+\.\s+/, "");
-      return `<span style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px"><span style="flex-shrink:0;min-width:18px;font-weight:600;color:var(--primary,#2563eb);line-height:1.4">${i + 1}.</span><span style="line-height:1.4">${content}</span></span>`;
-    });
-    return `\n<div style="display:flex;flex-direction:column;margin:4px 0">${items.join("")}</div>`;
-  });
+  // ── Pre-process: merge numbered list markers on their own line with their subsequent text line ──
+  {
+    const lines = html.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (/^\d+\.$/.test(line)) {
+        // Find next non-empty line that doesn't start with another number or bullet
+        let j = i + 1;
+        while (j < lines.length && lines[j].trim() === "") {
+          j++;
+        }
+        if (j < lines.length) {
+          const nextLineTrimmed = lines[j].trim();
+          if (!/^\d+\./.test(nextLineTrimmed) && !/^[-*•]\s+/.test(nextLineTrimmed)) {
+            lines[i] = line + " " + lines[j].trim();
+            lines[j] = "";
+          }
+        }
+      }
+    }
+    html = lines.join("\n");
+  }
+
+  // ── Ordered list: group consecutive list items and their sub-lines (such as bullets/details) ──
+  {
+    const lines = html.split("\n");
+    const output: string[] = [];
+    let i = 0;
+    while (i < lines.length) {
+      if (/^\d+\.\s+/.test(lines[i])) {
+        const items: { title: string; subLines: string[] }[] = [];
+        
+        while (i < lines.length) {
+          if (/^\d+\.\s+/.test(lines[i])) {
+            const title = lines[i].replace(/^\d+\.\s+/, "");
+            items.push({ title, subLines: [] });
+            i++;
+          } else if (items.length > 0) {
+            if (/^(###|##|#|---)/.test(lines[i])) {
+              break;
+            }
+            items[items.length - 1].subLines.push(lines[i]);
+            i++;
+          } else {
+            break;
+          }
+        }
+
+        const renderedItems = items.map((item, idx) => {
+          let subContent = item.subLines.join("\n");
+          
+          // Render bullets inside subContent
+          subContent = subContent.replace(/(?:^|\n)((?:[-*•] .+?(?:\n|$))+)/g, (match) => {
+            const bulletItems = match
+              .split("\n")
+              .filter(Boolean)
+              .map((line) => {
+                const content = line.replace(/^[-*•] /, "");
+                return `<span style="display:flex;gap:5px;align-items:flex-start;margin-bottom:3px;margin-left:12px"><span style="flex-shrink:0;line-height:1.4;color:var(--text-muted,#6b7280)">•</span><span style="line-height:1.4">${content}</span></span>`;
+              });
+            return `\n<div style="display:flex;flex-direction:column;margin:2px 0">${bulletItems.join("")}</div>`;
+          });
+          
+          subContent = subContent.replace(/\n{2,}/g, "<br>").replace(/\n/g, " ");
+
+          return `<div style="margin-bottom:8px">
+            <span style="display:flex;gap:6px;align-items:flex-start">
+              <span style="flex-shrink:0;min-width:18px;font-weight:600;color:var(--primary,#2563eb);line-height:1.4">${idx + 1}.</span>
+              <span style="line-height:1.4">${item.title}</span>
+            </span>
+            ${subContent.trim() ? `<div style="margin-top:4px;padding-left:24px">${subContent}</div>` : ""}
+          </div>`;
+        });
+
+        output.push(`<div style="display:flex;flex-direction:column;margin:6px 0">${renderedItems.join("")}</div>`);
+      } else {
+        output.push(lines[i]);
+        i++;
+      }
+    }
+    html = output.join("\n");
+  }
 
   // ── Unordered list: group consecutive bullet lines ──────
   html = html.replace(/(?:^|\n)((?:[-*•] .+?(?:\n|$))+)/g, (match) => {
