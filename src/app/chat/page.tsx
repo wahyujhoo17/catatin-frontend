@@ -654,28 +654,11 @@ export default function ChatPage() {
                   ),
                 );
               } else if (event.type === "transaction_created") {
-                const tx = event.transaction;
-                const formatted = `✅ Transaksi tercatat: ${tx.type === "INCOME" ? "+" : "-"}Rp ${tx.amount.toLocaleString("id-ID")} — ${tx.description} (${tx.category}) berhasil ditambahkan ke ${tx.account}\n`;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === botId ? { ...m, text: m.text + formatted } : m,
-                  ),
-                );
+                // Backend now streams the formatted text as token events
               } else if (event.type === "transaction_updated") {
-                const tx = event.transaction;
-                const formatted = `✅ Transaksi diubah: menjadi ${tx.type === "INCOME" ? "+" : "-"}Rp ${tx.amount.toLocaleString("id-ID")} — ${tx.description}\n`;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === botId ? { ...m, text: m.text + formatted } : m,
-                  ),
-                );
+                // Backend now streams the formatted text as token events
               } else if (event.type === "transaction_deleted") {
-                const formatted = `🗑️ Transaksi berhasil dihapus dan saldo telah dikembalikan.\n`;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === botId ? { ...m, text: m.text + formatted } : m,
-                  ),
-                );
+                // Backend now streams the formatted text as token events
               } else if (event.type === "error") {
                 throw new Error(event.error);
               }
