@@ -318,6 +318,8 @@ export default function ChatPage() {
 
   // Voice Chat States
   const [isListening, setIsListening] = useState(false);
+  const [isMicModalOpen, setIsMicModalOpen] = useState(false);
+  const [micStatus, setMicStatus] = useState<"requesting" | "listening" | "error" | "denied">("requesting");
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -500,7 +502,10 @@ export default function ChatPage() {
       return;
     }
     
-    if (isListening) return;
+    if (isMicModalOpen) return;
+
+    setIsMicModalOpen(true);
+    setMicStatus("requesting");
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
@@ -509,8 +514,11 @@ export default function ChatPage() {
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
+    let hasError = false;
+
     recognition.onstart = () => {
       setIsListening(true);
+      setMicStatus("listening");
     };
 
     recognition.onresult = (event: any) => {
@@ -522,14 +530,22 @@ export default function ChatPage() {
     recognition.onerror = (event: any) => {
       setIsListening(false);
       if (event.error === "not-allowed") {
-        alert("Akses mikrofon ditolak. Mohon izinkan akses mikrofon di pengaturan browser (klik ikon di sebelah kiri URL browser).");
+        hasError = true;
+        setMicStatus("denied");
       } else if (event.error !== "no-speech") {
+        hasError = true;
+        setMicStatus("error");
         console.error("Speech recognition error:", event.error);
+      } else {
+        // For 'no-speech' (e.g. user didn't say anything for a while), we just let it end and close
       }
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      if (!hasError) {
+        setIsMicModalOpen(false);
+      }
     };
 
     recognition.start();
@@ -540,6 +556,7 @@ export default function ChatPage() {
       speechRecognitionRef.current.stop();
     }
     setIsListening(false);
+    setIsMicModalOpen(false);
   };
 
   // ─── Voice Output (ElevenLabs TTS) ──────────────────────────
@@ -1782,7 +1799,7 @@ export default function ChatPage() {
       />
 
       {/* ─── Voice Input Modal ─── */}
-      {isListening && (
+      {isMicModalOpen && (
         <div style={{
           position: "fixed",
           top: 0, left: 0, right: 0, bottom: 0,
@@ -1805,6 +1822,11 @@ export default function ChatPage() {
               from { opacity: 0; }
               to { opacity: 1; }
             }
+            @keyframes shake {
+              0%, 100% { transform: translateX(0); }
+              25% { transform: translateX(-5px); }
+              75% { transform: translateX(5px); }
+            }
           `}</style>
           
           <div style={{
@@ -1821,28 +1843,41 @@ export default function ChatPage() {
               width: 80,
               height: 80,
               borderRadius: "50%",
-              background: "rgba(76, 175, 80, 0.15)",
+              background: micStatus === "denied" || micStatus === "error" ? "rgba(244, 67, 54, 0.15)" : "rgba(76, 175, 80, 0.15)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               marginBottom: "24px",
-              animation: "pulseRing 2s infinite"
+              animation: micStatus === "listening" ? "pulseRing 2s infinite" : micStatus === "denied" ? "shake 0.4s" : "none"
             }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 40, color: "#4CAF50", fontVariationSettings: "'FILL' 1" }}>
-                mic
+              <span className="material-symbols-outlined" style={{ 
+                fontSize: 40, 
+                color: micStatus === "denied" || micStatus === "error" ? "#F44336" : "#4CAF50", 
+                fontVariationSettings: "'FILL' 1" 
+              }}>
+                {micStatus === "denied" || micStatus === "error" ? "mic_off" : "mic"}
               </span>
             </div>
             
-            <h3 style={{ margin: "0 0 8px 0", fontSize: "1.1rem", color: "var(--on-surface)" }}>Mendengarkan...</h3>
-            <p style={{ margin: "0 0 24px 0", fontSize: "0.9rem", color: "var(--on-surface-variant)", textAlign: "center" }}>
-              Silakan bicara sekarang.<br/>(Contoh: "Beli kopi 25rb")
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "1.1rem", color: "var(--on-surface)", textAlign: "center" }}>
+              {micStatus === "requesting" && "Meminta Izin..."}
+              {micStatus === "listening" && "Mendengarkan..."}
+              {micStatus === "denied" && "Akses Ditolak"}
+              {micStatus === "error" && "Terjadi Kesalahan"}
+            </h3>
+            
+            <p style={{ margin: "0 0 24px 0", fontSize: "0.9rem", color: "var(--on-surface-variant)", textAlign: "center", maxWidth: "240px" }}>
+              {micStatus === "requesting" && "Mohon izinkan akses mikrofon di popup browser Anda."}
+              {micStatus === "listening" && <>Silakan bicara sekarang.<br/>(Contoh: "Beli kopi 25rb")</>}
+              {micStatus === "denied" && "Mohon izinkan akses mikrofon lewat pengaturan (klik ikon 🔒 di sebelah URL)."}
+              {micStatus === "error" && "Gagal merekam suara. Pastikan mikrofon berfungsi."}
             </p>
             
             <button
               onClick={handleStopMic}
               style={{
-                background: "var(--error)",
-                color: "white",
+                background: micStatus === "denied" || micStatus === "error" ? "var(--surface-container-highest)" : "var(--error)",
+                color: micStatus === "denied" || micStatus === "error" ? "var(--on-surface)" : "white",
                 border: "none",
                 padding: "12px 24px",
                 borderRadius: "100px",
@@ -1855,8 +1890,10 @@ export default function ChatPage() {
                 transition: "background 0.2s"
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>stop_circle</span>
-              Berhenti
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+                {micStatus === "listening" || micStatus === "requesting" ? "stop_circle" : "close"}
+              </span>
+              {micStatus === "listening" || micStatus === "requesting" ? "Berhenti" : "Tutup"}
             </button>
           </div>
         </div>
