@@ -316,6 +316,12 @@ export default function ChatPage() {
   const lastScrollTime = useRef<number>(0);
   const isInitialScrollDone = useRef(false);
 
+  // Voice Chat States
+  const [isListening, setIsListening] = useState(false);
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -468,21 +474,120 @@ export default function ChatPage() {
 
         setHasMore(data.pagination.page < data.pagination.totalPages);
         setPage(pageToLoad);
-      } catch (err) {
-        console.error("Failed to load chat history:", err);
-      } finally {
-        setIsLoadingHistory(false);
-        setInitialLoadDone(true);
-        // Defer resetting fetch guard until after React commits DOM and
-        // useLayoutEffect has restored scroll position, so the scroll handler
-        // doesn't immediately trigger another fetch during restoration.
-        setTimeout(() => {
-          isFetchingRef.current = false;
-        }, 0);
-      }
-    },
-    [hasMore],
+      } catch (err: any) {
+      console.error("Image upload failed:", err);
+      // Removed alert, we can fail silently or show an inline error if needed
+    } finally {
+      setIsTyping(false);
+      setIsLoadingHistory(false);
+      setInitialLoadDone(true);
+      // Defer resetting fetch guard until after React commits DOM and
+      // useLayoutEffect has restored scroll position, so the scroll handler
+      // doesn't immediately trigger another fetch during restoration.
+      setTimeout(() => {
+        isFetchingRef.current = false;
+      }, 0);
+    }
+  },
+  [hasMore]
   );
+
+  // ─── Voice Input (Web Speech API) ───────────────────────────
+  const handleMicClick = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert("Browser Anda tidak mendukung fitur Voice Input.");
+      return;
+    }
+    
+    if (isListening) return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = "id-ID";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(prev => (prev ? prev + " " + transcript : transcript));
+      setIsVoiceMode(true);
+    };
+
+    recognition.onerror = (event: any) => {
+      setIsListening(false);
+      if (event.error === "not-allowed") {
+        alert("Akses mikrofon ditolak. Mohon izinkan akses mikrofon di pengaturan browser (klik ikon di sebelah kiri URL browser).");
+      } else if (event.error !== "no-speech") {
+        console.error("Speech recognition error:", event.error);
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
+
+  // ─── Voice Output (ElevenLabs TTS) ──────────────────────────
+  const playAudio = async (messageId: string, text: string) => {
+    // If clicking the same message that's currently playing, stop it
+    if (playingAudioId === messageId) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setPlayingAudioId(null);
+      return;
+    }
+
+    try {
+      const token = getToken();
+      setPlayingAudioId(messageId + "_loading");
+      const res = await fetch(`${API_BASE}/api/ai/tts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text: stripActions(text) }),
+      });
+
+      if (!res.ok) {
+        setPlayingAudioId(null);
+        if (res.status === 400) {
+          alert("API Key ElevenLabs belum diatur. Silakan atur di menu Pengaturan > Konfigurasi Provider AI.");
+        } else {
+          alert("Gagal menghasilkan suara.");
+        }
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      
+      audio.onended = () => {
+        setPlayingAudioId(null);
+      };
+      
+      await audio.play();
+      setPlayingAudioId(messageId);
+    } catch (err) {
+      console.error("TTS Error:", err);
+      setPlayingAudioId(null);
+    }
+  };
 
   // Initial load
   useEffect(() => {
@@ -562,7 +667,7 @@ export default function ChatPage() {
 
   // ─── Send message to AI backend with SSE streaming ─────────
   const sendToAI = useCallback(
-    async (text: string, imageBase64?: string) => {
+    async (text: string, imageBase64?: string | null, shouldAutoPlay?: boolean) => {
       const token = getToken();
       if (!token) {
         router.push("/login");
@@ -678,18 +783,25 @@ export default function ChatPage() {
         );
       } finally {
         // Strip [ACTION] blocks dari teks yang ditampilkan
+        let finalBotText = "";
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === botId
-              ? {
-                  ...m,
-                  isStreaming: false,
-                  text: stripActions(m.text),
-                }
-              : m,
-          ),
+          prev.map((m) => {
+            if (m.id === botId) {
+              finalBotText = stripActions(m.text);
+              return {
+                ...m,
+                isStreaming: false,
+                text: finalBotText,
+              };
+            }
+            return m;
+          }),
         );
         abortRef.current = null;
+
+        if (shouldAutoPlay && finalBotText) {
+          playAudio(botId, finalBotText);
+        }
 
         // Scroll to bottom after state settles
         setTimeout(() => {
@@ -701,7 +813,7 @@ export default function ChatPage() {
   );
 
   // ─── Send text message ─────────────────────────────────────
-  const sendMessage = (text: string) => {
+  const sendMessage = (text: string, isVoice: boolean = false) => {
     if (!text.trim() || isTyping) return;
 
     const userMsg: Message = {
@@ -724,19 +836,22 @@ export default function ChatPage() {
     }, 50);
 
     if (capturedImage) {
-      sendToAI(text, capturedImage);
+      sendToAI(text, capturedImage, isVoice);
       setCapturedImage(null);
     } else {
-      sendToAI(text);
+      sendToAI(text, null, isVoice);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const currentVoiceMode = isVoiceMode;
+    setIsVoiceMode(false); // Reset voice mode for next input
+
     if (capturedImage && !input.trim()) {
-      sendMessage("Analisis gambar ini dan catat transaksinya");
+      sendMessage("Analisis gambar ini dan catat transaksinya", currentVoiceMode);
     } else {
-      sendMessage(input);
+      sendMessage(input, currentVoiceMode);
     }
   };
 
@@ -1539,7 +1654,7 @@ export default function ChatPage() {
             <input
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => { setInput(e.target.value); setIsVoiceMode(false); }}
               placeholder={
                 capturedImage
                   ? "Deskripsi gambar (opsional)..."
@@ -1557,6 +1672,32 @@ export default function ChatPage() {
               }}
               id="chat-input"
             />
+            {/* Mic Button */}
+            {!input.trim() && !capturedImage && !isTyping && !messages.some(m => m.isStreaming) && (
+              <button
+                type="button"
+                onClick={handleMicClick}
+                style={{
+                  background: isListening ? "rgba(255, 0, 0, 0.1)" : "transparent",
+                  color: isListening ? "var(--error)" : "var(--on-surface-variant)",
+                  width: 44,
+                  height: 44,
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "none",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                aria-label="Voice Input"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 24, fontVariationSettings: isListening ? "'FILL' 1" : "'FILL' 0" }}>
+                  {isListening ? "mic" : "mic_none"}
+                </span>
+              </button>
+            )}
+            
             {isTyping || messages.some((m) => m.isStreaming) ? (
               <button
                 type="button"

@@ -14,6 +14,7 @@ interface CustomAI {
   baseUrl: string;
   apiKey: string;
   model: string;
+  elevenLabsApiKey?: string;
 }
 
 const EMPTY_CONFIG: CustomAI = {
@@ -69,6 +70,7 @@ export default function CustomAIPage() {
   const [formBaseUrl, setFormBaseUrl] = useState("");
   const [formApiKey, setFormApiKey] = useState("");
   const [formModel, setFormModel] = useState("");
+  const [formElevenLabs, setFormElevenLabs] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(true);
@@ -91,6 +93,7 @@ export default function CustomAIPage() {
         setFormBaseUrl(data.baseUrl || "");
         setFormApiKey(data.apiKey || "");
         setFormModel(data.model || "");
+        setFormElevenLabs(data.elevenLabsApiKey || "");
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -154,6 +157,7 @@ export default function CustomAIPage() {
       baseUrl: formBaseUrl.trim(),
       apiKey: formApiKey.trim(),
       model: formModel.trim(),
+      elevenLabsApiKey: formElevenLabs.trim(),
     };
 
     try {
@@ -439,6 +443,80 @@ export default function CustomAIPage() {
               </p>
             </div>
           )}
+        </div>
+
+        {/* ─── ELEVENLABS VOICE AI ──────── */}
+        <div
+          className="glass-card animate-fade-slide-up"
+          style={{ padding: "var(--card-padding)", marginBottom: 20 }}
+        >
+          <p
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: "var(--on-surface-variant)",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              margin: "0 0 16px 0",
+            }}
+          >
+            Voice Output (ElevenLabs)
+          </p>
+          <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <label
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--on-surface-variant)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  display: "block",
+                  marginBottom: 6,
+                }}
+              >
+                ElevenLabs API Key (Opsional)
+              </label>
+              <input
+                type="password"
+                className="glass-input"
+                value={formElevenLabs}
+                onChange={(e) => setFormElevenLabs(e.target.value)}
+                placeholder="sk_..."
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "10px 14px",
+                  fontSize: 14,
+                  height: 44,
+                }}
+              />
+              <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--on-surface-variant)" }}>
+                Isi untuk mengaktifkan balasan suara AI yang realistis.
+              </p>
+            </div>
+            {!config.enabled && (
+               <button
+                 type="submit"
+                 className="btn-primary"
+                 style={{
+                   marginTop: 8,
+                   padding: "12px 20px",
+                   borderRadius: 14,
+                   fontSize: 14,
+                   fontWeight: 700,
+                   boxShadow: "none",
+                   display: "flex",
+                   alignItems: "center",
+                   justifyContent: "center",
+                   gap: 8,
+                 }}
+               >
+                 <span className="material-symbols-outlined" style={{ fontSize: 20 }}>save</span>
+                 Simpan API Key Voice
+               </button>
+            )}
+          </form>
         </div>
 
         {/* ─── CUSTOM AI FORM (muncul jika enabled) ──────── */}
