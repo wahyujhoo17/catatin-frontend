@@ -321,6 +321,7 @@ export default function ChatPage() {
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const speechRecognitionRef = useRef<any>(null);
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -503,6 +504,7 @@ export default function ChatPage() {
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
+    speechRecognitionRef.current = recognition;
     recognition.lang = "id-ID";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
@@ -531,6 +533,13 @@ export default function ChatPage() {
     };
 
     recognition.start();
+  };
+
+  const handleStopMic = () => {
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+    }
+    setIsListening(false);
   };
 
   // ─── Voice Output (ElevenLabs TTS) ──────────────────────────
@@ -1771,6 +1780,87 @@ export default function ChatPage() {
           pointerEvents: "none",
         }}
       />
+
+      {/* ─── Voice Input Modal ─── */}
+      {isListening && (
+        <div style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.6)",
+          backdropFilter: "blur(4px)",
+          zIndex: 9999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          animation: "fadeIn 0.2s ease-out"
+        }}>
+          <style>{`
+            @keyframes pulseRing {
+              0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+              70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(76, 175, 80, 0); }
+              100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+            }
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+          `}</style>
+          
+          <div style={{
+            background: "var(--surface)",
+            padding: "32px",
+            borderRadius: "24px",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
+            minWidth: "280px"
+          }}>
+            <div style={{
+              width: 80,
+              height: 80,
+              borderRadius: "50%",
+              background: "rgba(76, 175, 80, 0.15)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: "24px",
+              animation: "pulseRing 2s infinite"
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 40, color: "#4CAF50", fontVariationSettings: "'FILL' 1" }}>
+                mic
+              </span>
+            </div>
+            
+            <h3 style={{ margin: "0 0 8px 0", fontSize: "1.1rem", color: "var(--on-surface)" }}>Mendengarkan...</h3>
+            <p style={{ margin: "0 0 24px 0", fontSize: "0.9rem", color: "var(--on-surface-variant)", textAlign: "center" }}>
+              Silakan bicara sekarang.<br/>(Contoh: "Beli kopi 25rb")
+            </p>
+            
+            <button
+              onClick={handleStopMic}
+              style={{
+                background: "var(--error)",
+                color: "white",
+                border: "none",
+                padding: "12px 24px",
+                borderRadius: "100px",
+                fontSize: "0.95rem",
+                fontWeight: "600",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                transition: "background 0.2s"
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>stop_circle</span>
+              Berhenti
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
