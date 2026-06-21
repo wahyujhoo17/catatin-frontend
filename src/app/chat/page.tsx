@@ -324,6 +324,7 @@ export default function ChatPage() {
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const speechRecognitionRef = useRef<any>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -496,7 +497,7 @@ export default function ChatPage() {
   );
 
   // ─── Voice Input (Web Speech API) ───────────────────────────
-  const handleMicClick = () => {
+  const handleMicClick = async () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       alert("Browser Anda tidak mendukung fitur Voice Input.");
       return;
@@ -506,6 +507,18 @@ export default function ChatPage() {
 
     setIsMicModalOpen(true);
     setMicStatus("requesting");
+
+    try {
+      // Explicitly request microphone access first (Crucial for iOS PWA to trigger OS prompt)
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // KEEP the stream alive while SpeechRecognition is running!
+      // If we stop it here, iOS Safari often throws an 'audio-capture' error.
+      mediaStreamRef.current = stream;
+    } catch (err) {
+      console.error("Microphone permission denied via getUserMedia:", err);
+      setMicStatus("denied");
+      return;
+    }
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
@@ -546,14 +559,32 @@ export default function ChatPage() {
       if (!hasError) {
         setIsMicModalOpen(false);
       }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(t => t.stop());
+        mediaStreamRef.current = null;
+      }
     };
 
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error("Failed to start SpeechRecognition:", err);
+      hasError = true;
+      setMicStatus("error");
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(t => t.stop());
+        mediaStreamRef.current = null;
+      }
+    }
   };
 
   const handleStopMic = () => {
     if (speechRecognitionRef.current) {
       speechRecognitionRef.current.stop();
+    }
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(t => t.stop());
+      mediaStreamRef.current = null;
     }
     setIsListening(false);
     setIsMicModalOpen(false);
