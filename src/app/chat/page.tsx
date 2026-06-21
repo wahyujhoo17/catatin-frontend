@@ -317,14 +317,30 @@ export default function ChatPage() {
   const isInitialScrollDone = useRef(false);
 
   // Voice Chat States
-  const [isListening, setIsListening] = useState(false);
-  const [isMicModalOpen, setIsMicModalOpen] = useState(false);
-  const [micStatus, setMicStatus] = useState<"requesting" | "listening" | "error" | "denied">("requesting");
+  const [isVoiceOverlayOpen, setIsVoiceOverlayOpen] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<"requesting" | "recording" | "transcribing" | "error" | "denied">("requesting");
+  const [voiceError, setVoiceError] = useState("");
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [interimTranscript, setInterimTranscript] = useState("");
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const speechRecognitionRef = useRef<any>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasSpeechApiRef = useRef<boolean>(false);
+  const inputRef = useRef("");
+  const isTypingRef = useRef(false);
+  const sendMessageRef = useRef<(text: string, isVoice?: boolean) => void>(() => {});
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const silenceStartRef = useRef<number | null>(null);
+  const hasSpokenRef = useRef(false);
+  const [audioLevels, setAudioLevels] = useState<number[]>(new Array(28).fill(0));
+  const [micLevel, setMicLevel] = useState(0);
 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -496,98 +512,417 @@ export default function ChatPage() {
   [hasMore]
   );
 
-  // ─── Voice Input (Web Speech API) ───────────────────────────
-  const handleMicClick = async () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert("Browser Anda tidak mendukung fitur Voice Input.");
-      return;
-    }
-    
-    if (isMicModalOpen) return;
+  // ─── Voice Input (Hybrid: Web Speech API + MediaRecorder/Whisper) ──
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
 
-    setIsMicModalOpen(true);
-    setMicStatus("requesting");
-
-    try {
-      // Explicitly request microphone access first (Crucial for iOS PWA to trigger OS prompt)
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // KEEP the stream alive while SpeechRecognition is running!
-      // If we stop it here, iOS Safari often throws an 'audio-capture' error.
-      mediaStreamRef.current = stream;
-    } catch (err) {
-      console.error("Microphone permission denied via getUserMedia:", err);
-      setMicStatus("denied");
-      return;
-    }
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    speechRecognitionRef.current = recognition;
-    recognition.lang = "id-ID";
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    let hasError = false;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-      setMicStatus("listening");
-    };
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInput(prev => (prev ? prev + " " + transcript : transcript));
-      setIsVoiceMode(true);
-    };
-
-    recognition.onerror = (event: any) => {
-      setIsListening(false);
-      if (event.error === "not-allowed") {
-        hasError = true;
-        setMicStatus("denied");
-      } else if (event.error !== "no-speech") {
-        hasError = true;
-        setMicStatus("error");
-        console.error("Speech recognition error:", event.error);
-      } else {
-        // For 'no-speech' (e.g. user didn't say anything for a while), we just let it end and close
-      }
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      if (!hasError) {
-        setIsMicModalOpen(false);
-      }
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(t => t.stop());
-        mediaStreamRef.current = null;
-      }
-    };
-
-    try {
-      recognition.start();
-    } catch (err) {
-      console.error("Failed to start SpeechRecognition:", err);
-      hasError = true;
-      setMicStatus("error");
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(t => t.stop());
-        mediaStreamRef.current = null;
-      }
+  const stopRecordingTimer = () => {
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
     }
   };
 
-  const handleStopMic = () => {
-    if (speechRecognitionRef.current) {
-      speechRecognitionRef.current.stop();
+  const cleanupVoiceResources = () => {
+    stopRecordingTimer();
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    analyserRef.current = null;
+    silenceStartRef.current = null;
+    hasSpokenRef.current = false;
+    setAudioLevels(new Array(28).fill(0));
+    setMicLevel(0);
     if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(t => t.stop());
+      mediaStreamRef.current.getTracks().forEach((t) => t.stop());
       mediaStreamRef.current = null;
     }
-    setIsListening(false);
-    setIsMicModalOpen(false);
+    if (speechRecognitionRef.current) {
+      try { speechRecognitionRef.current.abort(); } catch (_e) {}
+      speechRecognitionRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      try { mediaRecorderRef.current.stop(); } catch (_e) {}
+    }
+    mediaRecorderRef.current = null;
+    audioChunksRef.current = [];
+  };
+
+  // Start recording with MediaRecorder (for iOS/Safari fallback)
+  const startMediaRecorderRecording = () => {
+    if (!mediaStreamRef.current) {
+      setVoiceStatus("error");
+      setVoiceError("Tidak ada akses mikrofon.");
+      return;
+    }
+
+    audioChunksRef.current = [];
+
+    // Determine the best supported mime type
+    let mimeType = "audio/webm";
+    const types = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/ogg;codecs=opus",
+    ];
+    for (const type of types) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        mimeType = type;
+        break;
+      }
+    }
+
+    try {
+      const recorder = new MediaRecorder(mediaStreamRef.current, { mimeType });
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstart = () => {
+        setVoiceStatus("recording");
+        recordingTimerRef.current = setInterval(() => {
+          setRecordingTime((prev) => prev + 1);
+        }, 1000);
+      };
+
+      recorder.onstop = async () => {
+        stopRecordingTimer();
+        setVoiceStatus("transcribing");
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        audioChunksRef.current = [];
+
+        // Stop the media stream tracks
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+          mediaStreamRef.current = null;
+        }
+
+        // If blob is too small, it's likely empty
+        if (audioBlob.size < 1000) {
+          setVoiceStatus("error");
+          setVoiceError("Rekaman terlalu pendek. Coba bicara lebih lama.");
+          return;
+        }
+
+        // Send to backend for Whisper transcription
+        const token = getToken();
+        if (!token) {
+          setVoiceStatus("error");
+          setVoiceError("Sesi berakhir. Silakan login kembali.");
+          return;
+        }
+
+        const formData = new FormData();
+        const ext = mimeType.includes("mp4")
+          ? "m4a"
+          : mimeType.includes("ogg")
+            ? "ogg"
+            : "webm";
+        formData.append("file", audioBlob, `voice.${ext}`);
+
+        try {
+          const res = await fetch(`${API_BASE}/api/ai/stt`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          });
+
+          if (!res.ok) {
+            const errData = await res
+              .json()
+              .catch(() => ({ error: "Gagal mentranskripsi" }));
+            throw new Error(errData.error || "Gagal mentranskripsi audio");
+          }
+
+          const data = await res.json();
+          const transcript = (data.text || "").trim();
+
+          if (transcript) {
+            const existingInput = inputRef.current;
+            const fullText = existingInput ? existingInput + " " + transcript : transcript;
+            if (!isTypingRef.current) {
+              setInput("");
+              inputRef.current = "";
+              cleanupVoiceResources();
+              setIsVoiceOverlayOpen(false);
+              sendMessageRef.current(fullText, true);
+            } else {
+              setInput(fullText);
+              inputRef.current = fullText;
+              setIsVoiceMode(true);
+              setTimeout(() => {
+                cleanupVoiceResources();
+                setIsVoiceOverlayOpen(false);
+              }, 600);
+            }
+          } else {
+            setVoiceStatus("error");
+            setVoiceError("Tidak ada suara terdeteksi. Coba lagi.");
+          }
+        } catch (err: any) {
+          console.error("STT Error:", err);
+          setVoiceStatus("error");
+          setVoiceError(err.message || "Gagal mentranskripsi audio.");
+        }
+      };
+
+      recorder.start();
+    } catch (err) {
+      console.error("Failed to start MediaRecorder:", err);
+      setVoiceStatus("error");
+      setVoiceError("Gagal memulai rekaman. Pastikan mikrofon berfungsi.");
+    }
+  };
+
+  const handleMicClick = async () => {
+    if (isVoiceOverlayOpen) return;
+
+    // Check if ANY speech API or MediaRecorder is available
+    const hasSpeechApi =
+      "webkitSpeechRecognition" in window || "SpeechRecognition" in window;
+    hasSpeechApiRef.current = hasSpeechApi;
+
+    if (!hasSpeechApi && typeof MediaRecorder === "undefined") {
+      alert("Browser Anda tidak mendukung fitur Voice Input.");
+      return;
+    }
+
+    setIsVoiceOverlayOpen(true);
+    setVoiceStatus("requesting");
+    setVoiceError("");
+    setInterimTranscript("");
+    setRecordingTime(0);
+
+    try {
+      // Explicitly request microphone access (triggers OS permission prompt)
+      // Crucial for iOS PWA — must be called from user gesture
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      mediaStreamRef.current = stream;
+
+      // ── Set up Web Audio API for real-time visualization + silence detection ──
+      try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.75;
+        source.connect(analyser);
+
+        audioContextRef.current = audioContext;
+        analyserRef.current = analyser;
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        const updateAudio = () => {
+          if (!analyserRef.current) return;
+          analyserRef.current.getByteFrequencyData(dataArray);
+
+          // Map to 28 bars for waveform display
+          const bars: number[] = [];
+          const step = Math.max(1, Math.floor(dataArray.length / 28));
+          for (let i = 0; i < 28; i++) {
+            let sum = 0;
+            for (let j = 0; j < step; j++) {
+              sum += dataArray[i * step + j] || 0;
+            }
+            bars.push(Math.min(1, (sum / step) / 255));
+          }
+          setAudioLevels(bars);
+
+          // Overall level for pulsing rings
+          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          setMicLevel(avg / 255);
+
+          // Track if user has spoken (for silence detection grace period)
+          if (avg > 20) {
+            hasSpokenRef.current = true;
+          }
+
+          // Silence detection (MediaRecorder path only — auto-stop after 2s of silence)
+          if (hasSpokenRef.current && !hasSpeechApiRef.current && mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+            if (avg < 8) {
+              if (silenceStartRef.current === null) {
+                silenceStartRef.current = Date.now();
+              } else if (Date.now() - silenceStartRef.current > 2000) {
+                silenceStartRef.current = null;
+                try { mediaRecorderRef.current.stop(); } catch (_e) {}
+                return;
+              }
+            } else {
+              silenceStartRef.current = null;
+            }
+          }
+
+          animationFrameRef.current = requestAnimationFrame(updateAudio);
+        };
+        updateAudio();
+      } catch (err) {
+        console.warn("Audio analysis setup failed:", err);
+      }
+    } catch (err: any) {
+      console.error("Microphone permission denied:", err);
+      setVoiceStatus("denied");
+      setVoiceError(
+        err.name === "NotAllowedError"
+          ? "Akses mikrofon ditolak. Mohon izinkan akses mikrofon di pengaturan browser."
+          : "Tidak dapat mengakses mikrofon. Pastikan mikrofon berfungsi.",
+      );
+      return;
+    }
+
+    // ── Branch: Web Speech API available → real-time transcription ──
+    if (hasSpeechApiRef.current) {
+      const SpeechRecognition =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      speechRecognitionRef.current = recognition;
+      recognition.lang = "id-ID";
+      recognition.interimResults = true;
+      recognition.continuous = true;
+      recognition.maxAlternatives = 1;
+
+      let combinedTranscript = "";
+      let encounteredError = false;
+
+      recognition.onstart = () => {
+        setVoiceStatus("recording");
+        recordingTimerRef.current = setInterval(() => {
+          setRecordingTime((prev) => prev + 1);
+        }, 1000);
+      };
+
+      recognition.onresult = (event: any) => {
+        let finalText = "";
+        let interim = "";
+        for (let i = 0; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalText += transcript;
+          } else {
+            interim += transcript;
+          }
+        }
+        combinedTranscript = (finalText + " " + interim).trim();
+        setInterimTranscript(combinedTranscript);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error:", event.error);
+        if (event.error === "no-speech") {
+          // No speech — let it end naturally
+          return;
+        }
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+          encounteredError = true;
+          setVoiceStatus("denied");
+          setVoiceError("Akses mikrofon ditolak oleh browser.");
+        } else if (event.error === "audio-capture") {
+          encounteredError = true;
+          setVoiceStatus("error");
+          setVoiceError("Gagal menangkap audio. Pastikan mikrofon berfungsi.");
+        } else {
+          // For other errors, fall back to MediaRecorder
+          console.warn("SpeechRecognition error, falling back to MediaRecorder:", event.error);
+          if (speechRecognitionRef.current) {
+            try { speechRecognitionRef.current.abort(); } catch (_e) {}
+            speechRecognitionRef.current = null;
+          }
+          startMediaRecorderRecording();
+        }
+      };
+
+      recognition.onend = () => {
+        if (encounteredError) return;
+        stopRecordingTimer();
+        if (combinedTranscript) {
+          const existingInput = inputRef.current;
+          const fullText = existingInput ? existingInput + " " + combinedTranscript : combinedTranscript;
+          if (!isTypingRef.current) {
+            setInput("");
+            inputRef.current = "";
+            cleanupVoiceResources();
+            setIsVoiceOverlayOpen(false);
+            sendMessageRef.current(fullText, true);
+          } else {
+            setInput(fullText);
+            inputRef.current = fullText;
+            setIsVoiceMode(true);
+            cleanupVoiceResources();
+            setIsVoiceOverlayOpen(false);
+          }
+        } else {
+          cleanupVoiceResources();
+          setIsVoiceOverlayOpen(false);
+        }
+      };
+
+      try {
+        recognition.start();
+      } catch (err) {
+        console.error("Failed to start SpeechRecognition:", err);
+        // Fall back to MediaRecorder
+        startMediaRecorderRecording();
+      }
+    } else {
+      // ── No Speech API (iOS/Safari) → MediaRecorder + Whisper ──
+      startMediaRecorderRecording();
+    }
+  };
+
+  const handleVoiceStop = () => {
+    // If using Speech API, stop it (onend will finalize)
+    if (speechRecognitionRef.current) {
+      try { speechRecognitionRef.current.stop(); } catch (_e) {}
+      return;
+    }
+    // If using MediaRecorder, stop it (onstop will transcribe)
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      try { mediaRecorderRef.current.stop(); } catch (_e) {}
+      return;
+    }
+    // Fallback: just close
+    cleanupVoiceResources();
+    setIsVoiceOverlayOpen(false);
+  };
+
+  const handleVoiceCancel = () => {
+    if (speechRecognitionRef.current) {
+      try { speechRecognitionRef.current.abort(); } catch (_e) {}
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      try { mediaRecorderRef.current.stop(); } catch (_e) {}
+    }
+    cleanupVoiceResources();
+    setIsVoiceOverlayOpen(false);
+  };
+
+  const handleVoiceRetry = () => {
+    cleanupVoiceResources();
+    setVoiceError("");
+    setInterimTranscript("");
+    setRecordingTime(0);
+    setTimeout(() => handleMicClick(), 100);
   };
 
   // ─── Voice Output (ElevenLabs TTS) ──────────────────────────
@@ -984,8 +1319,18 @@ export default function ChatPage() {
 
   // ─── Cleanup ───────────────────────────────────────────────
   useEffect(() => {
-    return () => abortRef.current?.abort();
+    return () => {
+      abortRef.current?.abort();
+      cleanupVoiceResources();
+    };
   }, []);
+
+  // Sync refs for use in async voice handlers
+  useEffect(() => {
+    inputRef.current = input;
+    isTypingRef.current = isTyping;
+    sendMessageRef.current = sendMessage;
+  });
 
   return (
     <div
@@ -1711,7 +2056,7 @@ export default function ChatPage() {
             <input
               type="text"
               value={input}
-              onChange={(e) => { setInput(e.target.value); setIsVoiceMode(false); }}
+              onChange={(e) => { setInput(e.target.value); inputRef.current = e.target.value; setIsVoiceMode(false); }}
               placeholder={
                 capturedImage
                   ? "Deskripsi gambar (opsional)..."
@@ -1730,13 +2075,13 @@ export default function ChatPage() {
               id="chat-input"
             />
             {/* Mic Button */}
-            {!input.trim() && !capturedImage && !isTyping && !messages.some(m => m.isStreaming) && (
+            {!isTyping && !messages.some(m => m.isStreaming) && (
               <button
                 type="button"
                 onClick={handleMicClick}
                 style={{
-                  background: isListening ? "rgba(255, 0, 0, 0.1)" : "transparent",
-                  color: isListening ? "var(--error)" : "var(--on-surface-variant)",
+                  background: isVoiceOverlayOpen ? "rgba(79, 55, 138, 0.1)" : "transparent",
+                  color: isVoiceOverlayOpen ? "var(--primary)" : "var(--on-surface-variant)",
                   width: 44,
                   height: 44,
                   borderRadius: "50%",
@@ -1746,11 +2091,12 @@ export default function ChatPage() {
                   border: "none",
                   cursor: "pointer",
                   transition: "all 0.2s",
+                  flexShrink: 0,
                 }}
                 aria-label="Voice Input"
               >
-                <span className="material-symbols-outlined" style={{ fontSize: 24, fontVariationSettings: isListening ? "'FILL' 1" : "'FILL' 0" }}>
-                  {isListening ? "mic" : "mic_none"}
+                <span className="material-symbols-outlined" style={{ fontSize: 24, fontVariationSettings: "'FILL' 1" }}>
+                  mic
                 </span>
               </button>
             )}
@@ -1829,103 +2175,465 @@ export default function ChatPage() {
         }}
       />
 
-      {/* ─── Voice Input Modal ─── */}
-      {isMicModalOpen && (
-        <div style={{
-          position: "fixed",
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: "rgba(0, 0, 0, 0.6)",
-          backdropFilter: "blur(4px)",
-          zIndex: 9999,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          animation: "fadeIn 0.2s ease-out"
-        }}>
-          <style>{`
-            @keyframes pulseRing {
-              0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
-              70% { transform: scale(1); box-shadow: 0 0 0 20px rgba(76, 175, 80, 0); }
-              100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
-            }
-            @keyframes fadeIn {
-              from { opacity: 0; }
-              to { opacity: 1; }
-            }
-            @keyframes shake {
-              0%, 100% { transform: translateX(0); }
-              25% { transform: translateX(-5px); }
-              75% { transform: translateX(5px); }
-            }
-          `}</style>
-          
-          <div style={{
-            background: "var(--surface)",
-            padding: "32px",
-            borderRadius: "24px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
-            minWidth: "280px"
-          }}>
-            <div style={{
-              width: 80,
-              height: 80,
-              borderRadius: "50%",
-              background: micStatus === "denied" || micStatus === "error" ? "rgba(244, 67, 54, 0.15)" : "rgba(76, 175, 80, 0.15)",
+      {/* ─── Voice Input Overlay (Full-screen) ─── */}
+      {isVoiceOverlayOpen && (
+        <div className="voice-overlay">
+          {/* Header */}
+          <div
+            style={{
               display: "flex",
+              justifyContent: "space-between",
+              width: "100%",
+              maxWidth: 420,
               alignItems: "center",
-              justifyContent: "center",
-              marginBottom: "24px",
-              animation: micStatus === "listening" ? "pulseRing 2s infinite" : micStatus === "denied" ? "shake 0.4s" : "none"
-            }}>
-              <span className="material-symbols-outlined" style={{ 
-                fontSize: 40, 
-                color: micStatus === "denied" || micStatus === "error" ? "#F44336" : "#4CAF50", 
-                fontVariationSettings: "'FILL' 1" 
-              }}>
-                {micStatus === "denied" || micStatus === "error" ? "mic_off" : "mic"}
-              </span>
+            }}
+          >
+            <div>
+              <h3
+                className="text-headline-sm"
+                style={{ color: "white", fontWeight: 700 }}
+              >
+                Voice Input
+              </h3>
+              <p
+                className="text-body-sm"
+                style={{ color: "rgba(255,255,255,0.6)", marginTop: 2 }}
+              >
+                {voiceStatus === "requesting" && "Menyiapkan mikrofon..."}
+                {voiceStatus === "recording" && "Merekam suara Anda..."}
+                {voiceStatus === "transcribing" && "Mentranskripsi..."}
+                {voiceStatus === "error" && "Terjadi kesalahan"}
+                {voiceStatus === "denied" && "Akses ditolak"}
+              </p>
             </div>
-            
-            <h3 style={{ margin: "0 0 8px 0", fontSize: "1.1rem", color: "var(--on-surface)", textAlign: "center" }}>
-              {micStatus === "requesting" && "Meminta Izin..."}
-              {micStatus === "listening" && "Mendengarkan..."}
-              {micStatus === "denied" && "Akses Ditolak"}
-              {micStatus === "error" && "Terjadi Kesalahan"}
-            </h3>
-            
-            <p style={{ margin: "0 0 24px 0", fontSize: "0.9rem", color: "var(--on-surface-variant)", textAlign: "center", maxWidth: "240px" }}>
-              {micStatus === "requesting" && "Mohon izinkan akses mikrofon di popup browser Anda."}
-              {micStatus === "listening" && <>Silakan bicara sekarang.<br/>(Contoh: "Beli kopi 25rb")</>}
-              {micStatus === "denied" && "Mohon izinkan akses mikrofon lewat pengaturan (klik ikon 🔒 di sebelah URL)."}
-              {micStatus === "error" && "Gagal merekam suara. Pastikan mikrofon berfungsi."}
-            </p>
-            
             <button
-              onClick={handleStopMic}
+              onClick={handleVoiceCancel}
               style={{
-                background: micStatus === "denied" || micStatus === "error" ? "var(--surface-container-highest)" : "var(--error)",
-                color: micStatus === "denied" || micStatus === "error" ? "var(--on-surface)" : "white",
-                border: "none",
-                padding: "12px 24px",
-                borderRadius: "100px",
-                fontSize: "0.95rem",
-                fontWeight: "600",
+                color: "white",
                 cursor: "pointer",
+                background: "rgba(255,255,255,0.1)",
+                borderRadius: "50%",
+                width: 40,
+                height: 40,
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
-                transition: "background 0.2s"
+                justifyContent: "center",
+                border: "none",
+                transition: "background 0.2s",
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
-                {micStatus === "listening" || micStatus === "requesting" ? "stop_circle" : "close"}
-              </span>
-              {micStatus === "listening" || micStatus === "requesting" ? "Berhenti" : "Tutup"}
+              <span className="material-symbols-outlined">close</span>
             </button>
+          </div>
+
+          {/* Center Content */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 24,
+              flex: 1,
+              justifyContent: "center",
+              width: "100%",
+              maxWidth: 360,
+            }}
+          >
+            {/* ── Requesting Permission ── */}
+            {voiceStatus === "requesting" && (
+              <>
+                <div
+                  style={{
+                    width: 100,
+                    height: 100,
+                    borderRadius: "50%",
+                    background: "rgba(207, 188, 255, 0.1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: "50%",
+                      border: "4px solid rgba(207, 188, 255, 0.2)",
+                      borderTopColor: "var(--primary-fixed-dim)",
+                      animation: "spin 1s linear infinite",
+                    }}
+                  />
+                </div>
+                <p
+                  className="text-body-md"
+                  style={{ color: "rgba(255,255,255,0.7)", textAlign: "center" }}
+                >
+                  Mohon izinkan akses mikrofon
+                  <br />
+                  di popup browser Anda
+                </p>
+              </>
+            )}
+
+            {/* ── Recording ── */}
+            {voiceStatus === "recording" && (
+              <>
+                {/* Mic icon with pulsing rings */}
+                <div
+                  style={{
+                    position: "relative",
+                    width: 120,
+                    height: 120,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {/* Audio-reactive rings */}
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        position: "absolute",
+                        width: 80 + micLevel * 80 + i * 15,
+                        height: 80 + micLevel * 80 + i * 15,
+                        borderRadius: "50%",
+                        border: "2px solid rgba(207, 188, 255, 0.4)",
+                        opacity: Math.max(0, 0.5 - i * 0.15) * (0.3 + micLevel * 0.7),
+                        transition: "all 0.08s ease-out",
+                      }}
+                    />
+                  ))}
+                  {/* Mic icon */}
+                  <div
+                    style={{
+                      width: 80 + micLevel * 15,
+                      height: 80 + micLevel * 15,
+                      borderRadius: "50%",
+                      background:
+                        "linear-gradient(135deg, var(--primary-container), var(--primary))",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 1,
+                      transition: "all 0.08s ease-out",
+                      boxShadow: `0 0 ${20 + micLevel * 40}px rgba(207, 188, 255, ${0.3 + micLevel * 0.4})`,
+                    }}
+                  >
+                    <span
+                      className="material-symbols-outlined filled"
+                      style={{ fontSize: 36, color: "white" }}
+                    >
+                      mic
+                    </span>
+                  </div>
+                </div>
+
+                {/* Recording timer */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "#ef5350",
+                      animation: "recDotBlink 1s ease-in-out infinite",
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontFamily: "Geist, monospace",
+                      fontSize: 24,
+                      fontWeight: 600,
+                      color: "white",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    {formatRecordingTime(recordingTime)}
+                  </span>
+                </div>
+
+                {/* Real-time waveform */}
+                <div className="voice-waveform">
+                  {audioLevels.map((level, i) => (
+                    <div
+                      key={i}
+                      className="voice-waveform-bar"
+                      style={{
+                        height: `${4 + level * 46}px`,
+                        opacity: 0.4 + level * 0.6,
+                        animation: "none",
+                        transition: "height 0.06s ease-out, opacity 0.06s ease-out",
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Live transcript (Web Speech API only) */}
+                {interimTranscript && (
+                  <div
+                    style={{
+                      background: "rgba(255,255,255,0.08)",
+                      borderRadius: 16,
+                      padding: "12px 16px",
+                      maxWidth: "100%",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        color: "rgba(255,255,255,0.9)",
+                        fontSize: 15,
+                        lineHeight: 1.5,
+                        textAlign: "center",
+                      }}
+                    >
+                      "{interimTranscript}"
+                    </p>
+                  </div>
+                )}
+
+                {/* Hint text */}
+                {!interimTranscript && (
+                  <p
+                    className="text-body-sm"
+                    style={{
+                      color: "rgba(255,255,255,0.4)",
+                      textAlign: "center",
+                    }}
+                  >
+                    Silakan bicara
+                    <br />
+                    Contoh: "Beli kopi 25 ribu"
+                  </p>
+                )}
+
+              </>
+            )}
+
+            {/* ── Transcribing ── */}
+            {voiceStatus === "transcribing" && (
+              <>
+                <div
+                  style={{
+                    width: 100,
+                    height: 100,
+                    borderRadius: "50%",
+                    background: "rgba(207, 188, 255, 0.1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: "50%",
+                      border: "4px solid rgba(207, 188, 255, 0.2)",
+                      borderTopColor: "var(--primary-fixed-dim)",
+                      animation: "spin 1s linear infinite",
+                    }}
+                  />
+                </div>
+                <p
+                  className="text-body-md"
+                  style={{ color: "white", fontWeight: 600 }}
+                >
+                  Mentranskripsi suara...
+                </p>
+                <p
+                  className="text-body-sm"
+                  style={{ color: "rgba(255,255,255,0.5)" }}
+                >
+                  Mohon tunggu sebentar
+                </p>
+              </>
+            )}
+
+            {/* ── Error ── */}
+            {voiceStatus === "error" && (
+              <>
+                <div
+                  style={{
+                    width: 100,
+                    height: 100,
+                    borderRadius: "50%",
+                    background: "rgba(244, 67, 54, 0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    animation: "voiceShake 0.5s ease",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined filled"
+                    style={{ fontSize: 44, color: "#ef5350" }}
+                  >
+                    error
+                  </span>
+                </div>
+                <p
+                  className="text-body-md"
+                  style={{
+                    color: "white",
+                    textAlign: "center",
+                    maxWidth: 280,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {voiceError || "Terjadi kesalahan saat merekam suara."}
+                </p>
+              </>
+            )}
+
+            {/* ── Denied ── */}
+            {voiceStatus === "denied" && (
+              <>
+                <div
+                  style={{
+                    width: 100,
+                    height: 100,
+                    borderRadius: "50%",
+                    background: "rgba(244, 67, 54, 0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    animation: "voiceShake 0.5s ease",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined filled"
+                    style={{ fontSize: 44, color: "#ef5350" }}
+                  >
+                    mic_off
+                  </span>
+                </div>
+                <p
+                  className="text-body-md"
+                  style={{
+                    color: "white",
+                    textAlign: "center",
+                    maxWidth: 280,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {voiceError || "Akses mikrofon ditolak."}
+                </p>
+                <div
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    borderRadius: 12,
+                    padding: "12px 16px",
+                    maxWidth: 300,
+                  }}
+                >
+                  <p
+                    className="text-body-sm"
+                    style={{
+                      color: "rgba(255,255,255,0.6)",
+                      margin: 0,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Untuk mengaktifkan: buka pengaturan browser, cari izin
+                    mikrofon, dan izinkan untuk situs ini.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Bottom Action Bar */}
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              display: "flex",
+              gap: 12,
+              justifyContent: "center",
+            }}
+          >
+            {(voiceStatus === "recording" || voiceStatus === "requesting") && (
+              <button
+                onClick={handleVoiceStop}
+                style={{
+                  background: "rgba(239, 83, 80, 0.9)",
+                  color: "white",
+                  border: "none",
+                  padding: "16px 40px",
+                  borderRadius: 100,
+                  fontSize: "1rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  boxShadow: "0 8px 24px rgba(239, 83, 80, 0.4)",
+                  transition: "transform 0.15s",
+                }}
+              >
+                <span
+                  className="material-symbols-outlined filled"
+                  style={{ fontSize: 24 }}
+                >
+                  stop
+                </span>
+                Berhenti
+              </button>
+            )}
+
+            {(voiceStatus === "error" || voiceStatus === "denied") && (
+              <>
+                <button
+                  onClick={handleVoiceRetry}
+                  style={{
+                    background: "var(--primary)",
+                    color: "white",
+                    border: "none",
+                    padding: "14px 32px",
+                    borderRadius: 100,
+                    fontSize: "0.95rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    boxShadow: "0 4px 16px rgba(79, 55, 138, 0.4)",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 20 }}
+                  >
+                    refresh
+                  </span>
+                  Coba Lagi
+                </button>
+                <button
+                  onClick={handleVoiceCancel}
+                  style={{
+                    background: "rgba(255,255,255,0.1)",
+                    color: "white",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    padding: "14px 32px",
+                    borderRadius: 100,
+                    fontSize: "0.95rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Tutup
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -1346,3 +1346,109 @@ img {
     width: 0%;
   }
 }
+
+/* ================================================================
+   VOICE INPUT OVERLAY (Full-screen, like camera scanner)
+   ================================================================ */
+.voice-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(18, 15, 24, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 20px;
+  padding-top: calc(24px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  color: white;
+  font-family: var(--font-geist), sans-serif;
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* ── Pulsing rings around mic icon ── */
+@keyframes voicePulseRing {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* ── Waveform bar animation ── */
+@keyframes waveformBar {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* ── Mic icon gentle glow ── */
+@keyframes micGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(207, 188, 255, 0.4), 0 0 40px rgba(79, 55, 138, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(207, 188, 255, 0.6), 0 0 60px rgba(79, 55, 138, 0.4);
+  }
+}
+
+/* ── Slide up for bottom sheet part ── */
+@keyframes voiceSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ── Shake animation for error/denied ── */
+@keyframes voiceShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+/* ── Pop-in for success ── */
+@keyframes voicePopIn {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── Recording dot blink ── */
+@keyframes recDotBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.voice-waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 60px;
+}
+
+.voice-waveform-bar {
+  width: 4px;
+  background: linear-gradient(to top, var(--primary-fixed-dim), var(--primary));
+  border-radius: 2px;
+  animation: waveformBar 0.8s ease-in-out infinite;
+}
