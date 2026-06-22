@@ -691,10 +691,10 @@ export default function ChatPage() {
   const handleMicClick = async () => {
     if (isVoiceOverlayOpen) return;
 
-    // Check if ANY speech API or MediaRecorder is available
-    const hasSpeechApi =
-      "webkitSpeechRecognition" in window || "SpeechRecognition" in window;
-    hasSpeechApiRef.current = hasSpeechApi;
+    // Always use MediaRecorder (Whisper Backend) for robust cross-platform compatibility
+    // (Matches Claude/ChatGPT implementation and avoids iOS Safari PWA bugs)
+    const hasSpeechApi = false;
+    hasSpeechApiRef.current = false;
 
     if (!hasSpeechApi && typeof MediaRecorder === "undefined") {
       alert("Browser Anda tidak mendukung fitur Voice Input.");
