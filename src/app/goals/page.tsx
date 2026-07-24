@@ -221,7 +221,7 @@ export default function SavingGoalsPage() {
     <div style={{ minHeight: "100vh", background: "var(--surface)", paddingBottom: 100 }}>
       <TopAppBar />
 
-      <main style={{ maxWidth: 640, margin: "0 auto", padding: "16px" }}>
+      <main style={{ maxWidth: 640, margin: "0 auto", padding: "80px 16px 100px 16px" }}>
         {/* Title Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div>
