@@ -187,7 +187,7 @@ function getToken(): string | null {
 function stripActions(text: string): string {
   return text
     .replace(
-      /\[ACTION:(record_transaction|update_transaction|delete_transaction)\][\s\S]*?\[\/ACTION\]/g,
+      /\[ACTION:(record_transaction|update_transaction|delete_transaction|draft_transaction|transfer_balance|add_subscription|set_alert_threshold|adjust_balance|set_budget|split_bill)\][\s\S]*?\[\/ACTION\]/g,
       "",
     )
     .replace(/\n{3,}/g, "\n\n")
@@ -480,7 +480,7 @@ export default function ChatPage() {
                 {
                   id: "welcome",
                   type: "bot",
-                  text: 'Hai! 👋 Aku Catatin AI, asisten keuangan pribadimu.\n\nKamu bisa:\n• Catat pengeluaran: "Makan siang 50rb"\n• Catat pemasukan: "Gaji 5jt masuk"\n• Tanya saldo: "Berapa sisa saldo saya?"\n• Minta analisis keuangan\n\n⚠️ Aku hanya bisa bantu urusan keuangan dan aplikasi Catatin ya!',
+                  text: `Hai! 👋 Aku **Catatin AI**, asisten keuangan pribadimu.\n\nBerikut hal-hal yang bisa aku bantu secara otomatis:\n\n💸 **Pencatatan & Saldo**\n• Catat Transaksi: *"Makan siang 25rb pakai BCA"* atau *"Gaji 5jt masuk Mandiri"*\n• Transfer Saldo: *"Pindahkan saldo BCA ke BRI 300rb"*\n• Sesuaikan Saldo: *"Set saldo Tunai jadi 500rb"*\n• Batalkan / Undo: *"Batal transaksi tadi"* atau *"Hapus transfer terakhir"*\n\n🎯 **Target Tabungan Impian (Saving Goals)**\n• Buat Target Impian: *"Buat target tabungan Beli Laptop 15 juta"*\n• Setor Tabungan: *"Setor 500rb ke tabungan laptop"*\n\n📅 **Tagihan Rutin & Budget**\n• Tagihan Rutin: *"Catat pengingat tagihan Kos 1jt bulanan"*\n• Budget Bulanan: *"Set budget Makanan 1.5jt per bulan"*\n• Batas Alert: *"Ubah batas peringatan ke 1 juta"*\n\n👥 **Patungan (Split Bill)**\n• Split Bill: *"Makan bareng 150rb ditalangin, Budi 50rb dan Andi 50rb"*\n\n📊 **Analisis & Laporan Keuangan**\n• Cek Laporan: *"Berapa total pengeluaran minggu ini?"* atau *"Bagaimana kondisi keuanganku?"*\n\n📸 **Scan Struk & Suara**\n• Kirim foto struk belanja atau gunakan tombol mic untuk bicarakan transaksi secara langsung!\n\n---\n⚠️ *Aku difokuskan khusus untuk membantu keuangan dan fitur aplikasi Catatin ya!*`,
                   time: new Date().toLocaleTimeString("id-ID", {
                     hour: "2-digit",
                     minute: "2-digit",

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import TransactionDetailModal from "@/components/ui/TransactionDetailModal";
 import DashboardChart from "@/components/ui/DashboardChart";
+import SavingGoalsCard from "@/components/dashboard/SavingGoalsCard";
 // ─── Config ──────────────────────────────────────────────────
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -534,7 +535,7 @@ export default function DashboardPersonalPage() {
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end" }}>
                 <Link
-                  href="/chat"
+                  href="/goals"
                   style={{
                     background: "var(--primary)",
                     color: "var(--on-primary)",
@@ -544,10 +545,14 @@ export default function DashboardPersonalPage() {
                     fontWeight: 600,
                     textAlign: "center",
                     textDecoration: "none",
-                    transition: "opacity 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    boxShadow: "0 2px 8px rgba(79, 55, 138, 0.2)",
                   }}
                 >
-                  Tanya AI Catatin
+                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>savings</span>
+                  Target Tabungan
                 </Link>
               </div>
             </div>
@@ -555,6 +560,11 @@ export default function DashboardPersonalPage() {
             {/* Financial Chart */}
             <div style={{ gridColumn: "span 12" }}>
               <DashboardChart />
+            </div>
+
+            {/* Target Tabungan Impian Widget */}
+            <div style={{ gridColumn: "span 12" }}>
+              <SavingGoalsCard />
             </div>
 
             {/* Recent Transactions */}
