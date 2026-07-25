@@ -9,6 +9,13 @@
 importScripts("https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging-compat.js");
 
+self.addEventListener('install', function(event) {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', function(event) {
+    event.waitUntil(clients.claim());
+});
 firebase.initializeApp({
     apiKey: "AIzaSyAo72OAOIW0a38f7NWOVO8gI5pN9OvKsz4",
     authDomain: "catatin-df193.firebaseapp.com",
@@ -52,6 +59,7 @@ messaging.onBackgroundMessage((payload) => {
 });
 
 self.addEventListener('notificationclick', function(event) {
+    event.stopImmediatePropagation();
     console.log('[FCM SW] Notification click received.', event);
     event.notification.close();
 
