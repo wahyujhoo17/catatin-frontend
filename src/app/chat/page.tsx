@@ -1782,7 +1782,7 @@ export default function ChatPage() {
                                   <button
                                     key={opt}
                                     onClick={() => {
-                                      sendToAI(opt.trim());
+                                      sendMessage(opt.trim());
                                     }}
                                     style={{
                                       padding: "6px 16px",
