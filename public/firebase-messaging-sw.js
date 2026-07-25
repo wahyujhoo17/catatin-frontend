@@ -51,5 +51,43 @@ messaging.onBackgroundMessage((payload) => {
     self.registration.showNotification(title || "Catatin", options);
 });
 
-// Custom notificationclick handler removed. 
-// Firebase SDK will automatically handle clicks based on webpush.fcmOptions.link
+self.addEventListener('notificationclick', function(event) {
+    console.log('[FCM SW] Notification click received.', event);
+    event.notification.close();
+
+    // Default target URL
+    let click_action = "/notifications?openLatest=1";
+    
+    // Check if URL is provided in the notification payload
+    if (event.notification.data && event.notification.data.click_action) {
+        click_action = event.notification.data.click_action;
+    } else if (event.notification.data && event.notification.data.FCM_MSG && event.notification.data.FCM_MSG.notification && event.notification.data.FCM_MSG.notification.click_action) {
+        click_action = event.notification.data.FCM_MSG.notification.click_action;
+    } else if (event.action === "open" && event.notification.data && event.notification.data.link) {
+        click_action = event.notification.data.link;
+    }
+
+    const targetUrl = new URL(click_action, self.location.origin).href;
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(windowClients) {
+            // Jika ada tab/window PWA yang sudah terbuka
+            for (let i = 0; i < windowClients.length; i++) {
+                const client = windowClients[i];
+                if ('focus' in client) {
+                    client.focus();
+                }
+                // Kirim pesan ke client untuk soft-navigation via router Next.js
+                client.postMessage({
+                    type: 'FCM_NOTIFICATION_CLICK',
+                    url: targetUrl
+                });
+                return; // Cukup tangani satu window saja
+            }
+            // Jika tidak ada tab terbuka, buka window baru
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
+    );
+});
