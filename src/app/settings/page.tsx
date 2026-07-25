@@ -7,9 +7,11 @@ import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
 import AIProviderLogo from "@/components/AIProviderLogo";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function SettingsPage() {
   const { user, updateMode, logout } = useAuth();
+  const { lang, setLang, t } = useLanguage();
   const router = useRouter();
   // Toggle states
   const [notifTransaksi, setNotifTransaksi] = useState(true);
@@ -75,12 +77,11 @@ export default function SettingsPage() {
     }, 2500);
   };
 
-  const handleLangChange = (lang: string) => {
-    setActiveLang(lang);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("pref_app_lang", lang);
-    }
-    triggerToast(`Bahasa aplikasi diset ke ${lang === "id" ? "Bahasa Indonesia" : "English"}`);
+  const handleLangChange = (newLang: string) => {
+    const target = newLang === "en" ? "en" : "id";
+    setActiveLang(target);
+    setLang(target);
+    triggerToast(target === "en" ? "App language set to English" : "Bahasa aplikasi diset ke Bahasa Indonesia");
   };
 
   const handleToggleNotifTransaksi = (val: boolean) => {
@@ -191,13 +192,13 @@ export default function SettingsPage() {
               className="text-headline-lg"
               style={{ color: "var(--on-surface)" }}
             >
-              Pengaturan
+              {t("settings.title")}
             </h1>
             <p
               className="text-body-md"
               style={{ color: "var(--on-surface-variant)", marginTop: 4 }}
             >
-              Atur akun, bahasa, notifikasi, dan model kecerdasan buatan Anda.
+              {t("settings.subtitle")}
             </p>
           </header>
 
@@ -239,23 +240,25 @@ export default function SettingsPage() {
                 profileName.charAt(0).toUpperCase()
               )}
             </div>
-            <div style={{ flex: 1 }}>
-              <h3
-                className="text-headline-sm"
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p
                 style={{
-                  fontSize: 16,
-                  color: "var(--on-surface)",
-                  margin: 0,
                   fontWeight: 700,
+                  fontSize: 16,
+                  margin: 0,
+                  color: "var(--on-surface)",
                 }}
               >
                 {profileName}
-              </h3>
+              </p>
               <p
-                className="text-body-sm"
                 style={{
+                  fontSize: 13,
                   color: "var(--on-surface-variant)",
-                  margin: "2px 0 6px 0",
+                  margin: "2px 0 6px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {profileEmail}
@@ -278,7 +281,7 @@ export default function SettingsPage() {
 
           {/* Section: Preferensi Aplikasi */}
           <h4 className="settings-section-title animate-fade-slide-up">
-            Preferensi Aplikasi
+            {t("settings.app_prefs")}
           </h4>
           <section
             className="glass-card animate-fade-slide-up"
@@ -292,7 +295,7 @@ export default function SettingsPage() {
             <div className="settings-row" style={{ position: "relative" }}>
               <div>
                 <p className="text-body-md" style={{ fontWeight: 600 }}>
-                  Bahasa Aplikasi
+                  {t("settings.app_lang")}
                 </p>
                 <p
                   className="text-body-sm"
@@ -316,7 +319,7 @@ export default function SettingsPage() {
                   gap: 4,
                 }}
               >
-                Ubah
+                {t("common.edit")}
                 <span
                   className="material-symbols-outlined"
                   style={{ fontSize: 18 }}
@@ -405,7 +408,7 @@ export default function SettingsPage() {
                   gap: 4,
                 }}
               >
-                Atur
+                {lang === "en" ? "Manage" : "Atur"}
                 <span
                   className="material-symbols-outlined"
                   style={{ fontSize: 18 }}
@@ -470,13 +473,13 @@ export default function SettingsPage() {
             <div className="settings-row">
               <div>
                 <p className="text-body-md" style={{ fontWeight: 600 }}>
-                  Notifikasi Transaksi
+                  {t("settings.notif_trans")}
                 </p>
                 <p
                   className="text-body-sm"
                   style={{ color: "var(--on-surface-variant)" }}
                 >
-                  Kirim ringkasan transaksi via PWA push
+                  {t("settings.notif_trans_sub")}
                 </p>
               </div>
               <button
@@ -491,13 +494,13 @@ export default function SettingsPage() {
             <div className="settings-row" style={{ borderBottom: "none" }}>
               <div>
                 <p className="text-body-md" style={{ fontWeight: 600 }}>
-                  Pengingat Budgeting
+                  {t("settings.notif_budget")}
                 </p>
                 <p
                   className="text-body-sm"
                   style={{ color: "var(--on-surface-variant)" }}
                 >
-                  Peringatan jika melebihi batas bulanan
+                  {t("settings.notif_budget_sub")}
                 </p>
               </div>
               <button
@@ -511,7 +514,7 @@ export default function SettingsPage() {
 
           {/* Section: Konfigurasi AI */}
           <h4 className="settings-section-title animate-fade-slide-up">
-            Konektivitas & AI
+            {t("settings.ai_connectivity")}
           </h4>
           <section
             className="glass-card animate-fade-slide-up"
@@ -538,14 +541,13 @@ export default function SettingsPage() {
               >
                 <div>
                   <p className="text-body-md" style={{ fontWeight: 600 }}>
-                    Konfigurasi Provider AI
+                    {t("settings.ai_provider_config")}
                   </p>
                   <p
                     className="text-body-sm"
                     style={{ color: "var(--on-surface-variant)" }}
                   >
-                    Gunakan Catatin AI atau pasang API Key Anda sendiri
-                    (OpenRouter, Groq, dll)
+                    {t("settings.ai_provider_config_sub")}
                   </p>
                 </div>
                 <span
@@ -560,7 +562,7 @@ export default function SettingsPage() {
 
           {/* Section: Akun & Keamanan */}
           <h4 className="settings-section-title animate-fade-slide-up">
-            Akun & Keamanan
+            {t("settings.account_security")}
           </h4>
           <section
             className="glass-card animate-fade-slide-up"
@@ -585,13 +587,13 @@ export default function SettingsPage() {
               <div className="settings-row" style={{ width: "100%" }}>
                 <div>
                   <p className="text-body-md" style={{ fontWeight: 600 }}>
-                    Ubah Informasi Profil
+                    {t("settings.profile_info")}
                   </p>
                   <p
                     className="text-body-sm"
                     style={{ color: "var(--on-surface-variant)" }}
                   >
-                    Nama, email, dan detail akun Anda
+                    {t("settings.profile_sub")}
                   </p>
                 </div>
                 <span
@@ -618,13 +620,13 @@ export default function SettingsPage() {
               <div className="settings-row" style={{ width: "100%" }}>
                 <div>
                   <p className="text-body-md" style={{ fontWeight: 600 }}>
-                    Ganti Kata Sandi
+                    {t("settings.change_pw")}
                   </p>
                   <p
                     className="text-body-sm"
                     style={{ color: "var(--on-surface-variant)" }}
                   >
-                    Perbarui password untuk keamanan akun
+                    {t("settings.change_pw_sub")}
                   </p>
                 </div>
                 <span
@@ -635,8 +637,6 @@ export default function SettingsPage() {
                 </span>
               </div>
             </Link>
-
-
 
             {/* Chat History */}
             <div
@@ -652,13 +652,13 @@ export default function SettingsPage() {
             >
               <div style={{ flex: 1 }}>
                 <p className="text-body-md" style={{ fontWeight: 600 }}>
-                  Riwayat Chat
+                  {t("settings.chat_history")}
                 </p>
                 <p
                   className="text-body-sm"
                   style={{ color: "var(--on-surface-variant)" }}
                 >
-                  Kelola riwayat obrolan dengan Catatin AI
+                  {t("settings.chat_history_sub")}
                 </p>
               </div>
               <span
@@ -675,7 +675,7 @@ export default function SettingsPage() {
 
           {/* Section: Informasi & Bantuan */}
           <h4 className="settings-section-title animate-fade-slide-up">
-            Informasi & Bantuan
+            {t("settings.info_help")}
           </h4>
           <section
             className="glass-card animate-fade-slide-up"
@@ -700,13 +700,13 @@ export default function SettingsPage() {
               <div className="settings-row" style={{ width: "100%" }}>
                 <div>
                   <p className="text-body-md" style={{ fontWeight: 600 }}>
-                    Tentang Aplikasi
+                    {t("settings.about")}
                   </p>
                   <p
                     className="text-body-sm"
                     style={{ color: "var(--on-surface-variant)" }}
                   >
-                    Catatin v0.1.0 Beta (PWA)
+                    {t("settings.about_sub")}
                   </p>
                 </div>
                 <span
@@ -725,13 +725,13 @@ export default function SettingsPage() {
             >
               <div>
                 <p className="text-body-md" style={{ fontWeight: 600 }}>
-                  Hubungi Bantuan
+                  {t("settings.contact_support")}
                 </p>
                 <p
                   className="text-body-sm"
                   style={{ color: "var(--on-surface-variant)" }}
                 >
-                  Pusat bantuan dan FAQ pengguna
+                  {t("settings.contact_support_sub")}
                 </p>
               </div>
               <span
@@ -776,7 +776,7 @@ export default function SettingsPage() {
                 Keluar...
               </div>
             ) : (
-              "Keluar dari Akun"
+              t("settings.logout")
             )}
           </button>
         </div>

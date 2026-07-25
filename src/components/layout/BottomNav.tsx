@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -159,6 +160,15 @@ type ScanPhase = "camera" | "preview" | "processing" | "result" | "success";
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useLanguage();
+
+  const dynamicNavItems = [
+    { icon: "dashboard", href: "/dashboard", label: t("nav.dashboard"), id: "dashboard" },
+    { icon: "chat_bubble", href: "/chat", label: t("nav.chat"), id: "chat" },
+    { icon: "photo_camera", href: "#scan", label: t("nav.scan"), id: "scan" },
+    { icon: "account_balance_wallet", href: "/wallet", label: t("nav.wallet"), id: "wallet" },
+    { icon: "settings", href: "/settings", label: t("nav.settings"), id: "settings" },
+  ];
 
   // Dynamic dashboard path based on workspace selection
   const [dashboardHref, setDashboardHref] = useState("/dashboard");
@@ -432,12 +442,12 @@ export default function BottomNav() {
   return (
     <>
       <nav className="bottom-nav">
-        {navItems.map((item, index) => {
+        {dynamicNavItems.map((item, index) => {
           // Special center button for Scan
-          if (item.label === "Scan") {
+          if (item.id === "scan") {
             return (
               <button
-                key={item.label}
+                key={item.id}
                 onClick={handleOpenScan}
                 className="bottom-nav-center-btn"
                 aria-label="Scan struk belanja"
@@ -453,18 +463,18 @@ export default function BottomNav() {
           }
 
           let href = item.href;
-          if (item.label === "Dashboard") {
+          if (item.id === "dashboard") {
             href = dashboardHref;
           }
 
           const isActive =
             pathname === href ||
-            (item.label === "Dashboard" && pathname.startsWith("/dashboard")) ||
-            (item.label === "Pengaturan" && pathname.startsWith("/settings"));
+            (item.id === "dashboard" && pathname.startsWith("/dashboard")) ||
+            (item.id === "settings" && pathname.startsWith("/settings"));
 
           return (
             <Link
-              key={item.label}
+              key={item.id}
               href={href}
               className={`bottom-nav-item ${isActive ? "active" : ""}`}
               aria-label={item.label}

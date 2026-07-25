@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import StatsBreakdownDrawer from "./StatsBreakdownDrawer";
 import PeriodSelector from "./PeriodSelector";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -71,6 +72,7 @@ function formatRupiahFull(n: number): string {
 }
 
 export default function DashboardChart() {
+  const { t, lang } = useLanguage();
   const [range, setRange] = useState<"today" | "week" | "month" | "custom">("today");
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdownItem[]>([]);
@@ -83,6 +85,14 @@ export default function DashboardChart() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isPeriodPickerOpen, setIsPeriodPickerOpen] = useState(false);
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined);
+
+  // Display label translation
+  const rangeLabels: Record<string, string> = {
+    today: lang === "en" ? "Today" : "Hari Ini",
+    week: lang === "en" ? "This Week" : "Minggu Ini",
+    month: lang === "en" ? "This Month" : "Bulan Ini",
+    custom: "Custom",
+  };
 
   // Lock document body scroll when modal or drawer is open
   useEffect(() => {
@@ -321,14 +331,6 @@ export default function DashboardChart() {
   const activeTxs = getMatchingTransactions();
   const activePoint = activeIdx !== null ? chartData[activeIdx] : null;
 
-  // Display label translation
-  const rangeLabels: Record<string, string> = {
-    today: "Hari Ini",
-    week: "Minggu Ini",
-    month: "Bulan Ini",
-    custom: "Custom",
-  };
-
   const getRangeLabel = () => {
     if (customRange?.from) {
       const startStr = format(customRange.from, "d MMM", { locale: id });
@@ -361,7 +363,7 @@ export default function DashboardChart() {
           gap: 12,
         }}
       >
-        <h3 className="text-headline-sm">Grafik Keuangan</h3>
+        <h3 className="text-headline-sm">{t("dashboard.stats")}</h3>
         
         {/* Navigation Tabs */}
         <div
@@ -414,11 +416,11 @@ export default function DashboardChart() {
       <div style={{ display: "flex", gap: 16, fontSize: 12, fontWeight: 500 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#2196f3" }} />
-          <span style={{ color: "var(--on-surface-variant)" }}>Pemasukan ↗</span>
+          <span style={{ color: "var(--on-surface-variant)" }}>{t("wallet.filter_income")} ↗</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f43f5e" }} />
-          <span style={{ color: "var(--on-surface-variant)" }}>Pengeluaran ↘</span>
+          <span style={{ color: "var(--on-surface-variant)" }}>{t("wallet.filter_expense")} ↘</span>
         </div>
       </div>
 
@@ -437,7 +439,7 @@ export default function DashboardChart() {
               borderRadius: 12,
             }}
           >
-            <span style={{ fontSize: 14, color: "var(--primary)", fontWeight: 600 }}>Memuat data grafik…</span>
+            <span style={{ fontSize: 14, color: "var(--primary)", fontWeight: 600 }}>{t("wallet.loading")}</span>
           </div>
         )}
 
@@ -748,7 +750,7 @@ export default function DashboardChart() {
           onMouseOver={(e) => (e.currentTarget.style.opacity = "0.9")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
         >
-          <span>Statistik Detail</span>
+          <span>{t("dashboard.view_details")}</span>
         </button>
       )}
 

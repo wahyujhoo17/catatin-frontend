@@ -6,6 +6,7 @@ import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import TransactionDetailModal from "@/components/ui/TransactionDetailModal";
 import DashboardChart from "@/components/ui/DashboardChart";
 import SavingGoalsCard from "@/components/dashboard/SavingGoalsCard";
@@ -86,6 +87,7 @@ const CATEGORY_BG: Record<string, string> = {
 // ─── Page ─────────────────────────────────────────────────────
 export default function DashboardPersonalPage() {
   const { user, isLoading } = useAuth();
+  const { t, lang } = useLanguage();
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [fetchError, setFetchError] = useState("");
@@ -130,9 +132,12 @@ export default function DashboardPersonalPage() {
     };
   }, [isLoading, user, fetchDashboard]);
 
-  const currentMonth = new Date().toLocaleDateString("id-ID", {
-    month: "long",
-  });
+  const currentMonth = new Date().toLocaleDateString(
+    lang === "en" ? "en-US" : "id-ID",
+    {
+      month: "long",
+    }
+  );
 
   // ─── Gauge rotation based on health percentage ─────────────
   // 0% = -45deg (left), 100% = 135deg (right)
@@ -169,13 +174,13 @@ export default function DashboardPersonalPage() {
               className="text-headline-lg"
               style={{ color: "var(--on-surface)" }}
             >
-              Halo, {displayName} 👋
+              {t("dashboard.welcome")} {displayName} 👋
             </h1>
             <p
               className="text-body-md"
               style={{ color: "var(--on-surface-variant)", marginTop: 4 }}
             >
-              Ini status keuanganmu bulan {currentMonth}.
+              {t("dashboard.status_prefix")} {currentMonth}.
             </p>
           </header>
 
@@ -218,7 +223,7 @@ export default function DashboardPersonalPage() {
                 className="text-headline-sm"
                 style={{ alignSelf: "flex-start" }}
               >
-                Kesehatan Budget
+                {t("dashboard.budget_health")}
               </h3>
 
               {/* Gauge */}
@@ -288,7 +293,21 @@ export default function DashboardPersonalPage() {
                       letterSpacing: "0.1em",
                     }}
                   >
-                    {data?.healthLabel || "Memuat…"}
+                    {data?.healthLabel
+                      ? lang === "en"
+                        ? data.healthLabel.toUpperCase().includes("SANGAT BAIK")
+                          ? "EXCELLENT"
+                          : data.healthLabel.toUpperCase().includes("MEMUASKAN")
+                          ? "GOOD"
+                          : data.healthLabel.toUpperCase().includes("PERLU PERHATIAN")
+                          ? "NEEDS ATTENTION"
+                          : data.healthLabel.toUpperCase().includes("KRITIS")
+                          ? "CRITICAL"
+                          : data.healthLabel
+                        : data.healthLabel
+                      : lang === "en"
+                      ? "Loading..."
+                      : "Memuat…"}
                   </span>
                 </div>
               </div>
@@ -313,7 +332,7 @@ export default function DashboardPersonalPage() {
                     className="text-label-md"
                     style={{ color: "var(--on-surface-variant)" }}
                   >
-                    Pemasukan
+                    {t("wallet.filter_income")}
                   </p>
                   <p
                     className="text-headline-sm"
@@ -334,7 +353,7 @@ export default function DashboardPersonalPage() {
                     className="text-label-md"
                     style={{ color: "var(--on-surface-variant)" }}
                   >
-                    Pengeluaran
+                    {t("wallet.filter_expense")}
                   </p>
                   <p
                     className="text-headline-sm"
@@ -354,7 +373,7 @@ export default function DashboardPersonalPage() {
               }}
             >
               <h3 className="text-headline-sm" style={{ marginBottom: 24 }}>
-                Kategori Teratas
+                {t("dashboard.top_categories")}
               </h3>
               <div
                 style={{
@@ -462,7 +481,7 @@ export default function DashboardPersonalPage() {
                     className="text-body-sm"
                     style={{ color: "var(--on-surface-variant)" }}
                   >
-                    Belum ada pengeluaran bulan ini
+                    {t("dashboard.no_expense_month")}
                   </p>
                 )}
               </div>
@@ -508,7 +527,7 @@ export default function DashboardPersonalPage() {
                     className="text-headline-sm"
                     style={{ color: "var(--primary)" }}
                   >
-                    Insight AI Pintar
+                    {t("dashboard.ai_insight")}
                   </h4>
                   {data ? (
                     <p
@@ -528,7 +547,7 @@ export default function DashboardPersonalPage() {
                         marginTop: 8,
                       }}
                     >
-                      Memuat insight…
+                      {t("dashboard.loading_insight")}
                     </p>
                   )}
                 </div>
@@ -552,7 +571,7 @@ export default function DashboardPersonalPage() {
                   }}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: 16 }}>savings</span>
-                  Target Tabungan
+                  {t("nav.goals")}
                 </Link>
               </div>
             </div>
@@ -583,13 +602,13 @@ export default function DashboardPersonalPage() {
                   marginBottom: 24,
                 }}
               >
-                <h3 className="text-headline-sm">Transaksi Terbaru</h3>
+                <h3 className="text-headline-sm">{t("dashboard.recent_trans")}</h3>
                 <Link
                   href="/transactions"
                   className="text-label-md"
                   style={{ color: "var(--primary)" }}
                 >
-                  Lihat Semua
+                  {t("dashboard.view_all")}
                 </Link>
               </div>
 

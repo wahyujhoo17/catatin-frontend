@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -20,6 +21,7 @@ function formatRupiah(n: number): string {
 }
 
 export default function SavingGoalsCard() {
+  const { t } = useLanguage();
   const [goals, setGoals] = useState<SavingGoal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -61,14 +63,14 @@ export default function SavingGoalsCard() {
             savings
           </span>
           <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: "var(--on-surface)" }}>
-            Target Tabungan Impian
+            {t("goals.title")}
           </h3>
         </div>
         <Link
           href="/goals"
           style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)", textDecoration: "none" }}
         >
-          Lihat Semua
+          {t("dashboard.view_all")}
         </Link>
       </div>
 

@@ -18,8 +18,9 @@ import {
   isSameDay,
   isWithinInterval,
 } from "date-fns";
-import { id } from "date-fns/locale";
+import { id, enUS } from "date-fns/locale";
 import { DayPicker, DateRange } from "react-day-picker";
+import { useLanguage } from "@/contexts/LanguageContext";
 import "react-day-picker/dist/style.css";
 
 interface PeriodSelectorProps {
@@ -37,6 +38,8 @@ export default function PeriodSelector({
   onSelectRange,
   initialRange,
 }: PeriodSelectorProps) {
+  const { lang, t } = useLanguage();
+  const dateLocale = lang === "en" ? enUS : id;
   const [activeTab, setActiveTab] = useState<TabType>("Daily");
   const [tempRange, setTempRange] = useState<DateRange | undefined>(initialRange);
 
@@ -73,7 +76,7 @@ export default function PeriodSelector({
       const weeks = eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
       
       months.push({
-        monthName: format(monthDate, "MMMM yyyy", { locale: id }),
+        monthName: format(monthDate, "MMMM yyyy", { locale: dateLocale }),
         weeks: weeks.map((weekStart, idx) => {
           // If week start is before month start, clamp to month start
           const wStart = weekStart < start ? start : weekStart;
@@ -83,7 +86,7 @@ export default function PeriodSelector({
 
           return {
             label: `${format(wStart, "dd")} - ${format(wEnd, "dd")}`,
-            subLabel: `Minggu ke-${idx + 1}`,
+            subLabel: lang === "en" ? `Week ${idx + 1}` : `Minggu ke-${idx + 1}`,
             start: wStart,
             end: wEnd,
           };
@@ -91,7 +94,7 @@ export default function PeriodSelector({
       });
     }
     return months;
-  }, [currentDate]);
+  }, [currentDate, dateLocale, lang]);
 
   // Monthly calculations
   const [selectedYear, setSelectedYear] = useState(getYear(currentDate));
@@ -140,11 +143,11 @@ export default function PeriodSelector({
     const end = endOfYear(new Date(selectedYear, 0, 1));
     const months = eachMonthOfInterval({ start, end });
     return months.map(month => ({
-      label: format(month, "MMM", { locale: id }).toUpperCase(),
+      label: format(month, "MMM", { locale: dateLocale }).toUpperCase(),
       start: startOfMonth(month),
       end: endOfMonth(month),
     }));
-  }, [selectedYear]);
+  }, [selectedYear, dateLocale]);
 
   if (!isOpen || !mounted) return null;
 
@@ -201,7 +204,7 @@ export default function PeriodSelector({
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <h3 className="text-headline-sm" style={{ margin: 0 }}>
-            Pilih Periode
+            {lang === "en" ? "Select Period" : "Pilih Periode"}
           </h3>
           <button 
             onClick={onClose}
@@ -254,7 +257,7 @@ export default function PeriodSelector({
                 fontWeight: activeTab === tab ? 700 : 500,
                 color: activeTab === tab ? "var(--primary)" : "var(--on-surface-variant)" 
               }}>
-                {tab === "Daily" ? "Harian" : tab === "Weekly" ? "Mingguan" : "Bulanan"}
+                {tab === "Daily" ? (lang === "en" ? "Daily" : "Harian") : tab === "Weekly" ? (lang === "en" ? "Weekly" : "Mingguan") : (lang === "en" ? "Monthly" : "Bulanan")}
               </span>
             </button>
           ))}
@@ -270,7 +273,7 @@ export default function PeriodSelector({
                 mode="range"
                 selected={tempRange}
                 onSelect={setTempRange}
-                locale={id}
+                locale={dateLocale}
                 showOutsideDays
                 className="custom-day-picker"
               />
@@ -297,18 +300,15 @@ export default function PeriodSelector({
                             padding: "12px",
                             borderRadius: 12,
                             border: `1px solid ${isSelected ? "var(--primary)" : "var(--outline-variant)"}`,
-                            background: isSelected ? "var(--primary-container)" : "transparent",
-                            textAlign: "left",
+                            background: isSelected ? "var(--primary-container)" : "var(--surface-container-low)",
+                            color: isSelected ? "var(--on-primary-container)" : "var(--on-surface)",
                             cursor: "pointer",
+                            textAlign: "left",
                             transition: "all 0.2s"
                           }}
                         >
-                          <div style={{ color: isSelected ? "var(--on-primary-container)" : "var(--on-surface)", fontWeight: 700, fontSize: 14 }}>
-                            {w.label}
-                          </div>
-                          <div style={{ color: isSelected ? "var(--primary)" : "var(--on-surface-variant)", fontSize: 12, marginTop: 4 }}>
-                            {w.subLabel}
-                          </div>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>{w.label}</p>
+                          <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--on-surface-variant)" }}>{w.subLabel}</p>
                         </button>
                       );
                     })}
@@ -321,39 +321,42 @@ export default function PeriodSelector({
           {/* MONTHLY VIEW */}
           {activeTab === "Monthly" && (
             <div>
-              <div style={{ display: "flex", gap: 16, borderBottom: "1px solid var(--outline-variant)", paddingBottom: 12, marginBottom: 16, overflowX: "auto" }}>
-                {monthlyYears.map(year => (
+              {/* Year Selector */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                {monthlyYears.map((y) => (
                   <button
-                    key={year}
-                    onClick={() => setSelectedYear(year)}
+                    key={y}
+                    onClick={() => setSelectedYear(y)}
                     style={{
-                      background: "transparent",
-                      border: "none",
-                      fontSize: 16,
-                      fontWeight: selectedYear === year ? 700 : 500,
-                      color: selectedYear === year ? "var(--primary)" : "var(--on-surface-variant)",
+                      padding: "6px 16px",
+                      borderRadius: 20,
+                      border: `1px solid ${selectedYear === y ? "var(--primary)" : "var(--outline-variant)"}`,
+                      background: selectedYear === y ? "var(--primary)" : "transparent",
+                      color: selectedYear === y ? "var(--on-primary)" : "var(--on-surface-variant)",
+                      fontWeight: 600,
+                      fontSize: 13,
                       cursor: "pointer",
-                      padding: "4px 8px"
                     }}
                   >
-                    {year}
+                    {y}
                   </button>
                 ))}
               </div>
 
+              {/* Month Grid */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-                {monthsGrid.map((m, i) => {
+                {monthsGrid.map((m, idx) => {
                   const isSelected = tempRange?.from && isSameDay(m.start, tempRange.from) && 
                                      tempRange?.to && isSameDay(m.end, tempRange.to);
                   return (
                     <button
-                      key={i}
+                      key={idx}
                       onClick={() => setTempRange({ from: m.start, to: m.end })}
                       style={{
                         padding: "16px 8px",
                         borderRadius: 12,
                         border: `1px solid ${isSelected ? "var(--primary)" : "var(--outline-variant)"}`,
-                        background: isSelected ? "var(--primary-container)" : "transparent",
+                        background: isSelected ? "var(--primary-container)" : "var(--surface-container-low)",
                         color: isSelected ? "var(--on-primary-container)" : "var(--on-surface)",
                         fontWeight: 700,
                         fontSize: 14,
@@ -402,7 +405,7 @@ export default function PeriodSelector({
               boxShadow: "0 4px 12px rgba(var(--primary-rgb), 0.3)"
             }}
           >
-            Terapkan
+            {lang === "en" ? "Apply" : "Terapkan"}
           </button>
         </div>
       </div>

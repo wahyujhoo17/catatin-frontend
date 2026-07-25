@@ -9,6 +9,7 @@ import TransactionDetailModal from "@/components/ui/TransactionDetailModal";
 import SwipeableMutasiCard from "@/components/ui/SwipeableMutasiCard";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 import Toast from "@/components/ui/Toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
@@ -87,6 +88,7 @@ function mapAccount(a: BackendAccount) {
 
 // ─── Page ─────────────────────────────────────────────────────
 export default function WalletPage() {
+  const { t } = useLanguage();
   const [accounts, setAccounts] = useState<BackendAccount[]>([]);
   const [totalBalance, setTotalBalance] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -416,7 +418,7 @@ export default function WalletPage() {
                 letterSpacing: "-0.5px",
               }}
             >
-              Dompet & Rekening
+              {t("wallet.title")}
             </h1>
             <p
               style={{
@@ -425,7 +427,7 @@ export default function WalletPage() {
                 margin: "4px 0 0 0",
               }}
             >
-              Kelola semua saldo dan rekening Anda dalam satu tempat terpusat
+              {t("wallet.subtitle")}
             </p>
           </header>
 
@@ -489,7 +491,7 @@ export default function WalletPage() {
                     margin: 0,
                   }}
                 >
-                  Total Saldo Gabungan
+                  {t("wallet.total_balance")}
                 </p>
                 <h2
                   style={{
@@ -500,7 +502,7 @@ export default function WalletPage() {
                     letterSpacing: "-0.8px",
                   }}
                 >
-                  {isLoading ? "Memuat…" : formatRupiah(totalBalance)}
+                  {isLoading ? "..." : formatRupiah(totalBalance)}
                 </h2>
               </div>
 
@@ -529,7 +531,7 @@ export default function WalletPage() {
                 >
                   add
                 </span>
-                Tambah
+                {t("wallet.add_account")}
               </button>
             </div>
 
@@ -552,7 +554,7 @@ export default function WalletPage() {
               >
                 account_balance
               </span>
-              {accounts.length} Rekening Aktif Terhubung
+              {accounts.length} {t("wallet.active_accounts")}
             </div>
           </section>
 
@@ -577,7 +579,7 @@ export default function WalletPage() {
                   color: "var(--on-surface)",
                 }}
               >
-                Daftar Rekening
+                {t("wallet.account_list")}
               </h3>
               <span
                 style={{
@@ -589,7 +591,7 @@ export default function WalletPage() {
                   borderRadius: 8,
                 }}
               >
-                {accounts.length} Rekening
+                {accounts.length}
               </span>
             </div>
 
@@ -601,7 +603,7 @@ export default function WalletPage() {
                   color: "var(--on-surface-variant)",
                 }}
               >
-                Memuat data rekening...
+                {t("wallet.loading")}
               </div>
             ) : accounts.length === 0 ? (
               <div
@@ -620,7 +622,7 @@ export default function WalletPage() {
                   account_balance
                 </span>
                 <p style={{ marginTop: 12, fontSize: 14, fontWeight: 500 }}>
-                  Belum ada rekening. Tambahkan rekening pertama Anda!
+                  {t("wallet.empty")}
                 </p>
               </div>
             ) : (
@@ -1133,7 +1135,7 @@ export default function WalletPage() {
                   color: "var(--on-surface-variant)",
                 }}
               >
-                Mutasi & Histori Transaksi Rekening
+                {t("wallet.mutasi_sub")}
               </p>
             </div>
           </header>
@@ -1173,7 +1175,7 @@ export default function WalletPage() {
                       margin: 0,
                     }}
                   >
-                    Saldo Rekening Ini
+                    {t("wallet.total_balance")}
                   </p>
                   <h2
                     style={{
@@ -1227,7 +1229,7 @@ export default function WalletPage() {
                 >
                   sync_alt
                 </span>
-                Terhubung dengan Catatin AI Assistant
+                {t("wallet.mutasi_connected")}
               </div>
             </div>
 
@@ -1235,7 +1237,7 @@ export default function WalletPage() {
               className="text-headline-sm"
               style={{ fontSize: 16, marginBottom: 12 }}
             >
-              Riwayat Transaksi
+              {t("wallet.mutasi_title")}
             </h3>
 
             <div
@@ -1264,7 +1266,7 @@ export default function WalletPage() {
                   </span>
                   <input
                     type="text"
-                    placeholder="Cari deskripsi..."
+                    placeholder={t("wallet.search_placeholder")}
                     value={txSearch}
                     onChange={(e) => setTxSearch(e.target.value)}
                     className="glass-input"
@@ -1333,9 +1335,9 @@ export default function WalletPage() {
                   }}
                 />
                 {[
-                  { label: "Semua", val: "" },
-                  { label: "Pemasukan", val: "INCOME" },
-                  { label: "Pengeluaran", val: "EXPENSE" },
+                  { label: t("wallet.filter_all"), val: "" },
+                  { label: t("wallet.filter_income"), val: "INCOME" },
+                  { label: t("wallet.filter_expense"), val: "EXPENSE" },
                 ].map((f) => (
                   <button
                     key={f.val}
