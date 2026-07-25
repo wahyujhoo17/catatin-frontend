@@ -505,12 +505,12 @@ export default function NotificationsPage() {
                 <div style={{ width: 40, height: 5, borderRadius: 3, background: "var(--outline-variant)", opacity: 0.8 }} />
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
                 <div
                   style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 14,
+                    width: 42,
+                    height: 42,
+                    borderRadius: 12,
                     background: (TYPE_ICONS[selectedNotif.type] || TYPE_ICONS.SYSTEM).bg,
                     display: "flex",
                     alignItems: "center",
@@ -518,13 +518,15 @@ export default function NotificationsPage() {
                     flexShrink: 0,
                   }}
                 >
-                  <span className="material-symbols-outlined" style={{ color: (TYPE_ICONS[selectedNotif.type] || TYPE_ICONS.SYSTEM).color }}>
+                  <span className="material-symbols-outlined" style={{ color: (TYPE_ICONS[selectedNotif.type] || TYPE_ICONS.SYSTEM).color, fontSize: 22 }}>
                     {(TYPE_ICONS[selectedNotif.type] || TYPE_ICONS.SYSTEM).icon}
                   </span>
                 </div>
-                <h2 className="text-title-lg" style={{ color: "var(--on-surface)", margin: 0, flex: 1 }}>
-                  {selectedNotif.title}
-                </h2>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <h2 style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.4, color: "var(--on-surface)", margin: 0 }}>
+                    {selectedNotif.title}
+                  </h2>
+                </div>
                 <button
                   onClick={() => setSelectedNotif(null)}
                   style={{
@@ -539,6 +541,8 @@ export default function NotificationsPage() {
                     cursor: "pointer",
                     color: "var(--on-surface-variant)",
                     flexShrink: 0,
+                    marginTop: -4,
+                    marginRight: -4,
                   }}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
