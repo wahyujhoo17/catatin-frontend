@@ -104,6 +104,16 @@ const translations: Record<Language, Record<string, string>> = {
     "common.cancel": "Batal",
     "common.delete": "Hapus",
     "common.edit": "Edit",
+
+    // Notifications
+    "notif.title": "Notifikasi",
+    "notif.mark_all_read": "Tandai Semua Dibaca",
+    "notif.empty": "Belum ada notifikasi",
+    "notif.empty_sub": "Notifikasi peringatan, pengingat tagihan, dan rekap harian akan muncul di sini",
+    "notif.just_now": "Baru saja",
+    "notif.minutes_ago": "menit lalu",
+    "notif.hours_ago": "jam lalu",
+    "notif.days_ago": "hari lalu",
   },
   en: {
     // Navigation & General
@@ -198,6 +208,16 @@ const translations: Record<Language, Record<string, string>> = {
     "common.cancel": "Cancel",
     "common.delete": "Delete",
     "common.edit": "Edit",
+
+    // Notifications
+    "notif.title": "Notifications",
+    "notif.mark_all_read": "Mark All as Read",
+    "notif.empty": "No notifications yet",
+    "notif.empty_sub": "Alerts, bill reminders, and daily recaps will appear here",
+    "notif.just_now": "Just now",
+    "notif.minutes_ago": "minutes ago",
+    "notif.hours_ago": "hours ago",
+    "notif.days_ago": "days ago",
   },
 };
 
