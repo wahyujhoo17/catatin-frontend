@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
+import Toast from "@/components/ui/Toast";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -189,21 +191,47 @@ export default function SavingGoalsPage() {
     }
   };
 
-  const handleDeleteGoal = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus target tabungan ini?")) return;
+  // Toast State
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
+  const [isToastOpen, setIsToastOpen] = useState(false);
+
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToastMsg(msg);
+    setToastType(type);
+    setIsToastOpen(true);
+  };
+
+  // Confirm Delete State
+  const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
+  const [isDeletingGoalLoading, setIsDeletingGoalLoading] = useState(false);
+
+  const handleDeleteGoal = (id: string) => {
+    setDeleteGoalId(id);
+  };
+
+  const handleConfirmDeleteGoal = async () => {
+    if (!deleteGoalId) return;
     const token = getToken();
     if (!token) return;
+    setIsDeletingGoalLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/goals/${id}`, {
+      const res = await fetch(`${API_BASE}/api/goals/${deleteGoalId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         fetchGoals();
+        showToast("Target tabungan berhasil dihapus", "success");
+      } else {
+        throw new Error("Gagal menghapus target tabungan");
       }
-    } catch (err) {
-      console.error("Gagal menghapus target tabungan:", err);
+      setDeleteGoalId(null);
+    } catch (err: any) {
+      showToast(err.message || "Gagal menghapus target tabungan", "error");
+    } finally {
+      setIsDeletingGoalLoading(false);
     }
   };
 
@@ -221,7 +249,7 @@ export default function SavingGoalsPage() {
     <div style={{ minHeight: "100vh", background: "var(--surface)", paddingBottom: 100 }}>
       <TopAppBar />
 
-      <main style={{ maxWidth: 640, margin: "0 auto", padding: "80px 16px 100px 16px" }}>
+      <main style={{ maxWidth: 640, margin: "0 auto", padding: "calc(96px + env(safe-area-inset-top, 0px)) 16px 120px 16px" }}>
         {/* Title Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div>
@@ -866,6 +894,26 @@ export default function SavingGoalsPage() {
           </div>
         </div>
       )}
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!deleteGoalId}
+        title="Hapus Target Tabungan?"
+        description="Apakah Anda yakin ingin menghapus target tabungan ini? Data akumulasi tabungan ini akan terhapus."
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Batal"
+        isLoading={isDeletingGoalLoading}
+        onConfirm={handleConfirmDeleteGoal}
+        onClose={() => setDeleteGoalId(null)}
+      />
+
+      {/* Toast Notification */}
+      <Toast
+        isOpen={isToastOpen}
+        message={toastMsg}
+        type={toastType}
+        onClose={() => setIsToastOpen(false)}
+      />
 
       <BottomNav />
     </div>

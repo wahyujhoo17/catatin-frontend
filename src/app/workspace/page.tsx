@@ -4,35 +4,19 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
+import Toast from "@/components/ui/Toast";
 import { useAuth } from "@/contexts/AuthContext";
 
 const workspaces = [
-  {
-    id: "pos",
-    title: "POS Operations",
-    subtitle:
-      "Kelola penjualan, inventaris, dan transaksi bisnis dengan tools profesional bertenaga AI.",
-    badge: "Business Mode",
-    icon: "point_of_sale",
-    color: "#2196F3",
-    bgLight: "rgba(33, 150, 243, 0.05)",
-    chips: [
-      { icon: "inventory_2", label: "Inventory" },
-      { icon: "receipt_long", label: "Invoices" },
-      { icon: "analytics", label: "Reports" },
-    ],
-    cta: "Buka Workspace Bisnis",
-    href: "/dashboard/pos",
-  },
   {
     id: "personal",
     title: "Personal Management",
     subtitle:
       "Catat pengeluaran, target tabungan, dan budgeting keluarga di lingkungan yang nyaman.",
-    badge: "Financial Mode",
+    badge: "Utama & Siap Pakai",
     icon: "account_balance_wallet",
     color: "var(--primary)",
-    bgLight: "rgba(79, 55, 138, 0.05)",
+    bgLight: "rgba(79, 55, 138, 0.08)",
     chips: [
       { icon: "savings", label: "Savings" },
       { icon: "payments", label: "Budgeting" },
@@ -40,6 +24,25 @@ const workspaces = [
     ],
     cta: "Buka Workspace Pribadi",
     href: "/dashboard",
+    disabled: false,
+  },
+  {
+    id: "pos",
+    title: "POS Operations (Usaha)",
+    subtitle:
+      "Kelola penjualan, inventaris toko, dan transaksi kasir bisnis bertenaga AI.",
+    badge: "Segera Hadir",
+    icon: "point_of_sale",
+    color: "#8b5cf6",
+    bgLight: "rgba(139, 92, 246, 0.08)",
+    chips: [
+      { icon: "inventory_2", label: "Inventory" },
+      { icon: "receipt_long", label: "Invoices" },
+      { icon: "analytics", label: "Reports" },
+    ],
+    cta: "Segera Hadir (Coming Soon)",
+    href: "#",
+    disabled: true,
   },
 ];
 
@@ -48,8 +51,15 @@ export default function WorkspacePage() {
   const { user, updateMode } = useAuth();
   const displayName = user?.name || "Pengguna";
   const [saving, setSaving] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState("");
+  const [isToastOpen, setIsToastOpen] = useState(false);
 
   const handleSelect = async (ws: (typeof workspaces)[0]) => {
+    if (ws.disabled) {
+      setToastMsg("Fitur Dashboard POS Usaha Segera Hadir (Coming Soon)!");
+      setIsToastOpen(true);
+      return;
+    }
     if (saving !== null) return;
     setSaving(ws.id);
     try {
@@ -378,6 +388,13 @@ export default function WorkspacePage() {
           ))}
         </div>
       </main>
+
+      <Toast
+        isOpen={isToastOpen}
+        message={toastMsg}
+        type="info"
+        onClose={() => setIsToastOpen(false)}
+      />
 
       <BottomNav />
     </div>

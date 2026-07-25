@@ -24,6 +24,7 @@ export default function SettingsPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isClearingChat, setIsClearingChat] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
 
@@ -32,41 +33,89 @@ export default function SettingsPage() {
   const [profileEmail, setProfileEmail] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
-  // Sync user data from AuthContext
+  // Load preferences & sync user data from AuthContext / localStorage
   useEffect(() => {
     if (user) {
       setProfileName(user.name);
       setProfileEmail(user.email);
-    }
-  }, [user]);
-
-  // Read/Save settings & default workspace to localStorage
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedWS = localStorage.getItem("active_dashboard");
-      if (savedWS === "/dashboard/pos") {
+      if (user.mode) {
+        setActiveWS(user.mode.toLowerCase() === "pos" ? "pos" : "personal");
+      }
+    } else if (typeof window !== "undefined") {
+      const savedMode = localStorage.getItem("app_user_mode");
+      if (savedMode === "pos") {
         setActiveWS("pos");
       } else {
         setActiveWS("personal");
       }
+    }
 
-      // Load saved profile image
+    if (typeof window !== "undefined") {
       const savedImage = localStorage.getItem("profile_image");
       if (savedImage) setProfileImage(savedImage);
+
+      const savedLang = localStorage.getItem("pref_app_lang");
+      if (savedLang) setActiveLang(savedLang);
+
+      const savedNotifTrans = localStorage.getItem("pref_notif_transaksi");
+      if (savedNotifTrans !== null) setNotifTransaksi(savedNotifTrans === "true");
+
+      const savedNotifBudget = localStorage.getItem("pref_notif_budgeting");
+      if (savedNotifBudget !== null) setNotifBudget(savedNotifBudget === "true");
     }
-  }, []);
+  }, [user]);
+
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setShowSuccessToast(true);
+    setToastVisible(true);
+    setTimeout(() => {
+      setToastVisible(false);
+      setTimeout(() => setShowSuccessToast(false), 400);
+    }, 2500);
+  };
+
+  const handleLangChange = (lang: string) => {
+    setActiveLang(lang);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("pref_app_lang", lang);
+    }
+    triggerToast(`Bahasa aplikasi diset ke ${lang === "id" ? "Bahasa Indonesia" : "English"}`);
+  };
+
+  const handleToggleNotifTransaksi = (val: boolean) => {
+    setNotifTransaksi(val);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("pref_notif_transaksi", String(val));
+    }
+    triggerToast(`Notifikasi transaksi ${val ? "diaktifkan" : "dinonaktifkan"}`);
+  };
+
+  const handleToggleNotifBudget = (val: boolean) => {
+    setNotifBudget(val);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("pref_notif_budgeting", String(val));
+    }
+    triggerToast(`Pengingat budgeting ${val ? "diaktifkan" : "dinonaktifkan"}`);
+  };
 
   const handleWorkspaceChange = async (mode: string) => {
-    setActiveWS(mode);
-    if (typeof window !== "undefined") {
-      const path = mode === "pos" ? "/dashboard/pos" : "/dashboard";
-      localStorage.setItem("active_dashboard", path);
+    if (mode === "pos") {
+      setToastMessage("Fitur Dashboard POS Usaha Segera Hadir (Coming Soon)!");
+      setShowSuccessToast(true);
+      setToastVisible(true);
+      return;
     }
-    // Sync mode to backend
+    const targetMode = "personal";
+    setActiveWS(targetMode);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("app_user_mode", targetMode);
+      localStorage.setItem("active_dashboard", "/dashboard");
+    }
     try {
-      await updateMode(mode === "pos" ? "POS" : "PERSONAL");
-    } catch {
-      // silently fail - localStorage is the fallback
+      await updateMode("PERSONAL");
+    } catch (e: any) {
+      console.error("Gagal mengubah mode workspace:", e);
     }
   };
 
@@ -81,31 +130,22 @@ export default function SettingsPage() {
     try {
       const API_BASE =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-      const res = await fetch(`${API_BASE}/api/ai/chat/clear`, {
+      const res = await fetch(`${API_BASE}/api/ai/clear`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
+      if (!res.ok) throw new Error("Gagal menghapus riwayat chat");
 
-      if (!res.ok) {
-        throw new Error("Gagal menghapus riwayat chat");
-      }
-
-      // Show success toast with animation
-      setIsConfirmOpen(false);
+      setToastMessage("Riwayat chat AI berhasil dibersihkan");
       setShowSuccessToast(true);
-      // Delay sedikit agar modal close dulu sebelum toast muncul
-      setTimeout(() => setToastVisible(true), 150);
-      // Auto-dismiss setelah 4 detik
-      setTimeout(() => {
-        setToastVisible(false);
-        setTimeout(() => setShowSuccessToast(false), 400);
-      }, 4000);
+      setToastVisible(true);
     } catch (err: any) {
-      alert(err.message || "Terjadi kesalahan saat menghapus chat.");
+      setToastMessage(err.message || "Gagal menghapus riwayat chat");
+      setShowSuccessToast(true);
+      setToastVisible(true);
     } finally {
       setIsClearingChat(false);
+      setIsConfirmOpen(false);
     }
   };
 
@@ -115,8 +155,8 @@ export default function SettingsPage() {
   ];
 
   const workspaces = [
-    { value: "personal", label: "Dashboard Personal" },
-    { value: "pos", label: "Dashboard POS Usaha" },
+    { value: "personal", label: "Dashboard Personal", disabled: false },
+    { value: "pos", label: "Dashboard POS Usaha (Coming Soon)", disabled: true },
   ];
 
   const currentLang =
@@ -309,7 +349,7 @@ export default function SettingsPage() {
                       key={l.value}
                       type="button"
                       onClick={() => {
-                        setActiveLang(l.value);
+                        handleLangChange(l.value);
                         setIsLangOpen(false);
                       }}
                       style={{
@@ -442,7 +482,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 className={`settings-toggle ${notifTransaksi ? "active" : ""}`}
-                onClick={() => setNotifTransaksi(!notifTransaksi)}
+                onClick={() => handleToggleNotifTransaksi(!notifTransaksi)}
                 aria-label="Toggle notifikasi transaksi"
               />
             </div>
@@ -463,7 +503,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 className={`settings-toggle ${notifBudget ? "active" : ""}`}
-                onClick={() => setNotifBudget(!notifBudget)}
+                onClick={() => handleToggleNotifBudget(!notifBudget)}
                 aria-label="Toggle pengingat budgeting"
               />
             </div>
@@ -596,26 +636,7 @@ export default function SettingsPage() {
               </div>
             </Link>
 
-            {/* Security Toggle */}
-            <div className="settings-row">
-              <div>
-                <p className="text-body-md" style={{ fontWeight: 600 }}>
-                  Keamanan Biometrik
-                </p>
-                <p
-                  className="text-body-sm"
-                  style={{ color: "var(--on-surface-variant)" }}
-                >
-                  Gunakan FaceID / Sidik Jari untuk membuka PWA
-                </p>
-              </div>
-              <button
-                type="button"
-                className={`settings-toggle ${biometricSec ? "active" : ""}`}
-                onClick={() => setBiometricSec(!biometricSec)}
-                aria-label="Toggle keamanan biometrik"
-              />
-            </div>
+
 
             {/* Chat History */}
             <div
@@ -1207,17 +1228,7 @@ export default function SettingsPage() {
                   letterSpacing: "-0.2px",
                 }}
               >
-                Riwayat berhasil dibersihkan
-              </p>
-              <p
-                style={{
-                  margin: "2px 0 0",
-                  fontSize: 12,
-                  color: "var(--on-surface-variant)",
-                  lineHeight: "16px",
-                }}
-              >
-                Semua chat telah dihapus permanen
+                {toastMessage || "Notifikasi"}
               </p>
             </div>
 

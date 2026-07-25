@@ -6,6 +6,9 @@ import BottomNav from "@/components/layout/BottomNav";
 import { DateRange } from "react-day-picker";
 import PeriodSelector from "@/components/ui/PeriodSelector";
 import TransactionDetailModal from "@/components/ui/TransactionDetailModal";
+import SwipeableMutasiCard from "@/components/ui/SwipeableMutasiCard";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
+import Toast from "@/components/ui/Toast";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
@@ -109,6 +112,123 @@ export default function WalletPage() {
   const [selectedDetailTxId, setSelectedDetailTxId] = useState<string | null>(
     null,
   );
+
+  // Edit Tx State
+  const [editingTx, setEditingTx] = useState<any>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Toast State
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
+  const [isToastOpen, setIsToastOpen] = useState(false);
+
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToastMsg(msg);
+    setToastType(type);
+    setIsToastOpen(true);
+  };
+
+  // Confirm Delete State
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; type: "TRANSACTION" | "ACCOUNT" } | null>(null);
+  const [isDeletingLoading, setIsDeletingLoading] = useState(false);
+
+  const handleDeleteTransaction = (id: string) => {
+    setDeleteTarget({ id, type: "TRANSACTION" });
+  };
+
+  const handleDelete = (id: string) => {
+    setDeleteTarget({ id, type: "ACCOUNT" });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    const token = getToken();
+    if (!token) return;
+    setIsDeletingLoading(true);
+    const targetType = deleteTarget.type;
+    try {
+      if (targetType === "TRANSACTION") {
+        const res = await fetch(`${API_BASE}/api/transactions/${deleteTarget.id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Gagal menghapus transaksi");
+        if (selectedAccount) {
+          fetchAccountTransactions(
+            selectedAccount.id,
+            txPage,
+            txFilterType,
+            txSearch,
+            txDateRange?.from?.toISOString() || "",
+            txDateRange?.to?.toISOString() || ""
+          );
+          fetchAccounts();
+        }
+        showToast("Transaksi mutasi berhasil dihapus", "success");
+      } else if (targetType === "ACCOUNT") {
+        const res = await fetch(`${API_BASE}/api/wallet/${deleteTarget.id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Gagal menghapus akun");
+        await fetchAccounts();
+        showToast("Rekening berhasil dihapus", "success");
+      }
+      setDeleteTarget(null);
+    } catch (err: any) {
+      showToast(err.message || "Gagal menghapus data", "error");
+    } finally {
+      setIsDeletingLoading(false);
+    }
+  };
+
+  const handleOpenEditModal = (tx: any) => {
+    setEditingTx(tx);
+    setEditAmount(tx.amount.toString());
+    setEditDesc(tx.description || "");
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTx) return;
+    const token = getToken();
+    if (!token) return;
+    setIsSavingEdit(true);
+    try {
+      const amountNum = parseFloat(editAmount.replace(/[^0-9]/g, ""));
+      const res = await fetch(`${API_BASE}/api/transactions/${editingTx.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          amount: amountNum,
+          description: editDesc,
+        }),
+      });
+      if (!res.ok) throw new Error("Gagal menyimpan perubahan transaksi");
+      setEditingTx(null);
+      if (selectedAccount) {
+        fetchAccountTransactions(
+          selectedAccount.id,
+          txPage,
+          txFilterType,
+          txSearch,
+          txDateRange?.from?.toISOString() || "",
+          txDateRange?.to?.toISOString() || ""
+        );
+        fetchAccounts();
+      }
+      showToast("Perubahan transaksi berhasil disimpan", "success");
+    } catch (err: any) {
+      showToast(err.message || "Gagal menyimpan transaksi", "error");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   // Form
   const [newName, setNewName] = useState("");
@@ -259,21 +379,7 @@ export default function WalletPage() {
     }
   };
 
-  // ─── Delete account ───────────────────────────────────────
-  const handleDelete = async (id: string) => {
-    const token = getToken();
-    if (!token) return;
-    try {
-      const res = await fetch(`${API_BASE}/api/wallet/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Gagal menghapus akun");
-      await fetchAccounts();
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
+
 
   return (
     <div
@@ -287,33 +393,39 @@ export default function WalletPage() {
 
       <main
         style={{
-          marginTop: 72,
-          padding: "0 var(--container-margin)",
-          maxWidth: 672,
-          margin: "72px auto 0",
+          padding: "calc(96px + env(safe-area-inset-top, 0px)) 16px 120px 16px",
+          maxWidth: 640,
+          margin: "0 auto",
         }}
       >
         <div
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: "var(--stack-gap-lg)",
+            gap: 24,
           }}
         >
           {/* Header */}
-          <header className="animate-fade-slide-up" style={{ paddingTop: 16 }}>
+          <header className="animate-fade-slide-up" style={{ marginBottom: 4 }}>
             <h1
-              className="text-headline-lg"
-              style={{ color: "var(--on-surface)" }}
+              style={{
+                fontSize: 22,
+                fontWeight: 800,
+                margin: 0,
+                color: "var(--on-surface)",
+                letterSpacing: "-0.5px",
+              }}
             >
               Dompet & Rekening
             </h1>
             <p
-              className="text-body-md"
-              style={{ color: "var(--on-surface-variant)", marginTop: 4 }}
+              style={{
+                fontSize: 13,
+                color: "var(--on-surface-variant)",
+                margin: "4px 0 0 0",
+              }}
             >
-              Kelola semua saldo dan rekening Anda dalam satu dashboard
-              terpusat.
+              Kelola semua saldo dan rekening Anda dalam satu tempat terpusat
             </p>
           </header>
 
@@ -321,17 +433,19 @@ export default function WalletPage() {
             <div
               style={{
                 padding: "12px 16px",
-                borderRadius: 12,
+                borderRadius: 14,
                 background: "var(--error-container)",
                 color: "var(--on-error-container)",
                 fontSize: 14,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
             >
-              {error}
+              <span>{error}</span>
               <button
                 onClick={() => setError("")}
                 style={{
-                  marginLeft: 12,
                   cursor: "pointer",
                   background: "none",
                   border: "none",
@@ -344,62 +458,158 @@ export default function WalletPage() {
             </div>
           )}
 
-          {/* Total Balance Card */}
-          <section className="glass-card animate-fade-slide-up wallet-balance-card">
-            <p
-              className="text-label-md"
+          {/* Total Balance Hero Card */}
+          <section
+            className="glass-card animate-fade-slide-up"
+            style={{
+              padding: "24px 20px",
+              borderRadius: 24,
+              background:
+                "linear-gradient(135deg, var(--surface), rgba(79, 55, 138, 0.06))",
+              border: "1px solid var(--outline-variant)",
+              boxShadow: "0 12px 36px rgba(0, 0, 0, 0.05)",
+            }}
+          >
+            <div
               style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                marginBottom: 16,
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "var(--on-surface-variant)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    margin: 0,
+                  }}
+                >
+                  Total Saldo Gabungan
+                </p>
+                <h2
+                  style={{
+                    fontSize: 34,
+                    fontWeight: 800,
+                    color: "var(--on-surface)",
+                    margin: "6px 0 0 0",
+                    letterSpacing: "-0.8px",
+                  }}
+                >
+                  {isLoading ? "Memuat…" : formatRupiah(totalBalance)}
+                </h2>
+              </div>
+
+              <button
+                onClick={() => setIsModalOpen(true)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "10px 16px",
+                  borderRadius: 14,
+                  background: "var(--primary)",
+                  color: "#ffffff",
+                  border: "none",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 14px rgba(79, 55, 138, 0.3)",
+                  transition: "transform 0.15s ease",
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 18 }}
+                >
+                  add
+                </span>
+                Tambah
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 12,
                 color: "var(--on-surface-variant)",
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
+                background: "rgba(0,0,0,0.03)",
+                padding: "8px 14px",
+                borderRadius: 12,
+                width: "fit-content",
               }}
             >
-              TOTAL SALDO gabungan
-            </p>
-            <h2 className="wallet-balance-amount">
-              {isLoading ? "Memuat…" : formatRupiah(totalBalance)}
-            </h2>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="btn-primary"
-              style={{
-                marginTop: 24,
-                padding: "12px 24px",
-                fontSize: 16,
-                maxWidth: 240,
-                marginLeft: "auto",
-                marginRight: "auto",
-              }}
-            >
-              <span className="material-symbols-outlined">add</span>
-              Tambah Rekening
-            </button>
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: 18, color: "var(--primary)" }}
+              >
+                account_balance
+              </span>
+              {accounts.length} Rekening Aktif Terhubung
+            </div>
           </section>
 
           {/* Accounts List */}
           <section
             className="animate-fade-slide-up"
-            style={{ display: "flex", flexDirection: "column", gap: 16 }}
+            style={{ display: "flex", flexDirection: "column", gap: 14 }}
           >
-            <h3 className="text-headline-sm" style={{ paddingLeft: 4 }}>
-              Daftar Akun ({accounts.length})
-            </h3>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "0 4px",
+              }}
+            >
+              <h3
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  margin: 0,
+                  color: "var(--on-surface)",
+                }}
+              >
+                Daftar Rekening
+              </h3>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "var(--on-surface-variant)",
+                  background: "rgba(0,0,0,0.05)",
+                  padding: "2px 8px",
+                  borderRadius: 8,
+                }}
+              >
+                {accounts.length} Rekening
+              </span>
+            </div>
+
             {isLoading ? (
               <div
                 style={{
                   textAlign: "center",
-                  padding: 24,
+                  padding: 32,
                   color: "var(--on-surface-variant)",
                 }}
               >
-                Memuat…
+                Memuat data rekening...
               </div>
             ) : accounts.length === 0 ? (
               <div
                 className="glass-card"
                 style={{
                   textAlign: "center",
-                  padding: 32,
+                  padding: "40px 24px",
+                  borderRadius: 20,
                   color: "var(--on-surface-variant)",
                 }}
               >
@@ -409,7 +619,7 @@ export default function WalletPage() {
                 >
                   account_balance
                 </span>
-                <p style={{ marginTop: 12 }}>
+                <p style={{ marginTop: 12, fontSize: 14, fontWeight: 500 }}>
                   Belum ada rekening. Tambahkan rekening pertama Anda!
                 </p>
               </div>
@@ -422,13 +632,23 @@ export default function WalletPage() {
                   return (
                     <div
                       key={acc.id}
-                      className="glass-card wallet-account-item"
+                      className="glass-card"
+                      style={{
+                        padding: 16,
+                        borderRadius: 20,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        transition: "all 0.2s ease",
+                        border: "none",
+                      }}
                     >
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: 16,
+                          gap: 14,
                           flex: 1,
                           minWidth: 0,
                           cursor: "pointer",
@@ -439,76 +659,127 @@ export default function WalletPage() {
                           style={{
                             width: 48,
                             height: 48,
-                            borderRadius: 12,
+                            borderRadius: 16,
                             background: m.bgColor,
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             flexShrink: 0,
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
                           }}
                         >
                           <span
                             className="material-symbols-outlined"
-                            style={{ color: m.color }}
+                            style={{ color: m.color, fontSize: 24 }}
                           >
                             {m.icon}
                           </span>
                         </div>
-                        <div style={{ minWidth: 0 }}>
-                          <p
-                            className="wallet-account-name"
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div
                             style={{
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
                             }}
                           >
-                            {acc.name}
-                          </p>
-                          <p className="wallet-account-type">{m.label}</p>
+                            <p
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 15,
+                                margin: 0,
+                                color: "var(--on-surface)",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {acc.name}
+                            </p>
+                          </div>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: "var(--on-surface-variant)",
+                              margin: "2px 0 0 0",
+                              display: "block",
+                            }}
+                          >
+                            {m.label}
+                          </span>
                         </div>
                       </div>
+
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: 8,
+                          gap: 12,
                           flexShrink: 0,
                         }}
                       >
                         <span
-                          className="wallet-account-balance"
-                          style={{ whiteSpace: "nowrap" }}
+                          style={{
+                            fontWeight: 800,
+                            fontSize: 15,
+                            color: "var(--on-surface)",
+                            whiteSpace: "nowrap",
+                          }}
                         >
                           {formatRupiah(acc.balance)}
                         </span>
-                        <button
-                          onClick={() => handleDelete(acc.id)}
-                          title="Hapus akun"
-                          style={{
-                            cursor: "pointer",
-                            color: "var(--error)",
-                            border: "none",
-                            background: "none",
-                            padding: 4,
-                            display: "flex",
-                            alignItems: "center",
-                            opacity: 0.6,
-                          }}
-                          onMouseEnter={(e) =>
-                            (e.currentTarget.style.opacity = "1")
-                          }
-                          onMouseLeave={(e) =>
-                            (e.currentTarget.style.opacity = "0.6")
-                          }
-                        >
-                          <span
-                            className="material-symbols-outlined"
-                            style={{ fontSize: 20 }}
+
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <button
+                            onClick={() => handleDelete(acc.id)}
+                            title="Hapus rekening"
+                            style={{
+                              cursor: "pointer",
+                              color: "#ef4444",
+                              border: "none",
+                              background: "rgba(239, 68, 68, 0.08)",
+                              width: 34,
+                              height: 34,
+                              borderRadius: 10,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              transition: "all 0.15s ease",
+                            }}
                           >
-                            delete
-                          </span>
-                        </button>
+                            <span
+                              className="material-symbols-outlined"
+                              style={{ fontSize: 18 }}
+                            >
+                              delete
+                            </span>
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenAccountDetails(acc)}
+                            title="Lihat mutasi"
+                            style={{
+                              cursor: "pointer",
+                              color: "var(--on-surface-variant)",
+                              border: "none",
+                              background: "rgba(0,0,0,0.04)",
+                              width: 34,
+                              height: 34,
+                              borderRadius: 10,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <span
+                              className="material-symbols-outlined"
+                              style={{ fontSize: 18 }}
+                            >
+                              chevron_right
+                            </span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -791,72 +1062,173 @@ export default function WalletPage() {
           {/* Header */}
           <header
             style={{
-              padding: "16px 24px",
+              padding: "16px 20px",
               display: "flex",
               alignItems: "center",
-              gap: 16,
+              gap: 14,
               borderBottom: "1px solid var(--outline-variant)",
+              background: "var(--surface)",
+              position: "sticky",
+              top: 0,
+              zIndex: 10,
             }}
           >
             <button
               onClick={() => setSelectedAccount(null)}
               style={{
-                background: "none",
+                background: "rgba(0, 0, 0, 0.04)",
                 border: "none",
+                borderRadius: 12,
+                width: 40,
+                height: 40,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                transition: "background 0.2s ease",
               }}
             >
               <span
                 className="material-symbols-outlined"
-                style={{ fontSize: 24, color: "var(--on-surface)" }}
+                style={{ fontSize: 22, color: "var(--on-surface)" }}
               >
                 arrow_back
               </span>
             </button>
-            <div>
-              <h2
-                className="text-headline-sm"
-                style={{ margin: 0, fontSize: 18 }}
-              >
-                {selectedAccount.name}
-              </h2>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    fontWeight: 800,
+                    color: "var(--on-surface)",
+                    letterSpacing: "-0.4px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {selectedAccount.name}
+                </h2>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "2px 8px",
+                    borderRadius: 8,
+                    background: "var(--primary-container)",
+                    color: "var(--on-primary-container)",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {selectedAccount.type}
+                </span>
+              </div>
               <p
-                className="text-body-sm"
-                style={{ margin: 0, color: "var(--on-surface-variant)" }}
+                style={{
+                  margin: "2px 0 0 0",
+                  fontSize: 13,
+                  color: "var(--on-surface-variant)",
+                }}
               >
-                Detail Mutasi Rekening
+                Mutasi & Histori Transaksi Rekening
               </p>
             </div>
           </header>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+            {/* Saldo Hero Card */}
             <div
               className="glass-card"
-              style={{ padding: 24, textAlign: "center", marginBottom: 24 }}
+              style={{
+                padding: "24px 20px",
+                borderRadius: 24,
+                marginBottom: 24,
+                position: "relative",
+                overflow: "hidden",
+                background:
+                  "linear-gradient(135deg, var(--surface), rgba(79, 55, 138, 0.05))",
+                border: "1px solid var(--outline-variant)",
+                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.04)",
+              }}
             >
-              <p
-                className="text-label-md"
+              <div
                 style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: 12,
+                }}
+              >
+                <div>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "var(--on-surface-variant)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      margin: 0,
+                    }}
+                  >
+                    Saldo Rekening Ini
+                  </p>
+                  <h2
+                    style={{
+                      fontSize: 32,
+                      fontWeight: 800,
+                      color: "var(--on-surface)",
+                      margin: "4px 0 0 0",
+                      letterSpacing: "-0.8px",
+                    }}
+                  >
+                    {formatRupiah(selectedAccount.balance)}
+                  </h2>
+                </div>
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 16,
+                    background: "var(--primary-container)",
+                    color: "var(--on-primary-container)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined"
+                    style={{ fontSize: 26 }}
+                  >
+                    account_balance_wallet
+                  </span>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 12,
                   color: "var(--on-surface-variant)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  marginBottom: 8,
+                  background: "rgba(0,0,0,0.03)",
+                  padding: "6px 12px",
+                  borderRadius: 10,
+                  width: "fit-content",
                 }}
               >
-                Saldo Saat Ini
-              </p>
-              <h2
-                style={{
-                  fontSize: 32,
-                  fontWeight: 700,
-                  color: "var(--on-surface)",
-                  margin: 0,
-                }}
-              >
-                {formatRupiah(selectedAccount.balance)}
-              </h2>
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 16, color: "var(--primary)" }}
+                >
+                  sync_alt
+                </span>
+                Terhubung dengan Catatin AI Assistant
+              </div>
             </div>
 
             <h3
@@ -1021,19 +1393,23 @@ export default function WalletPage() {
                 {accountTx.map((tx) => {
                   const isExpense = tx.type === "EXPENSE";
                   return (
-                    <div
+                    <SwipeableMutasiCard
                       key={tx.id}
-                      className="glass-card"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: 16,
-                        gap: 12,
-                        cursor: "pointer",
-                      }}
-                      onClick={() => setSelectedDetailTxId(tx.id)}
+                      onEdit={() => handleOpenEditModal(tx)}
+                      onDelete={() => handleDeleteTransaction(tx.id)}
+                      onClickDetail={() => setSelectedDetailTxId(tx.id)}
                     >
+                      <div
+                        className="glass-card"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "16px 38px 16px 16px",
+                          gap: 12,
+                          cursor: "pointer",
+                        }}
+                      >
                       <div
                         style={{
                           display: "flex",
@@ -1446,7 +1822,8 @@ export default function WalletPage() {
                         {formatRupiah(tx.amount)}
                       </span>
                     </div>
-                  );
+                  </SwipeableMutasiCard>
+                );
                 })}
               </div>
             )}
@@ -1536,6 +1913,189 @@ export default function WalletPage() {
         isOpen={!!selectedDetailTxId}
         transactionId={selectedDetailTxId}
         onClose={() => setSelectedDetailTxId(null)}
+      />
+
+      {/* Edit Transaction Modal */}
+      {editingTx && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 300,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            background: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+          }}
+        >
+          <div
+            className="animate-fade-slide-up"
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              background: "var(--surface)",
+              borderRadius: 24,
+              padding: 24,
+              boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: "var(--on-surface)",
+                }}
+              >
+                Edit Transaksi Mutasi
+              </h3>
+              <button
+                onClick={() => setEditingTx(null)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--on-surface-variant)",
+                }}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleSaveEdit}
+              style={{ display: "flex", flexDirection: "column", gap: 16 }}
+            >
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--on-surface-variant)",
+                    marginBottom: 6,
+                  }}
+                >
+                  Deskripsi / Keterangan
+                </label>
+                <input
+                  type="text"
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    border: "1px solid var(--outline-variant)",
+                    background: "var(--surface)",
+                    color: "var(--on-surface)",
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--on-surface-variant)",
+                    marginBottom: 6,
+                  }}
+                >
+                  Nominal (Rp)
+                </label>
+                <input
+                  type="text"
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    border: "1px solid var(--outline-variant)",
+                    background: "var(--surface)",
+                    color: "var(--on-surface)",
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingTx(null)}
+                  style={{
+                    flex: 1,
+                    padding: "12px",
+                    borderRadius: 12,
+                    border: "1px solid var(--outline-variant)",
+                    background: "var(--surface)",
+                    color: "var(--on-surface)",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  style={{
+                    flex: 1,
+                    padding: "12px",
+                    borderRadius: 12,
+                    border: "none",
+                    background: "var(--primary)",
+                    color: "#fff",
+                    fontWeight: 600,
+                    cursor: isSavingEdit ? "not-allowed" : "pointer",
+                    opacity: isSavingEdit ? 0.7 : 1,
+                  }}
+                >
+                  {isSavingEdit ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!deleteTarget}
+        title={deleteTarget?.type === "ACCOUNT" ? "Hapus Rekening?" : "Hapus Transaksi?"}
+        description={
+          deleteTarget?.type === "ACCOUNT"
+            ? "Apakah Anda yakin ingin menghapus rekening ini? Semua data mutasi di dalamnya juga akan terhapus."
+            : "Apakah Anda yakin ingin menghapus transaksi mutasi ini? Saldo rekening Anda akan otomatis disesuaikan."
+        }
+        confirmLabel="Ya, Hapus"
+        cancelLabel="Batal"
+        isLoading={isDeletingLoading}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteTarget(null)}
+      />
+
+      {/* Toast Notification */}
+      <Toast
+        isOpen={isToastOpen}
+        message={toastMsg}
+        type={toastType}
+        onClose={() => setIsToastOpen(false)}
       />
     </div>
   );
