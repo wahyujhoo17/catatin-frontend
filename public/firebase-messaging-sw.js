@@ -55,19 +55,22 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener("notificationclick", (event) => {
     event.notification.close();
 
-    const clickAction = event.notification.data?.click_action || "/dashboard";
+    // Selalu arahkan ke halaman daftar notifikasi (dengan param openLatest) 
+    // agar modal detail notifikasi terbuka secara otomatis.
+    const targetUrl = "/notifications?openLatest=1";
 
     event.waitUntil(
         clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-            // Jika sudah ada tab Catatin terbuka, fokus ke tab itu
+            // Jika sudah ada tab Catatin terbuka, fokus dan arahkan ke targetUrl
             for (const client of clientList) {
                 if (client.url.includes(self.location.hostname) && "focus" in client) {
-                    return client.focus();
+                    client.focus();
+                    return client.navigate(targetUrl);
                 }
             }
-            // Jika tidak, buka tab baru
+            // Jika tidak, buka tab baru dengan targetUrl
             if (clients.openWindow) {
-                return clients.openWindow(clickAction);
+                return clients.openWindow(targetUrl);
             }
         }),
     );

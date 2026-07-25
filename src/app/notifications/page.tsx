@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -35,6 +35,8 @@ function timeAgo(dateStr: string, t: (key: string) => string): string {
   return `${days} ${t("notif.days_ago")}`;
 }
 
+import TopAppBar from "@/components/layout/TopAppBar";
+
 export default function NotificationsPage() {
   const { token } = useAuth();
   const { t } = useLanguage();
@@ -43,6 +45,8 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedNotif, setSelectedNotif] = useState<NotificationItem | null>(null);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   const API = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -55,7 +59,9 @@ export default function NotificationsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setNotifications(data.notifications || []);
+        setNotifications((prev) => 
+          p === 1 ? (data.notifications || []) : [...prev, ...(data.notifications || [])]
+        );
         setTotalPages(data.pagination?.totalPages || 1);
       }
     } catch (err) {
@@ -69,23 +75,66 @@ export default function NotificationsPage() {
     fetchNotifications(page);
   }, [page, fetchNotifications]);
 
-  const markAsRead = async (id: string, clickAction?: string | null) => {
-    if (!token) return;
-    try {
-      await fetch(`${API}/api/notifications/${id}/read`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-      );
-      if (clickAction && clickAction !== "/dashboard") {
-        router.push(clickAction);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading && page < totalPages) {
+          setPage((prev) => prev + 1);
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        observer.unobserve(observerTarget.current);
       }
-    } catch (err) {
-      console.error("[Notifications] Mark read error:", err);
+    };
+  }, [observerTarget, loading, page, totalPages]);
+
+  const handleNotificationClick = async (notif: NotificationItem) => {
+    setSelectedNotif(notif);
+    if (!notif.isRead && token) {
+      try {
+        await fetch(`${API}/api/notifications/${notif.id}/read`, {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
+        );
+      } catch (err) {
+        console.error("[Notifications] Mark read error:", err);
+      }
     }
   };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (
+        urlParams.get("openLatest") === "1" &&
+        notifications.length > 0 &&
+        !loading &&
+        !selectedNotif
+      ) {
+        handleNotificationClick(notifications[0]);
+        // Hapus parameter query tanpa me-reload halaman agar tidak terbuka berulang kali
+        const newUrl =
+          window.location.protocol +
+          "//" +
+          window.location.host +
+          window.location.pathname;
+        window.history.replaceState({ path: newUrl }, "", newUrl);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifications, loading, selectedNotif]);
 
   const markAllAsRead = async () => {
     if (!token) return;
@@ -110,59 +159,71 @@ export default function NotificationsPage() {
         paddingBottom: 100,
       }}
     >
-      {/* Header */}
-      <header
+      <TopAppBar showNotification={false} />
+
+      <main
         style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          background: "rgba(255,255,255,0.85)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          borderBottom: "1px solid rgba(203, 196, 210, 0.3)",
-          padding: "16px 20px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          marginTop: 72,
+          padding: "0 var(--container-margin)",
+          maxWidth: 896,
+          margin: "72px auto 0",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button
-            className="btn-icon"
-            onClick={() => router.back()}
-            aria-label="Back"
-          >
-            <span className="material-symbols-outlined">arrow_back</span>
-          </button>
-          <h1
-            className="text-title-lg"
-            style={{ margin: 0, color: "var(--on-surface)" }}
-          >
-            {t("notif.title")}
-          </h1>
-        </div>
-
-        {hasUnread && (
-          <button
-            onClick={markAllAsRead}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--stack-gap-lg)",
+          }}
+        >
+          {/* Header */}
+          <header
+            className="animate-fade-slide-up"
             style={{
-              background: "rgba(103, 80, 164, 0.08)",
-              border: "none",
-              borderRadius: 12,
-              padding: "8px 14px",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "var(--primary)",
-              cursor: "pointer",
+              paddingTop: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
             }}
           >
-            {t("notif.mark_all_read")}
-          </button>
-        )}
-      </header>
+            <div>
+              <h1
+                className="text-headline-lg"
+                style={{ color: "var(--on-surface)" }}
+              >
+                {t("notif.title")}
+              </h1>
+            </div>
+            
+            {hasUnread && (
+              <button
+                onClick={markAllAsRead}
+                style={{
+                  background: "var(--primary-container)",
+                  border: "none",
+                  borderRadius: 20,
+                  padding: "8px 16px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "var(--on-primary-container)",
+                  cursor: "pointer",
+                  transition: "background 0.2s",
+                }}
+              >
+                {t("notif.mark_all_read")}
+              </button>
+            )}
+          </header>
 
       {/* Content */}
-      <div style={{ padding: "8px 0" }}>
+      <div
+        style={{
+          padding: "8px 0",
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
+        }}
+      >
         {loading && notifications.length === 0 ? (
           <div
             style={{
@@ -224,34 +285,55 @@ export default function NotificationsPage() {
           </div>
         ) : (
           /* Notification List */
-          <>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
             {notifications.map((notif) => {
               const meta = TYPE_ICONS[notif.type] || TYPE_ICONS.SYSTEM;
               return (
                 <button
                   key={notif.id}
-                  onClick={() => markAsRead(notif.id, notif.clickAction)}
+                  onClick={() => handleNotificationClick(notif)}
+                  className="animate-fade-slide-up"
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 14,
                     width: "100%",
-                    padding: "16px 20px",
-                    border: "none",
-                    borderBottom: "1px solid rgba(203, 196, 210, 0.15)",
+                    padding: "16px",
+                    border: "1px solid rgba(203, 196, 210, 0.2)",
+                    borderRadius: 16,
                     background: notif.isRead
-                      ? "transparent"
-                      : "rgba(103, 80, 164, 0.04)",
+                      ? "var(--surface-container-low)"
+                      : "var(--surface-container-high)",
+                    boxShadow: notif.isRead
+                      ? "none"
+                      : "0 4px 12px rgba(0,0,0,0.03)",
                     cursor: "pointer",
                     textAlign: "left",
-                    transition: "background 0.2s",
+                    transition: "all 0.2s cubic-bezier(0.2, 0, 0, 1)",
+                    transform: "scale(1)",
                   }}
+                  onMouseDown={(e) =>
+                    (e.currentTarget.style.transform = "scale(0.98)")
+                  }
+                  onMouseUp={(e) =>
+                    (e.currentTarget.style.transform = "scale(1)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.transform = "scale(1)")
+                  }
                 >
                   {/* Icon */}
                   <div
                     style={{
-                      width: 44,
-                      height: 44,
+                      width: 48,
+                      height: 48,
                       borderRadius: 14,
                       background: meta.bg,
                       display: "flex",
@@ -262,14 +344,14 @@ export default function NotificationsPage() {
                   >
                     <span
                       className="material-symbols-outlined"
-                      style={{ fontSize: 22, color: meta.color }}
+                      style={{ fontSize: 24, color: meta.color }}
                     >
                       {meta.icon}
                     </span>
                   </div>
 
                   {/* Content */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
                     <div
                       style={{
                         display: "flex",
@@ -279,10 +361,12 @@ export default function NotificationsPage() {
                       }}
                     >
                       <p
-                        className="text-body-md"
+                        className="text-body-lg"
                         style={{
-                          fontWeight: notif.isRead ? 500 : 700,
-                          color: "var(--on-surface)",
+                          fontWeight: notif.isRead ? 600 : 700,
+                          color: notif.isRead
+                            ? "var(--on-surface-variant)"
+                            : "var(--on-surface)",
                           margin: 0,
                           flex: 1,
                           overflow: "hidden",
@@ -295,17 +379,18 @@ export default function NotificationsPage() {
                       {!notif.isRead && (
                         <div
                           style={{
-                            width: 8,
-                            height: 8,
+                            width: 10,
+                            height: 10,
                             borderRadius: "50%",
                             background: "var(--primary)",
                             flexShrink: 0,
+                            boxShadow: "0 0 0 4px rgba(103, 80, 164, 0.1)",
                           }}
                         />
                       )}
                     </div>
                     <p
-                      className="text-body-sm"
+                      className="text-body-md"
                       style={{
                         color: "var(--on-surface-variant)",
                         margin: 0,
@@ -322,9 +407,18 @@ export default function NotificationsPage() {
                       className="text-label-sm"
                       style={{
                         color: "var(--outline)",
-                        margin: "6px 0 0",
+                        margin: "8px 0 0",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
                       }}
                     >
+                      <span
+                        className="material-symbols-outlined"
+                        style={{ fontSize: 14 }}
+                      >
+                        schedule
+                      </span>
                       {timeAgo(notif.createdAt, t)}
                     </p>
                   </div>
@@ -332,49 +426,157 @@ export default function NotificationsPage() {
               );
             })}
 
-            {/* Pagination */}
-            {totalPages > 1 && (
+            {/* Infinite Scroll Observer Target */}
+            <div ref={observerTarget} style={{ height: 20, width: "100%" }} />
+
+            {/* Loading Indicator at Bottom */}
+            {loading && page > 1 && (
               <div
                 style={{
                   display: "flex",
                   justifyContent: "center",
-                  gap: 12,
-                  padding: "20px 0",
+                  padding: "24px 0",
                 }}
               >
-                <button
-                  className="btn-icon"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  <span className="material-symbols-outlined">
-                    chevron_left
-                  </span>
-                </button>
-                <span
-                  className="text-body-md"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    color: "var(--on-surface-variant)",
-                  }}
-                >
-                  {page} / {totalPages}
-                </span>
-                <button
-                  className="btn-icon"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  <span className="material-symbols-outlined">
-                    chevron_right
-                  </span>
-                </button>
+                <div className="loading-spinner" />
               </div>
             )}
-          </>
+          </div>
         )}
-      </div>
+        </div>
+        </div>
+
+        {/* Custom Styles for Modal */}
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes modalSlideUp {
+            0% {
+              transform: translateY(100%);
+              opacity: 0;
+            }
+            100% {
+              transform: translateY(0);
+              opacity: 1;
+            }
+          }
+          .modal-slide-up-enhanced {
+            animation: modalSlideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+          }
+        `}} />
+
+        {/* Notification Detail Modal (Bottom Sheet style) */}
+        {selectedNotif && (
+          <div
+            className="animate-fade-in"
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.5)",
+              zIndex: 9999,
+              display: "flex",
+              alignItems: "flex-end", // Bottom sheet style
+              justifyContent: "center",
+            }}
+            onClick={() => setSelectedNotif(null)}
+          >
+            <div
+              className="modal-slide-up-enhanced"
+              style={{
+                background: "var(--surface)",
+                width: "100%",
+                maxWidth: 600,
+                minHeight: "55vh",
+                maxHeight: "90vh",
+                borderTopLeftRadius: 28,
+                borderTopRightRadius: 28,
+                padding: "12px 24px 32px 24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 20,
+                overflowY: "auto",
+                boxShadow: "0 -8px 30px rgba(0,0,0,0.15)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Drag Handle Indicator */}
+              <div style={{ display: "flex", justifyContent: "center", width: "100%", marginBottom: 4 }}>
+                <div style={{ width: 40, height: 5, borderRadius: 3, background: "var(--outline-variant)", opacity: 0.8 }} />
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 14,
+                    background: (TYPE_ICONS[selectedNotif.type] || TYPE_ICONS.SYSTEM).bg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ color: (TYPE_ICONS[selectedNotif.type] || TYPE_ICONS.SYSTEM).color }}>
+                    {(TYPE_ICONS[selectedNotif.type] || TYPE_ICONS.SYSTEM).icon}
+                  </span>
+                </div>
+                <h2 className="text-title-lg" style={{ color: "var(--on-surface)", margin: 0, flex: 1 }}>
+                  {selectedNotif.title}
+                </h2>
+                <button
+                  onClick={() => setSelectedNotif(null)}
+                  style={{
+                    background: "var(--surface-container-high)",
+                    border: "none",
+                    borderRadius: "50%",
+                    width: 32,
+                    height: 32,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    color: "var(--on-surface-variant)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
+                </button>
+              </div>
+              
+              <p className="text-body-lg" style={{ color: "var(--on-surface-variant)", whiteSpace: "pre-wrap", lineHeight: 1.6, margin: 0 }}>
+                {selectedNotif.body}
+              </p>
+              
+              <p className="text-label-sm" style={{ color: "var(--outline)", margin: 0, display: "flex", alignItems: "center", gap: 4 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>schedule</span>
+                {timeAgo(selectedNotif.createdAt, t)}
+              </p>
+
+              {selectedNotif.clickAction && selectedNotif.clickAction !== "/dashboard" && (
+                <button
+                  onClick={() => router.push(selectedNotif.clickAction!)}
+                  style={{
+                    marginTop: 8,
+                    background: "var(--primary)",
+                    color: "var(--on-primary)",
+                    border: "none",
+                    borderRadius: 24,
+                    padding: "14px 24px",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    width: "100%",
+                  }}
+                >
+                  Lihat Detail Terkait
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
