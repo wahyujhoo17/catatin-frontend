@@ -1,146 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { AiMarkdown } from "@/components/ai/AiMarkdown";
+import { parseAiResponse } from "@/lib/aiResponse";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-
-const navItems = [
-  { icon: "dashboard", href: "/dashboard", label: "Dashboard" },
-  { icon: "chat_bubble", href: "/chat", label: "Chat" },
-  { icon: "photo_camera", href: "#scan", label: "Scan" }, // Special item
-  { icon: "account_balance_wallet", href: "/wallet", label: "Dompet" },
-  { icon: "settings", href: "/settings", label: "Pengaturan" },
-];
-
-// ─── Lightweight Markdown → HTML (reused from chat) ──────────
-function renderMarkdown(text: string): string {
-  let html = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    // Italic: require no space after first * and no space before last *
-    .replace(/(?<!\*)\*(?!\s|\*)(.+?)(?<!\s|\*)\*(?!\*)/g, "<em>$1</em>")
-    .replace(
-      /`([^`]+)`/g,
-      "<code style='background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-size:0.9em'>$1</code>",
-    )
-    .replace(
-      /^### (.+)$/gm,
-      "<strong style='font-size:1em;display:block;margin:6px 0 2px'>$1</strong>",
-    )
-    .replace(
-      /^## (.+)$/gm,
-      "<strong style='font-size:1.05em;display:block;margin:8px 0 2px'>$1</strong>",
-    )
-    .replace(
-      /^# (.+)$/gm,
-      "<strong style='font-size:1.1em;display:block;margin:8px 0 4px'>$1</strong>",
-    );
-
-  // ── Pre-process: merge numbered list markers on their own line with their subsequent text line ──
-  {
-    const lines = html.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (/^\d+\.$/.test(line)) {
-        // Find next non-empty line that doesn't start with another number or bullet
-        let j = i + 1;
-        while (j < lines.length && lines[j].trim() === "") {
-          j++;
-        }
-        if (j < lines.length) {
-          const nextLineTrimmed = lines[j].trim();
-          if (!/^\d+\./.test(nextLineTrimmed) && !/^[-*•]\s+/.test(nextLineTrimmed)) {
-            lines[i] = line + " " + lines[j].trim();
-            lines[j] = "";
-          }
-        }
-      }
-    }
-    html = lines.join("\n");
-  }
-
-  // ── Ordered list: group consecutive list items and their sub-lines (such as bullets/details) ──
-  {
-    const lines = html.split("\n");
-    const output: string[] = [];
-    let i = 0;
-    while (i < lines.length) {
-      if (/^\d+\.\s+/.test(lines[i])) {
-        const items: { title: string; subLines: string[] }[] = [];
-        
-        while (i < lines.length) {
-          if (/^\d+\.\s+/.test(lines[i])) {
-            const title = lines[i].replace(/^\d+\.\s+/, "");
-            items.push({ title, subLines: [] });
-            i++;
-          } else if (items.length > 0) {
-            if (/^(###|##|#|---)/.test(lines[i])) {
-              break;
-            }
-            items[items.length - 1].subLines.push(lines[i]);
-            i++;
-          } else {
-            break;
-          }
-        }
-
-        const renderedItems = items.map((item, idx) => {
-          let subContent = item.subLines.join("\n");
-          
-          // Render bullets inside subContent
-          subContent = subContent.replace(/(?:^|\n)((?:[-*•] .+?(?:\n|$))+)/g, (match) => {
-            const bulletItems = match
-              .split("\n")
-              .filter(Boolean)
-              .map((line) => {
-                const content = line.replace(/^[-*•] /, "");
-                return `<span style="display:flex;gap:5px;align-items:flex-start;margin-bottom:3px;margin-left:12px"><span style="flex-shrink:0;line-height:1.4;color:var(--text-muted,#6b7280)">•</span><span style="line-height:1.4">${content}</span></span>`;
-              });
-            return `\n<div style="display:flex;flex-direction:column;margin:2px 0">${bulletItems.join("")}</div>`;
-          });
-          
-          subContent = subContent.replace(/\n{2,}/g, "<br>").replace(/\n/g, " ");
-
-          return `<div style="margin-bottom:8px">
-            <span style="display:flex;gap:6px;align-items:flex-start">
-              <span style="flex-shrink:0;min-width:18px;font-weight:600;color:var(--primary,#2563eb);line-height:1.4">${idx + 1}.</span>
-              <span style="line-height:1.4">${item.title}</span>
-            </span>
-            ${subContent.trim() ? `<div style="margin-top:4px;padding-left:24px">${subContent}</div>` : ""}
-          </div>`;
-        });
-
-        output.push(`<div style="display:flex;flex-direction:column;margin:6px 0">${renderedItems.join("")}</div>`);
-      } else {
-        output.push(lines[i]);
-        i++;
-      }
-    }
-    html = output.join("\n");
-  }
-
-  // ── Unordered list: group consecutive bullet lines
-  html = html.replace(/(?:^|\n)((?:[-*•] .+?(?:\n|$))+)/g, (match) => {
-    const items = match
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        const content = line.replace(/^[-*•] /, "");
-        return `<span style="display:flex;gap:5px;align-items:flex-start;margin-bottom:3px"><span style="flex-shrink:0;line-height:1.4">•</span><span style="line-height:1.4">${content}</span></span>`;
-      });
-    return `\n<div style="display:flex;flex-direction:column;margin:4px 0">${items.join("")}</div>`;
-  });
-
-  html = html.replace(/\n{2,}/g, "<br>").replace(/\n/g, " ");
-  html = html.replace(/(<br>\s*){2,}/g, "<br>").trim();
-
-  return html;
-}
 
 // ─── Types ────────────────────────────────────────────────────
 interface ScanResult {
@@ -151,15 +18,21 @@ interface ScanResult {
     amount: number;
     description: string;
     category?: string;
+    categoryId?: string;
+    accountId?: string;
+    date?: string;
   }[];
   error?: string;
 }
 
 type ScanPhase = "camera" | "preview" | "processing" | "result" | "success";
 
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
   const { t } = useLanguage();
 
   const dynamicNavItems = [
@@ -181,7 +54,6 @@ export default function BottomNav() {
   const [scanError, setScanError] = useState<string | null>(null);
   const [isRefining, setIsRefining] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [userAccounts, setUserAccounts] = useState<
     { id: string; name: string }[]
@@ -192,17 +64,20 @@ export default function BottomNav() {
   const [showScanOptions, setShowScanOptions] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      if (pathname === "/dashboard" || pathname === "/dashboard/pos") {
-        localStorage.setItem("active_dashboard", pathname);
-        setDashboardHref(pathname);
-      } else {
-        const saved = localStorage.getItem("active_dashboard");
-        if (saved) {
-          setDashboardHref(saved);
-        }
-      }
+    if (typeof window === "undefined") return;
+    const nextDashboardHref =
+      pathname === "/dashboard" || pathname === "/dashboard/pos"
+        ? pathname
+        : localStorage.getItem("active_dashboard");
+    if (!nextDashboardHref) return;
+    if (pathname === "/dashboard" || pathname === "/dashboard/pos") {
+      localStorage.setItem("active_dashboard", pathname);
     }
+    const timer = window.setTimeout(
+      () => setDashboardHref(nextDashboardHref),
+      0,
+    );
+    return () => window.clearTimeout(timer);
   }, [pathname]);
 
   const fetchAccounts = async () => {
@@ -296,8 +171,10 @@ export default function BottomNav() {
         transactions: data.transactions,
       });
       setScanPhase("result");
-    } catch (err: any) {
-      setScanError(err.message || "Terjadi kesalahan saat menghubungi AI.");
+    } catch (err: unknown) {
+      setScanError(
+        errorMessage(err, "Terjadi kesalahan saat menghubungi AI."),
+      );
       setScanPhase("result");
     } finally {
       setIsRefining(false);
@@ -408,9 +285,9 @@ export default function BottomNav() {
             type: tx.type,
             amount: tx.amount,
             description: tx.description,
-            categoryId: (tx as any).categoryId,
-            accountId: finalAccountId || (tx as any).accountId,
-            date: (tx as any).date || new Date().toISOString(),
+            categoryId: tx.categoryId,
+            accountId: finalAccountId || tx.accountId,
+            date: tx.date || new Date().toISOString(),
           }),
         });
 
@@ -433,8 +310,8 @@ export default function BottomNav() {
       setTimeout(() => {
         handleCloseScan();
       }, 2500);
-    } catch (e: any) {
-      setScanError(e.message || "Gagal menyimpan transaksi");
+    } catch (e: unknown) {
+      setScanError(errorMessage(e, "Gagal menyimpan transaksi"));
       setIsSaving(false);
     }
   };
@@ -736,16 +613,10 @@ export default function BottomNav() {
                 ) : scanResult ? (
                   /* Success State */
                   (() => {
-                    const askMatch = scanResult.content.match(
-                      /\[ASK_ACCOUNT:(.*?)\]/,
-                    );
-                    const options = askMatch ? askMatch[1].split(",") : [];
-
-                    const cleanText = scanResult.content
-                      .replace(/\[ACTION[\s\S]*?(?:\[\/ACTION\]|$)/g, "")
-                      .replace(/\[ASK_ACCOUNT[\s\S]*?(?:\]|$)/g, "")
-                      .replace(/\[SHOW_CHART[\s\S]*?(?:\]|$)/g, "")
-                      .trim();
+                    const {
+                      markdown: cleanText,
+                      accountOptions: options,
+                    } = parseAiResponse(scanResult.content);
 
                     return (
                       <>
@@ -785,16 +656,9 @@ export default function BottomNav() {
                               Catatin AI
                             </span>
                           </div>
-                          <div
-                            className="chat-md"
-                            style={{
-                              color: "var(--on-surface)",
-                              fontSize: 14,
-                              lineHeight: 1.7,
-                            }}
-                            dangerouslySetInnerHTML={{
-                              __html: renderMarkdown(cleanText),
-                            }}
+                          <AiMarkdown
+                            content={cleanText}
+                            className="ai-markdown-scan"
                           />
 
                           {/* Account Selection Options or Refining Loader */}
@@ -1001,11 +865,10 @@ export default function BottomNav() {
                     Scan Lagi
                   </button>
                   {(() => {
-                    const askMatch = scanResult?.content?.match(
-                      /\[ASK_ACCOUNT:(.*?)\]/,
-                    );
-                    const needsAccount =
-                      askMatch && askMatch[1].split(",").length > 0;
+                    const accountOptions = parseAiResponse(
+                      scanResult?.content || "",
+                    ).accountOptions;
+                    const needsAccount = accountOptions.length > 0;
                     const isReady = !needsAccount || selectedAccount !== null;
 
                     return (

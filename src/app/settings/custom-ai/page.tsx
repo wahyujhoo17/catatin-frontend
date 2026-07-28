@@ -15,6 +15,8 @@ interface CustomAI {
   apiKey: string;
   model: string;
   elevenLabsApiKey?: string;
+  hasApiKey?: boolean;
+  hasElevenLabsApiKey?: boolean;
 }
 
 const EMPTY_CONFIG: CustomAI = {
@@ -23,6 +25,8 @@ const EMPTY_CONFIG: CustomAI = {
   baseUrl: "",
   apiKey: "",
   model: "",
+  hasApiKey: false,
+  hasElevenLabsApiKey: false,
 };
 
 const providerOptions = [
@@ -73,7 +77,7 @@ export default function CustomAIPage() {
   const [formElevenLabs, setFormElevenLabs] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   // ─── Load config dari backend ──────────────────────────────
   useEffect(() => {
@@ -91,9 +95,10 @@ export default function CustomAIPage() {
         setConfig(data);
         setFormProvider(data.provider || "openai");
         setFormBaseUrl(data.baseUrl || "");
-        setFormApiKey(data.apiKey || "");
+        // Secrets are write-only: the backend only returns hasApiKey flags.
+        setFormApiKey("");
         setFormModel(data.model || "");
-        setFormElevenLabs(data.elevenLabsApiKey || "");
+        setFormElevenLabs("");
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -126,7 +131,8 @@ export default function CustomAIPage() {
           body: JSON.stringify(EMPTY_CONFIG),
         });
         if (res.ok) {
-          setConfig(EMPTY_CONFIG);
+          const data = await res.json();
+          setConfig(data.config || EMPTY_CONFIG);
           setSuccessMsg("Beralih ke Catatin AI (Default)");
           setTimeout(() => setSuccessMsg(""), 2000);
         }
@@ -146,7 +152,7 @@ export default function CustomAIPage() {
     const token = getToken();
     if (!token) return;
 
-    if (!formApiKey.trim()) {
+    if (!formApiKey.trim() && !config.hasApiKey) {
       setSuccessMsg("API Key wajib diisi.");
       return;
     }
@@ -158,6 +164,9 @@ export default function CustomAIPage() {
       apiKey: formApiKey.trim(),
       model: formModel.trim(),
       elevenLabsApiKey: formElevenLabs.trim(),
+      hasApiKey: config.hasApiKey || Boolean(formApiKey.trim()),
+      hasElevenLabsApiKey:
+        config.hasElevenLabsApiKey || Boolean(formElevenLabs.trim()),
     };
 
     try {
@@ -176,7 +185,10 @@ export default function CustomAIPage() {
         return;
       }
 
-      setConfig(updated);
+      const data = await res.json();
+      setConfig(data.config || updated);
+      setFormApiKey("");
+      setFormElevenLabs("");
       setSuccessMsg("Konfigurasi AI kustom berhasil disimpan!");
       setTimeout(() => setSuccessMsg(""), 2000);
     } catch {
@@ -519,6 +531,22 @@ export default function CustomAIPage() {
           </form>
         </div>
 
+        <div
+          style={{
+            margin: "0 0 16px",
+            padding: "10px 12px",
+            borderRadius: 12,
+            background: "var(--surface-container-low)",
+            color: "var(--on-surface-variant)",
+            fontSize: 12,
+            lineHeight: 1.5,
+          }}
+        >
+          Catatin AI mengirim bagian data keuangan yang relevan ke provider AI
+          aktif untuk menjawab chat. Riwayat yang dikirim dibatasi dan aksi
+          yang mengubah data selalu memerlukan konfirmasi.
+        </div>
+
         {/* ─── CUSTOM AI FORM (muncul jika enabled) ──────── */}
         {config.enabled && (
           <div
@@ -542,6 +570,21 @@ export default function CustomAIPage() {
               onSubmit={handleSave}
               style={{ display: "flex", flexDirection: "column", gap: 16 }}
             >
+              <div
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  background: "var(--surface-container-low)",
+                  color: "var(--on-surface-variant)",
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                }}
+              >
+                Data keuangan yang relevan akan dikirim ke provider pilihanmu
+                untuk memproses chat. API key disimpan terenkripsi dan tidak
+                akan ditampilkan kembali setelah disimpan.
+              </div>
+
               {/* Provider dropdown */}
               <div style={{ position: "relative" }}>
                 <label
@@ -704,7 +747,11 @@ export default function CustomAIPage() {
                   className="glass-input"
                   value={formApiKey}
                   onChange={(e) => setFormApiKey(e.target.value)}
-                  placeholder="sk-..."
+                  placeholder={
+                    config.hasApiKey
+                      ? "Tersimpan — isi hanya untuk mengganti"
+                      : "sk-..."
+                  }
                   style={{
                     width: "100%",
                     boxSizing: "border-box",

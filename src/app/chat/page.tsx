@@ -13,151 +13,17 @@ import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import loadingJson from "../../../public/797bcec6-1174-11ee-9f70-5b99a7148b86.json";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { AiMarkdown } from "@/components/ai/AiMarkdown";
+import {
+  aiResponseToPlainText,
+  parseAiResponse,
+  stripAiActionBlocks,
+} from "@/lib/aiResponse";
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 // ─── Config ──────────────────────────────────────────────────
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-
-// ─── Lightweight Markdown → HTML parser ──────────────────────
-function renderMarkdown(text: string): string {
-  let html = text
-    // Escape HTML entities first
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    // Bold: **text**
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    // Italic: *text* (but not inside bold, require no space after first * and no space before last *)
-    .replace(/(?<!\*)\*(?!\s|\*)(.+?)(?<!\s|\*)\*(?!\*)/g, "<em>$1</em>")
-    // Inline code: `code`
-    .replace(
-      /`([^`]+)`/g,
-      "<code style='background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-size:0.9em'>$1</code>",
-    )
-    // Horizontal rule: ---
-    .replace(
-      /^---$/gm,
-      "<hr style='border:none;border-top:1px solid rgba(0,0,0,0.1);margin:8px 0'>",
-    )
-    // Headers: ### h3, ## h2, # h1
-    .replace(
-      /^### (.+)$/gm,
-      "<strong style='font-size:1em;display:block;margin:6px 0 2px'>$1</strong>",
-    )
-    .replace(
-      /^## (.+)$/gm,
-      "<strong style='font-size:1.05em;display:block;margin:8px 0 2px'>$1</strong>",
-    )
-    .replace(
-      /^# (.+)$/gm,
-      "<strong style='font-size:1.1em;display:block;margin:8px 0 4px'>$1</strong>",
-    );
-
-  // ── Pre-process: merge numbered list markers on their own line with their subsequent text line ──
-  {
-    const lines = html.split("\n");
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (/^\d+\.$/.test(line)) {
-        // Find next non-empty line that doesn't start with another number or bullet
-        let j = i + 1;
-        while (j < lines.length && lines[j].trim() === "") {
-          j++;
-        }
-        if (j < lines.length) {
-          const nextLineTrimmed = lines[j].trim();
-          if (!/^\d+\./.test(nextLineTrimmed) && !/^[-*•]\s+/.test(nextLineTrimmed)) {
-            lines[i] = line + " " + lines[j].trim();
-            lines[j] = "";
-          }
-        }
-      }
-    }
-    html = lines.join("\n");
-  }
-
-  // ── Ordered list: group consecutive list items and their sub-lines (such as bullets/details) ──
-  {
-    const lines = html.split("\n");
-    const output: string[] = [];
-    let i = 0;
-    while (i < lines.length) {
-      if (/^\d+\.\s+/.test(lines[i])) {
-        const items: { title: string; subLines: string[] }[] = [];
-        
-        while (i < lines.length) {
-          if (/^\d+\.\s+/.test(lines[i])) {
-            const title = lines[i].replace(/^\d+\.\s+/, "");
-            items.push({ title, subLines: [] });
-            i++;
-          } else if (items.length > 0) {
-            if (/^(###|##|#|---)/.test(lines[i])) {
-              break;
-            }
-            items[items.length - 1].subLines.push(lines[i]);
-            i++;
-          } else {
-            break;
-          }
-        }
-
-        const renderedItems = items.map((item, idx) => {
-          let subContent = item.subLines.join("\n");
-          
-          // Render bullets inside subContent
-          subContent = subContent.replace(/(?:^|\n)((?:[-*•] .+?(?:\n|$))+)/g, (match) => {
-            const bulletItems = match
-              .split("\n")
-              .filter(Boolean)
-              .map((line) => {
-                const content = line.replace(/^[-*•] /, "");
-                return `<span style="display:flex;gap:5px;align-items:flex-start;margin-bottom:3px;margin-left:12px"><span style="flex-shrink:0;line-height:1.4;color:var(--text-muted,#6b7280)">•</span><span style="line-height:1.4">${content}</span></span>`;
-              });
-            return `\n<div style="display:flex;flex-direction:column;margin:2px 0">${bulletItems.join("")}</div>`;
-          });
-          
-          subContent = subContent.replace(/\n{2,}/g, "<br>").replace(/\n/g, " ");
-
-          return `<div style="margin-bottom:8px">
-            <span style="display:flex;gap:6px;align-items:flex-start">
-              <span style="flex-shrink:0;min-width:18px;font-weight:600;color:var(--primary,#2563eb);line-height:1.4">${idx + 1}.</span>
-              <span style="line-height:1.4">${item.title}</span>
-            </span>
-            ${subContent.trim() ? `<div style="margin-top:4px;padding-left:24px">${subContent}</div>` : ""}
-          </div>`;
-        });
-
-        output.push(`<div style="display:flex;flex-direction:column;margin:6px 0">${renderedItems.join("")}</div>`);
-      } else {
-        output.push(lines[i]);
-        i++;
-      }
-    }
-    html = output.join("\n");
-  }
-
-  // ── Unordered list: group consecutive bullet lines ──────
-  html = html.replace(/(?:^|\n)((?:[-*•] .+?(?:\n|$))+)/g, (match) => {
-    const items = match
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => {
-        const content = line.replace(/^[-*•] /, "");
-        return `<span style="display:flex;gap:5px;align-items:flex-start;margin-bottom:3px"><span style="flex-shrink:0;line-height:1.4">•</span><span style="line-height:1.4">${content}</span></span>`;
-      });
-    return `\n<div style="display:flex;flex-direction:column;margin:4px 0">${items.join("")}</div>`;
-  });
-
-  // Newlines: double (or more) → paragraph break, single → space (prose flows naturally)
-  html = html.replace(/\n{2,}/g, "<br>").replace(/\n/g, " ");
-  // Collapse consecutive <br> tags and trim
-  html = html.replace(/(<br>\s*){2,}/g, "<br>").trim();
-
-  return html;
-}
 
 interface Message {
   id: string;
@@ -167,6 +33,83 @@ interface Message {
   isStreaming?: boolean;
   isHistory?: boolean;
   isNew?: boolean;
+  pendingActions?: AiActionProposal[];
+}
+
+interface AiActionProposal {
+  id: string;
+  actionType: string;
+  title: string;
+  summary: string;
+  expiresAt: string;
+  status?:
+    | "pending"
+    | "processing"
+    | "executed"
+    | "cancelled"
+    | "expired"
+    | "failed";
+  error?: string;
+}
+
+interface AiStreamEvent {
+  type: string;
+  content?: string;
+  error?: string;
+  proposal?: AiActionProposal;
+}
+
+interface DashboardSummary {
+  topCategories: Array<{ name: string; percentage: number }>;
+}
+
+interface ChatHistoryResponse {
+  messages?: Message[];
+  pagination: { page: number; totalPages: number };
+}
+
+interface BrowserSpeechRecognitionResultEvent {
+  results: ArrayLike<{
+    readonly 0: { transcript: string };
+    isFinal: boolean;
+  }>;
+}
+
+interface BrowserSpeechRecognitionErrorEvent {
+  error: string;
+}
+
+interface BrowserSpeechRecognition {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  maxAlternatives: number;
+  onstart: (() => void) | null;
+  onresult: ((event: BrowserSpeechRecognitionResultEvent) => void) | null;
+  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+interface BrowserSpeechRecognitionConstructor {
+  new (): BrowserSpeechRecognition;
+}
+
+type VoiceWindow = Window &
+  typeof globalThis & {
+    webkitAudioContext?: typeof AudioContext;
+    SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+    webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+  };
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : "";
 }
 
 const suggestions = [
@@ -185,17 +128,6 @@ function getToken(): string | null {
   }
 }
 
-// ─── Strip [ACTION] blocks from AI response ──────────────────
-function stripActions(text: string): string {
-  return text
-    .replace(
-      /\[ACTION:(record_transaction|update_transaction|delete_transaction|draft_transaction|transfer_balance|add_subscription|set_alert_threshold|adjust_balance|set_budget|split_bill)\][\s\S]*?\[\/ACTION\]/g,
-      "",
-    )
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
 // ─── Chart Widget (Inline) ────────────────────────────────────
 const CATEGORY_COLORS: Record<string, string> = {
   primary: "var(--primary)",
@@ -204,7 +136,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 function ChartWidget({ type }: { type: string }) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<DashboardSummary | null>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -272,7 +204,7 @@ function ChartWidget({ type }: { type: string }) {
             gap: 8,
           }}
         >
-          {data.topCategories.map((cat: any, i: number) => (
+          {data.topCategories.map((cat, i: number) => (
             <li
               key={cat.name}
               style={{
@@ -304,6 +236,121 @@ function ChartWidget({ type }: { type: string }) {
   );
 }
 
+function ActionConfirmationCard({
+  proposal,
+  onDecision,
+}: {
+  proposal: AiActionProposal;
+  onDecision: (decision: "confirm" | "cancel") => void;
+}) {
+  const status = proposal.status || "pending";
+  const disabled = status !== "pending";
+  const statusLabel: Record<string, string> = {
+    processing: "Memproses…",
+    executed: "Sudah dijalankan",
+    cancelled: "Dibatalkan",
+    expired: "Kedaluwarsa",
+    failed: "Gagal",
+  };
+
+  return (
+    <div
+      style={{
+        width: "min(100%, 420px)",
+        marginTop: 8,
+        padding: 14,
+        borderRadius: 16,
+        border: "1px solid var(--outline-variant)",
+        background: "var(--surface)",
+        boxSizing: "border-box",
+      }}
+    >
+      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+        <span
+          className="material-symbols-outlined"
+          style={{ color: "var(--primary)", fontSize: 22 }}
+        >
+          verified_user
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <strong style={{ display: "block", fontSize: 14 }}>
+            {proposal.title}
+          </strong>
+          <p
+            style={{
+              margin: "4px 0 0",
+              color: "var(--on-surface-variant)",
+              fontSize: 13,
+              lineHeight: 1.45,
+            }}
+          >
+            {proposal.summary}
+          </p>
+        </div>
+      </div>
+
+      {proposal.error ? (
+        <p style={{ margin: "10px 0 0", color: "var(--error)", fontSize: 12 }}>
+          {proposal.error}
+        </p>
+      ) : null}
+
+      {status === "pending" ? (
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={() => onDecision("cancel")}
+            disabled={disabled}
+            style={{
+              flex: 1,
+              minHeight: 38,
+              borderRadius: 12,
+              border: "1px solid var(--outline-variant)",
+              background: "transparent",
+              color: "var(--on-surface-variant)",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Batalkan
+          </button>
+          <button
+            type="button"
+            onClick={() => onDecision("confirm")}
+            disabled={disabled}
+            style={{
+              flex: 1,
+              minHeight: 38,
+              borderRadius: 12,
+              border: "none",
+              background: "var(--primary)",
+              color: "var(--on-primary)",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Konfirmasi
+          </button>
+        </div>
+      ) : (
+        <p
+          style={{
+            margin: "10px 0 0",
+            fontSize: 12,
+            fontWeight: 600,
+            color:
+              status === "failed"
+                ? "var(--error)"
+                : "var(--on-surface-variant)",
+          }}
+        >
+          {statusLabel[status] || status}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -327,7 +374,7 @@ export default function ChatPage() {
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const speechRecognitionRef = useRef<any>(null);
+  const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -348,6 +395,156 @@ export default function ChatPage() {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+
+  const handleActionDecision = useCallback(
+    async (
+      messageId: string,
+      proposalId: string,
+      decision: "confirm" | "cancel",
+    ) => {
+      const token = getToken();
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      setMessages((previous) =>
+        previous.map((message) =>
+          message.id === messageId
+            ? {
+                ...message,
+                pendingActions: message.pendingActions?.map((proposal) =>
+                  proposal.id === proposalId
+                    ? { ...proposal, status: "processing", error: undefined }
+                    : proposal,
+                ),
+              }
+            : message,
+        ),
+      );
+
+      try {
+        const response = await fetch(
+          `${API_BASE}/api/ai/actions/${encodeURIComponent(proposalId)}/${decision}`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || "Aksi gagal diproses");
+        }
+
+        const finalStatus: NonNullable<AiActionProposal["status"]> =
+          decision === "confirm" ? "executed" : "cancelled";
+        setMessages((previous) => [
+          ...previous.map((message) =>
+            message.id === messageId
+              ? {
+                  ...message,
+                  pendingActions: message.pendingActions?.map((proposal) =>
+                    proposal.id === proposalId
+                      ? { ...proposal, status: finalStatus }
+                      : proposal,
+                  ),
+                }
+              : message,
+          ),
+          {
+            id: `${Date.now()}-${proposalId}`,
+            type: "bot",
+            text:
+              data.message ||
+              (decision === "confirm"
+                ? "Aksi berhasil dijalankan."
+                : "Aksi dibatalkan."),
+            time: new Date().toLocaleTimeString("id-ID", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            isNew: true,
+          },
+        ]);
+        if (decision === "confirm") {
+          window.dispatchEvent(new Event("transactionSaved"));
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Aksi gagal diproses";
+        setMessages((previous) =>
+          previous.map((item) =>
+            item.id === messageId
+              ? {
+                  ...item,
+                  pendingActions: item.pendingActions?.map((proposal) =>
+                    proposal.id === proposalId
+                      ? { ...proposal, status: "failed", error: message }
+                      : proposal,
+                  ),
+                }
+              : item,
+          ),
+        );
+      }
+    },
+    [router],
+  );
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    const controller = new AbortController();
+
+    void fetch(`${API_BASE}/api/ai/actions/pending`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as {
+          proposals?: AiActionProposal[];
+        };
+      })
+      .then((data) => {
+        if (!data?.proposals?.length) return;
+        setMessages((previous) => {
+          const knownIds = new Set(
+            previous.flatMap(
+              (message) =>
+                message.pendingActions?.map((proposal) => proposal.id) || [],
+            ),
+          );
+          const unseen = data.proposals!.filter(
+            (proposal) => !knownIds.has(proposal.id),
+          );
+          if (unseen.length === 0) return previous;
+          return [
+            ...previous,
+            {
+              id: `pending-${Date.now()}`,
+              type: "bot",
+              text: "Ada aksi sebelumnya yang masih menunggu konfirmasi.",
+              time: new Date().toLocaleTimeString("id-ID", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              pendingActions: unseen.map((proposal) => ({
+                ...proposal,
+                status: "pending",
+              })),
+            },
+          ];
+        });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name !== "AbortError") {
+          console.error("Failed to load pending AI actions:", error);
+        }
+      });
+
+    return () => controller.abort();
+  }, []);
 
   // Ref to hold scrollHeight before new messages render
   const previousScrollHeightRef = useRef<number | null>(null);
@@ -453,26 +650,52 @@ export default function ChatPage() {
         );
         if (!res.ok) throw new Error("Failed to fetch history");
 
-        const data = await res.json();
+        const data = (await res.json()) as ChatHistoryResponse;
         const fetchedMessages: Message[] = (data.messages || []).map(
-          (m: any) => ({
-            ...m,
+          (message) => ({
+            ...message,
             isHistory: pageToLoad > 1, // only mark older pages as history to bypass animations
           }),
         );
 
         if (fetchedMessages.length > 0) {
           setMessages((prev) => {
+            const hydratedActionIds = new Set(
+              fetchedMessages.flatMap(
+                (message) =>
+                  message.pendingActions?.map((action) => action.id) || [],
+              ),
+            );
+            const fetchedMessageIds = new Set(
+              fetchedMessages.map((message) => message.id),
+            );
+            const localMessages = prev
+              .filter(
+                (message) =>
+                  message.id !== "welcome" &&
+                  !fetchedMessageIds.has(message.id),
+              )
+              .map((message) => ({
+                ...message,
+                pendingActions: message.pendingActions?.filter(
+                  (action) => !hydratedActionIds.has(action.id),
+                ),
+              }))
+              .filter(
+                (message) =>
+                  !message.id.startsWith("pending-") ||
+                  Boolean(message.pendingActions?.length),
+              );
+
             if (pageToLoad === 1) {
-              const filtered = prev.filter((m) => m.id !== "welcome");
-              if (filtered.length === 0) return fetchedMessages;
-              return [...fetchedMessages, ...filtered];
+              if (localMessages.length === 0) return fetchedMessages;
+              return [...fetchedMessages, ...localMessages];
             } else {
               // Save scrollHeight synchronously before React renders the new elements
               previousScrollHeightRef.current =
                 document.documentElement.scrollHeight ||
                 document.body.scrollHeight;
-              return [...fetchedMessages, ...prev];
+              return [...fetchedMessages, ...localMessages];
             }
           });
         } else if (pageToLoad === 1) {
@@ -496,8 +719,8 @@ export default function ChatPage() {
 
         setHasMore(data.pagination.page < data.pagination.totalPages);
         setPage(pageToLoad);
-      } catch (err: any) {
-      console.error("Image upload failed:", err);
+      } catch (err: unknown) {
+      console.error("History loading failed:", err);
       // Removed alert, we can fail silently or show an inline error if needed
     } finally {
       setIsTyping(false);
@@ -675,10 +898,10 @@ export default function ChatPage() {
             setVoiceStatus("error");
             setVoiceError("Tidak ada suara terdeteksi. Coba lagi.");
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error("STT Error:", err);
           setVoiceStatus("error");
-          setVoiceError(err.message || "Gagal mentranskripsi audio.");
+          setVoiceError(errorMessage(err, "Gagal mentranskripsi audio."));
         }
       };
 
@@ -723,7 +946,13 @@ export default function ChatPage() {
 
       // ── Set up Web Audio API for real-time visualization + silence detection ──
       try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const voiceWindow = window as VoiceWindow;
+        const AudioContextConstructor =
+          voiceWindow.AudioContext || voiceWindow.webkitAudioContext;
+        if (!AudioContextConstructor) {
+          throw new Error("Web Audio API tidak didukung");
+        }
+        const audioContext = new AudioContextConstructor();
         const source = audioContext.createMediaStreamSource(stream);
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = 256;
@@ -781,11 +1010,11 @@ export default function ChatPage() {
       } catch (err) {
         console.warn("Audio analysis setup failed:", err);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Microphone permission denied:", err);
       setVoiceStatus("denied");
       setVoiceError(
-        err.name === "NotAllowedError"
+        errorName(err) === "NotAllowedError"
           ? "Akses mikrofon ditolak. Mohon izinkan akses mikrofon di pengaturan browser."
           : "Tidak dapat mengakses mikrofon. Pastikan mikrofon berfungsi.",
       );
@@ -795,8 +1024,12 @@ export default function ChatPage() {
     // ── Branch: Web Speech API available → real-time transcription ──
     if (hasSpeechApiRef.current) {
       const SpeechRecognition =
-        (window as any).SpeechRecognition ||
-        (window as any).webkitSpeechRecognition;
+        (window as VoiceWindow).SpeechRecognition ||
+        (window as VoiceWindow).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        startMediaRecorderRecording();
+        return;
+      }
       const recognition = new SpeechRecognition();
       speechRecognitionRef.current = recognition;
       recognition.lang = "id-ID";
@@ -814,7 +1047,7 @@ export default function ChatPage() {
         }, 1000);
       };
 
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event: BrowserSpeechRecognitionResultEvent) => {
         let finalText = "";
         let interim = "";
         for (let i = 0; i < event.results.length; i++) {
@@ -829,7 +1062,7 @@ export default function ChatPage() {
         setInterimTranscript(combinedTranscript);
       };
 
-      recognition.onerror = (event: any) => {
+      recognition.onerror = (event: BrowserSpeechRecognitionErrorEvent) => {
         console.error("Speech recognition error:", event.error);
         if (event.error === "no-speech") {
           // No speech — let it end naturally
@@ -948,7 +1181,7 @@ export default function ChatPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ text: stripActions(text) }),
+        body: JSON.stringify({ text: aiResponseToPlainText(text) }),
       });
 
       if (!res.ok) {
@@ -986,7 +1219,10 @@ export default function ChatPage() {
   // Initial load
   useEffect(() => {
     if (!initialLoadDone) {
-      fetchHistory(1);
+      const timer = window.setTimeout(() => {
+        void fetchHistory(1);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, [fetchHistory, initialLoadDone]);
 
@@ -1007,7 +1243,7 @@ export default function ChatPage() {
       window.scrollBy({
         top: newScrollHeight - previousScrollHeightRef.current,
         left: 0,
-        behavior: "instant" as any,
+        behavior: "instant" as ScrollBehavior,
       });
 
       // Restore original scroll behavior
@@ -1053,8 +1289,11 @@ export default function ChatPage() {
       const scannedImage = localStorage.getItem("scanned_image");
       if (scannedImage) {
         localStorage.removeItem("scanned_image");
-        setCapturedImage(scannedImage);
-        setInput("Tolong analisis gambar struk ini dan catat transaksinya.");
+        const timer = window.setTimeout(() => {
+          setCapturedImage(scannedImage);
+          setInput("Tolong analisis gambar struk ini dan catat transaksinya.");
+        }, 0);
+        return () => window.clearTimeout(timer);
       }
     }
   }, []);
@@ -1102,6 +1341,7 @@ export default function ChatPage() {
           },
           body: JSON.stringify({
             message: text,
+            requestId: crypto.randomUUID(),
             image: imageBase64 || undefined,
             history: messages
               .slice(-10)
@@ -1138,40 +1378,53 @@ export default function ChatPage() {
             const payload = trimmed.slice(6);
             if (payload === "[DONE]") continue;
 
+            let event: AiStreamEvent;
             try {
-              const event = JSON.parse(payload);
-
-              if (event.type === "token" && event.content) {
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === botId
-                      ? {
-                          ...m,
-                          text: m.text + event.content,
-                        }
-                      : m,
-                  ),
-                );
-              } else if (event.type === "transaction_created") {
-                // Backend now streams the formatted text as token events
-              } else if (event.type === "transaction_updated") {
-                // Backend now streams the formatted text as token events
-              } else if (event.type === "transaction_deleted") {
-                // Backend now streams the formatted text as token events
-              } else if (event.type === "error") {
-                throw new Error(event.error);
-              }
+              event = JSON.parse(payload) as AiStreamEvent;
             } catch {
-              // skip
+              continue;
+            }
+
+            if (event.type === "token" && event.content) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === botId
+                    ? {
+                        ...m,
+                        text: m.text + event.content,
+                      }
+                    : m,
+                ),
+              );
+            } else if (
+              event.type === "action_confirmation_required" &&
+              event.proposal
+            ) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === botId
+                    ? {
+                        ...m,
+                        pendingActions: [
+                          ...(m.pendingActions || []),
+                          { ...event.proposal!, status: "pending" },
+                        ],
+                      }
+                    : m,
+                ),
+              );
+            } else if (event.type === "error") {
+              throw new Error(event.error || "AI gagal memproses permintaan");
             }
           }
         }
-      } catch (err: any) {
-        if (err.name === "AbortError") return;
+      } catch (err: unknown) {
+        if (errorName(err) === "AbortError") return;
+        const message = errorMessage(err, "AI gagal memproses permintaan");
         setMessages((prev) =>
           prev.map((m) =>
             m.id === botId
-              ? { ...m, type: "error", text: err.message, isStreaming: false }
+              ? { ...m, type: "error", text: message, isStreaming: false }
               : m,
           ),
         );
@@ -1181,7 +1434,7 @@ export default function ChatPage() {
         setMessages((prev) =>
           prev.map((m) => {
             if (m.id === botId) {
-              finalBotText = stripActions(m.text);
+              finalBotText = stripAiActionBlocks(m.text);
               return {
                 ...m,
                 isStreaming: false,
@@ -1698,17 +1951,11 @@ export default function ChatPage() {
                     </div>
                   )}
                   {(() => {
-                    const askMatch = msg.text.match(/\[ASK_ACCOUNT:(.*?)\]/);
-                    const options = askMatch ? askMatch[1].split(",") : [];
-
-                    const chartMatch = msg.text.match(/\[SHOW_CHART:(.*?)\]/);
-                    const chartType = chartMatch ? chartMatch[1] : null;
-
-                    let cleanText = msg.text
-                      .replace(/\[ACTION[\s\S]*?(?:\[\/ACTION\]|$)/g, "")
-                      .replace(/\[ASK_ACCOUNT[\s\S]*?(?:\]|$)/g, "")
-                      .replace(/\[SHOW_CHART[\s\S]*?(?:\]|$)/g, "")
-                      .trim();
+                    const {
+                      markdown: cleanText,
+                      accountOptions: options,
+                      chartType,
+                    } = parseAiResponse(msg.text);
 
                     const isProcessing =
                       msg.isStreaming && cleanText.length === 0 && !chartType;
@@ -1741,11 +1988,7 @@ export default function ChatPage() {
                               />
                             </div>
                           ) : (
-                            <div className="chat-md markdown-body" style={{ margin: 0 }}>
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {cleanText}
-                              </ReactMarkdown>
-                            </div>
+                            <AiMarkdown content={cleanText} />
                           )}
                           {msg.isStreaming && !isProcessing && (
                             <span
@@ -1763,6 +2006,19 @@ export default function ChatPage() {
                             <ChartWidget type={chartType} />
                           )}
                         </div>
+                        {msg.pendingActions?.map((proposal) => (
+                          <ActionConfirmationCard
+                            key={proposal.id}
+                            proposal={proposal}
+                            onDecision={(decision) =>
+                              handleActionDecision(
+                                msg.id,
+                                proposal.id,
+                                decision,
+                              )
+                            }
+                          />
+                        ))}
                         {options.length > 0 &&
                           !msg.isStreaming &&
                           idx === displayMessages.length - 1 && (
@@ -1776,8 +2032,6 @@ export default function ChatPage() {
                               }}
                             >
                               {options.map((opt) => {
-                                const isSelected =
-                                  selectedAccount === opt.trim();
                                 return (
                                   <button
                                     key={opt}
@@ -2395,7 +2649,7 @@ export default function ChatPage() {
                         textAlign: "center",
                       }}
                     >
-                      "{interimTranscript}"
+                      &ldquo;{interimTranscript}&rdquo;
                     </p>
                   </div>
                 )}
@@ -2411,7 +2665,7 @@ export default function ChatPage() {
                   >
                     Silakan bicara
                     <br />
-                    Contoh: "Beli kopi 25 ribu"
+                    Contoh: &ldquo;Beli kopi 25 ribu&rdquo;
                   </p>
                 )}
 
