@@ -186,10 +186,49 @@ export default function NotificationsPage() {
               justifyContent: "space-between",
             }}
           >
-            <div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                minWidth: 0,
+              }}
+            >
+              <button
+                type="button"
+                className="btn-icon focus-ring"
+                onClick={() =>
+                  window.history.length > 1
+                    ? router.back()
+                    : router.push("/dashboard")
+                }
+                aria-label={t("common.back")}
+                title={t("common.back")}
+                style={{
+                  width: 40,
+                  height: 40,
+                  flexShrink: 0,
+                  border: "none",
+                  background: "transparent",
+                  color: "var(--on-surface-variant)",
+                  cursor: "pointer",
+                }}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  aria-hidden="true"
+                  style={{ fontSize: 24 }}
+                >
+                  arrow_back
+                </span>
+              </button>
               <h1
                 className="text-headline-lg"
-                style={{ color: "var(--on-surface)" }}
+                style={{
+                  color: "var(--on-surface)",
+                  margin: 0,
+                  textWrap: "balance",
+                }}
               >
                 {t("notif.title")}
               </h1>

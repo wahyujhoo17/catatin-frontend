@@ -104,6 +104,7 @@ const translations: Record<Language, Record<string, string>> = {
     "common.cancel": "Batal",
     "common.delete": "Hapus",
     "common.edit": "Edit",
+    "common.back": "Kembali",
 
     // Notifications
     "notif.title": "Notifikasi",
@@ -208,6 +209,7 @@ const translations: Record<Language, Record<string, string>> = {
     "common.cancel": "Cancel",
     "common.delete": "Delete",
     "common.edit": "Edit",
+    "common.back": "Back",
 
     // Notifications
     "notif.title": "Notifications",
