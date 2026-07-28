@@ -438,8 +438,8 @@ export default function ChatPage() {
 
         const finalStatus: NonNullable<AiActionProposal["status"]> =
           decision === "confirm" ? "executed" : "cancelled";
-        setMessages((previous) => [
-          ...previous.map((message) =>
+        setMessages((previous) => {
+          const updatedMessages = previous.map((message) =>
             message.id === messageId
               ? {
                   ...message,
@@ -450,22 +450,26 @@ export default function ChatPage() {
                   ),
                 }
               : message,
-          ),
-          {
-            id: `${Date.now()}-${proposalId}`,
-            type: "bot",
-            text:
-              data.message ||
-              (decision === "confirm"
-                ? "Aksi berhasil dijalankan."
-                : "Aksi dibatalkan."),
-            time: new Date().toLocaleTimeString("id-ID", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            isNew: true,
-          },
-        ]);
+          );
+
+          if (decision === "confirm") {
+            return updatedMessages;
+          }
+
+          return [
+            ...updatedMessages,
+            {
+              id: `${Date.now()}-${proposalId}`,
+              type: "bot",
+              text: data.message || "Aksi dibatalkan.",
+              time: new Date().toLocaleTimeString("id-ID", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              isNew: true,
+            },
+          ];
+        });
         if (decision === "confirm") {
           window.dispatchEvent(new Event("transactionSaved"));
         }
