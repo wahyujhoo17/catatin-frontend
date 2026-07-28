@@ -13,6 +13,8 @@ import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import loadingJson from "../../../public/797bcec6-1174-11ee-9f70-5b99a7148b86.json";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
@@ -1739,13 +1741,11 @@ export default function ChatPage() {
                               />
                             </div>
                           ) : (
-                            <div
-                              className="chat-md"
-                              style={{ margin: 0 }}
-                              dangerouslySetInnerHTML={{
-                                __html: renderMarkdown(cleanText),
-                              }}
-                            />
+                            <div className="chat-md markdown-body" style={{ margin: 0 }}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {cleanText}
+                              </ReactMarkdown>
+                            </div>
                           )}
                           {msg.isStreaming && !isProcessing && (
                             <span
