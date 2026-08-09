@@ -541,7 +541,7 @@ export default function SettingsPage() {
             <div className="settings-row" style={{ position: "relative" }}>
               <div>
                 <p className="text-body-md" style={{ fontWeight: 600 }}>
-                  {lang === "en" ? "Financial Cycle Reset Day (Payday)" : "Tanggal Reset Siklus (Gajian)"}
+                  {t("settings.cycle_day")}
                 </p>
                 <p
                   className="text-body-sm"
@@ -549,7 +549,7 @@ export default function SettingsPage() {
                 >
                   {cycleStartDay === 1
                     ? (lang === "en" ? "Every 1st of month (Calendar)" : "Setiap tanggal 1 (Awal Bulan)")
-                    : (lang === "en" ? `Every ${cycleStartDay}th of month` : `Setiap tanggal ${cycleStartDay} (Siklus: Tgl ${cycleStartDay} s.d. ${cycleStartDay - 1})`)}
+                    : (lang === "en" ? `Every ${cycleStartDay}th of month (Cycle: ${cycleStartDay}th - ${cycleStartDay - 1}th)` : `Setiap tanggal ${cycleStartDay} (Siklus: Tgl ${cycleStartDay} s.d. ${cycleStartDay - 1})`)}
                 </p>
               </div>
               <button
@@ -956,15 +956,13 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h3 className="text-title-md" style={{ fontWeight: 700, margin: 0 }}>
-                    {lang === "en" ? "Reset Date (Payday)" : "Tanggal Reset Siklus (Gajian)"}
+                    {t("settings.cycle_modal_title")}
                   </h3>
                   <p
                     className="text-body-xs"
                     style={{ color: "var(--on-surface-variant)", margin: 0, marginTop: 2 }}
                   >
-                    {lang === "en"
-                      ? "Select salary / reset date (1 to 28)"
-                      : "Pilih tanggal gajian / reset bulanan (1 s.d. 28)"}
+                    {t("settings.cycle_modal_sub")}
                   </p>
                 </div>
               </div>
@@ -1004,7 +1002,7 @@ export default function SettingsPage() {
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: "var(--primary)" }}>
-                    {lang === "en" ? "Selected Cycle Start:" : "Tanggal Terpilih:"}
+                    {t("settings.cycle_modal_selected")}
                   </span>
                   <span
                     style={{
@@ -1017,12 +1015,12 @@ export default function SettingsPage() {
                       boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
                     }}
                   >
-                    Tanggal {tempSelectedDay}
+                    {lang === "en" ? `Date ${tempSelectedDay}` : `Tanggal ${tempSelectedDay}`}
                   </span>
                 </div>
                 <p style={{ fontSize: 12, color: "var(--on-surface-variant)", margin: 0, marginTop: 4, lineHeight: 1.4 }}>
                   {tempSelectedDay === 1
-                    ? (lang === "en" ? "Standard monthly calendar (1st - End of Month)." : "Siklus bulanan standar kalender (Tgl 1 s.d. Akhir Bulan).")
+                    ? t("settings.cycle_modal_info_calendar")
                     : (lang === "en"
                         ? `Monthly report & budget: ${tempSelectedDay}th of this month until ${tempSelectedDay - 1}th of next month.`
                         : `Laporan & budget bulanan: Tgl ${tempSelectedDay} bulan ini s.d. Tgl ${tempSelectedDay - 1} bulan depan.`)}
@@ -1039,7 +1037,7 @@ export default function SettingsPage() {
                     marginBottom: 10,
                   }}
                 >
-                  {lang === "en" ? "Pick a date (1 to 28):" : "Pilih Tanggal (1 - 28):"}
+                  {t("settings.cycle_modal_pick")}
                 </p>
                 <div
                   style={{
@@ -1139,7 +1137,7 @@ export default function SettingsPage() {
                     >
                       progress_activity
                     </span>
-                    {lang === "en" ? "Saving..." : "Menyimpan..."}
+                    {t("settings.saving")}
                   </>
                 ) : (
                   t("common.save")

@@ -49,6 +49,13 @@ const translations: Record<Language, Record<string, string>> = {
     "settings.notif_trans_sub": "Kirim ringkasan transaksi via PWA push",
     "settings.notif_budget": "Pengingat Budgeting",
     "settings.notif_budget_sub": "Peringatan jika melebihi batas bulanan",
+    "settings.cycle_day": "Tanggal Reset Siklus (Gajian)",
+    "settings.cycle_modal_title": "Tanggal Reset Siklus (Gajian)",
+    "settings.cycle_modal_sub": "Pilih tanggal gajian / reset bulanan (1 s.d. 28)",
+    "settings.cycle_modal_selected": "Tanggal Terpilih:",
+    "settings.cycle_modal_info_calendar": "Siklus bulanan standar kalender (Tgl 1 s.d. Akhir Bulan).",
+    "settings.cycle_modal_pick": "Pilih Tanggal (1 - 28):",
+    "settings.saving": "Menyimpan...",
 
     // Settings AI & Connectivity
     "settings.ai_connectivity": "KONEKTIVITAS & AI",
@@ -154,6 +161,13 @@ const translations: Record<Language, Record<string, string>> = {
     "settings.notif_trans_sub": "Send transaction summaries via push",
     "settings.notif_budget": "Budget Reminders",
     "settings.notif_budget_sub": "Alert when exceeding monthly limit",
+    "settings.cycle_day": "Financial Cycle Reset Day (Payday)",
+    "settings.cycle_modal_title": "Reset Date (Payday)",
+    "settings.cycle_modal_sub": "Select salary / reset date (1 to 28)",
+    "settings.cycle_modal_selected": "Selected Date:",
+    "settings.cycle_modal_info_calendar": "Standard monthly calendar cycle (1st to End of Month).",
+    "settings.cycle_modal_pick": "Select Date (1 - 28):",
+    "settings.saving": "Saving...",
 
     // Settings AI & Connectivity
     "settings.ai_connectivity": "CONNECTIVITY & AI",
