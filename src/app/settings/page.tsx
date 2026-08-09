@@ -507,6 +507,11 @@ export default function SettingsPage() {
                     >
                       {w.label}
                     </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Tanggal Reset Siklus Keuangan (Tanggal Gajian) */}
             <div className="settings-row" style={{ position: "relative" }}>
               <div>
