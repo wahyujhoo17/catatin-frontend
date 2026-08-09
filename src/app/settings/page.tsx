@@ -9,6 +9,8 @@ import AIProviderLogo from "@/components/AIProviderLogo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
 export default function SettingsPage() {
   const { user, updateMode, logout } = useAuth();
   const { lang, setLang, t } = useLanguage();
@@ -23,6 +25,9 @@ export default function SettingsPage() {
 
   const [activeWS, setActiveWS] = useState("personal");
   const [isWSOpen, setIsWSOpen] = useState(false);
+
+  const [cycleStartDay, setCycleStartDay] = useState(1);
+  const [isCycleOpen, setIsCycleOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isClearingChat, setIsClearingChat] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -64,8 +69,46 @@ export default function SettingsPage() {
 
       const savedNotifBudget = localStorage.getItem("pref_notif_budgeting");
       if (savedNotifBudget !== null) setNotifBudget(savedNotifBudget === "true");
+
+      const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+      if (token) {
+        fetch(`${API_BASE}/api/settings/preferences`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.financialCycleStartDay) {
+              setCycleStartDay(data.financialCycleStartDay);
+            }
+          })
+          .catch(() => {});
+      }
     }
   }, [user]);
+
+  const handleCycleDayChange = async (day: number) => {
+    setCycleStartDay(day);
+    setIsCycleOpen(false);
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/settings/preferences`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ financialCycleStartDay: day }),
+        });
+        if (res.ok) {
+          triggerToast(`Tanggal reset siklus keuangan diset ke tanggal ${day}`);
+        }
+      } catch (err) {
+        console.error("Failed to save financial cycle start day:", err);
+      }
+    }
+  };
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -463,6 +506,91 @@ export default function SettingsPage() {
                       }}
                     >
                       {w.label}
+                    </button>
+            {/* Tanggal Reset Siklus Keuangan (Tanggal Gajian) */}
+            <div className="settings-row" style={{ position: "relative" }}>
+              <div>
+                <p className="text-body-md" style={{ fontWeight: 600 }}>
+                  {lang === "en" ? "Financial Cycle Reset Day (Payday)" : "Tanggal Reset Siklus (Gajian)"}
+                </p>
+                <p
+                  className="text-body-sm"
+                  style={{ color: "var(--on-surface-variant)" }}
+                >
+                  {cycleStartDay === 1
+                    ? (lang === "en" ? "Every 1st of month (Calendar)" : "Setiap tanggal 1 (Awal Bulan)")
+                    : (lang === "en" ? `Every ${cycleStartDay}th of month` : `Setiap tanggal ${cycleStartDay} (Siklus: Tgl ${cycleStartDay} s.d. ${cycleStartDay - 1})`)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCycleOpen(!isCycleOpen)}
+                style={{
+                  background: "rgba(103, 80, 164, 0.06)",
+                  padding: "8px 12px",
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "var(--primary)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                {t("common.edit")}
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: 18 }}
+                >
+                  keyboard_arrow_down
+                </span>
+              </button>
+
+              {isCycleOpen && (
+                <div
+                  className="glass-card animate-fade-in"
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "100%",
+                    zIndex: 100,
+                    marginTop: 6,
+                    padding: 8,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: 4,
+                    width: 240,
+                    maxHeight: 200,
+                    overflowY: "auto",
+                    background: "white",
+                    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+                    border: "1px solid rgba(203, 196, 210, 0.4)",
+                  }}
+                >
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => handleCycleDayChange(day)}
+                      style={{
+                        padding: "8px 0",
+                        borderRadius: 8,
+                        fontSize: 13,
+                        textAlign: "center",
+                        width: "100%",
+                        border: "none",
+                        background:
+                          cycleStartDay === day
+                            ? "rgba(103, 80, 164, 0.12)"
+                            : "transparent",
+                        color:
+                          cycleStartDay === day
+                            ? "var(--primary)"
+                            : "var(--on-surface)",
+                        fontWeight: cycleStartDay === day ? 700 : 500,
+                      }}
+                    >
+                      Tgl {day}
                     </button>
                   ))}
                 </div>
