@@ -27,7 +27,9 @@ export default function SettingsPage() {
   const [isWSOpen, setIsWSOpen] = useState(false);
 
   const [cycleStartDay, setCycleStartDay] = useState(1);
-  const [isCycleOpen, setIsCycleOpen] = useState(false);
+  const [isCycleModalOpen, setIsCycleModalOpen] = useState(false);
+  const [tempSelectedDay, setTempSelectedDay] = useState(1);
+  const [isSavingCycleDay, setIsSavingCycleDay] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isClearingChat, setIsClearingChat] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -70,7 +72,7 @@ export default function SettingsPage() {
       const savedNotifBudget = localStorage.getItem("pref_notif_budgeting");
       if (savedNotifBudget !== null) setNotifBudget(savedNotifBudget === "true");
 
-      const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
+      const token = localStorage.getItem("token") || localStorage.getItem("auth_token");
       if (token) {
         fetch(`${API_BASE}/api/settings/preferences`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -87,26 +89,49 @@ export default function SettingsPage() {
   }, [user]);
 
   const handleCycleDayChange = async (day: number) => {
-    setCycleStartDay(day);
-    setIsCycleOpen(false);
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("auth_token") || localStorage.getItem("token");
-      if (!token) return;
-      try {
-        const res = await fetch(`${API_BASE}/api/settings/preferences`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ financialCycleStartDay: day }),
-        });
-        if (res.ok) {
-          triggerToast(`Tanggal reset siklus keuangan diset ke tanggal ${day}`);
-        }
-      } catch (err) {
-        console.error("Failed to save financial cycle start day:", err);
+    setIsSavingCycleDay(true);
+    try {
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("token") || localStorage.getItem("auth_token")
+          : null;
+
+      if (!token) {
+        triggerToast("Sesi login tidak ditemukan, silakan login ulang.");
+        setIsSavingCycleDay(false);
+        return;
       }
+
+      const res = await fetch(`${API_BASE}/api/settings/preferences`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ financialCycleStartDay: day }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        setCycleStartDay(day);
+        setIsCycleModalOpen(false);
+        triggerToast(
+          lang === "en"
+            ? `Financial cycle reset day updated to date ${day}`
+            : `Tanggal reset siklus keuangan diset ke tanggal ${day}`
+        );
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("financial_cycle_changed"));
+        }
+      } else {
+        triggerToast(data.error || "Gagal menyimpan tanggal reset");
+      }
+    } catch (err: any) {
+      console.error("Failed to save financial cycle start day:", err);
+      triggerToast("Gagal menyimpan tanggal reset");
+    } finally {
+      setIsSavingCycleDay(false);
     }
   };
 
@@ -529,77 +554,29 @@ export default function SettingsPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsCycleOpen(!isCycleOpen)}
+                onClick={() => {
+                  setTempSelectedDay(cycleStartDay);
+                  setIsCycleModalOpen(true);
+                }}
                 style={{
                   background: "rgba(103, 80, 164, 0.06)",
-                  padding: "8px 12px",
+                  padding: "8px 14px",
                   borderRadius: 12,
                   fontSize: 14,
                   fontWeight: 600,
                   color: "var(--primary)",
                   display: "flex",
                   alignItems: "center",
-                  gap: 4,
+                  gap: 6,
+                  border: "none",
+                  cursor: "pointer",
                 }}
               >
-                {t("common.edit")}
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: 18 }}
-                >
-                  keyboard_arrow_down
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                  calendar_month
                 </span>
+                {t("common.edit")}
               </button>
-
-              {isCycleOpen && (
-                <div
-                  className="glass-card animate-fade-in"
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: "100%",
-                    zIndex: 100,
-                    marginTop: 6,
-                    padding: 8,
-                    display: "grid",
-                    gridTemplateColumns: "repeat(4, 1fr)",
-                    gap: 4,
-                    width: 240,
-                    maxHeight: 200,
-                    overflowY: "auto",
-                    background: "white",
-                    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
-                    border: "1px solid rgba(203, 196, 210, 0.4)",
-                  }}
-                >
-                  {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => handleCycleDayChange(day)}
-                      style={{
-                        padding: "8px 0",
-                        borderRadius: 8,
-                        fontSize: 13,
-                        textAlign: "center",
-                        width: "100%",
-                        border: "none",
-                        background:
-                          cycleStartDay === day
-                            ? "rgba(103, 80, 164, 0.12)"
-                            : "transparent",
-                        color:
-                          cycleStartDay === day
-                            ? "var(--primary)"
-                            : "var(--on-surface)",
-                        fontWeight: cycleStartDay === day ? 700 : 500,
-                      }}
-                    >
-                      Tgl {day}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Notification Toggle 1 */}
@@ -916,6 +893,262 @@ export default function SettingsPage() {
       </main>
 
       <BottomNav />
+
+      {/* Modal Pilih Tanggal Reset Siklus Keuangan / Gajian */}
+      {isCycleModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(29, 27, 32, 0.55)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            className="animate-fade-slide-up"
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              background: "var(--surface-container-lowest, #ffffff)",
+              borderRadius: 28,
+              boxShadow: "0 24px 60px rgba(0,0,0,0.22)",
+              border: "1px solid rgba(203, 196, 210, 0.4)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              position: "relative",
+            }}
+          >
+            {/* ── Modal Header ── */}
+            <div
+              style={{
+                padding: "24px 24px 16px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottom: "1px solid rgba(0,0,0,0.06)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 14,
+                    background: "rgba(103, 80, 164, 0.1)",
+                    color: "var(--primary)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 24 }}>calendar_month</span>
+                </div>
+                <div>
+                  <h3 className="text-title-md" style={{ fontWeight: 700, margin: 0 }}>
+                    {lang === "en" ? "Reset Date (Payday)" : "Tanggal Reset Siklus (Gajian)"}
+                  </h3>
+                  <p
+                    className="text-body-xs"
+                    style={{ color: "var(--on-surface-variant)", margin: 0, marginTop: 2 }}
+                  >
+                    {lang === "en"
+                      ? "Select salary / reset date (1 to 28)"
+                      : "Pilih tanggal gajian / reset bulanan (1 s.d. 28)"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCycleModalOpen(false)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  border: "none",
+                  background: "rgba(0,0,0,0.04)",
+                  color: "var(--on-surface-variant)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
+              </button>
+            </div>
+
+            {/* ── Modal Body / Info & Grid ── */}
+            <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Info Box Preview */}
+              <div
+                style={{
+                  background: "rgba(103, 80, 164, 0.06)",
+                  border: "1px solid rgba(103, 80, 164, 0.18)",
+                  borderRadius: 16,
+                  padding: "14px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--primary)" }}>
+                    {lang === "en" ? "Selected Cycle Start:" : "Tanggal Terpilih:"}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "var(--primary)",
+                      background: "white",
+                      padding: "2px 10px",
+                      borderRadius: 20,
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
+                    }}
+                  >
+                    Tanggal {tempSelectedDay}
+                  </span>
+                </div>
+                <p style={{ fontSize: 12, color: "var(--on-surface-variant)", margin: 0, marginTop: 4, lineHeight: 1.4 }}>
+                  {tempSelectedDay === 1
+                    ? (lang === "en" ? "Standard monthly calendar (1st - End of Month)." : "Siklus bulanan standar kalender (Tgl 1 s.d. Akhir Bulan).")
+                    : (lang === "en"
+                        ? `Monthly report & budget: ${tempSelectedDay}th of this month until ${tempSelectedDay - 1}th of next month.`
+                        : `Laporan & budget bulanan: Tgl ${tempSelectedDay} bulan ini s.d. Tgl ${tempSelectedDay - 1} bulan depan.`)}
+                </p>
+              </div>
+
+              {/* 7 Columns Calendar Day Grid (1 - 28) */}
+              <div>
+                <p
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--on-surface)",
+                    marginBottom: 10,
+                  }}
+                >
+                  {lang === "en" ? "Pick a date (1 to 28):" : "Pilih Tanggal (1 - 28):"}
+                </p>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7, 1fr)",
+                    gap: 8,
+                  }}
+                >
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => {
+                    const isSelected = tempSelectedDay === day;
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => setTempSelectedDay(day)}
+                        style={{
+                          aspectRatio: "1",
+                          borderRadius: 14,
+                          border: isSelected ? "none" : "1px solid rgba(203, 196, 210, 0.5)",
+                          background: isSelected
+                            ? "linear-gradient(135deg, var(--primary, #6750a4) 0%, #4f378b 100%)"
+                            : "white",
+                          color: isSelected ? "#ffffff" : "var(--on-surface)",
+                          fontSize: 14,
+                          fontWeight: isSelected ? 700 : 500,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          boxShadow: isSelected ? "0 4px 12px rgba(103, 80, 164, 0.35)" : "none",
+                          transform: isSelected ? "scale(1.06)" : "scale(1)",
+                          transition: "all 0.15s cubic-bezier(0.4, 0, 0.2, 1)",
+                        }}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Modal Footer Buttons ── */}
+            <div
+              style={{
+                padding: "16px 24px 24px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: 12,
+                borderTop: "1px solid rgba(0,0,0,0.06)",
+                background: "rgba(0,0,0,0.015)",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setIsCycleModalOpen(false)}
+                style={{
+                  padding: "10px 18px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(203, 196, 210, 0.5)",
+                  background: "white",
+                  color: "var(--on-surface-variant)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                disabled={isSavingCycleDay}
+                onClick={() => handleCycleDayChange(tempSelectedDay)}
+                style={{
+                  padding: "10px 22px",
+                  borderRadius: 14,
+                  border: "none",
+                  background: isSavingCycleDay
+                    ? "rgba(103, 80, 164, 0.5)"
+                    : "linear-gradient(135deg, var(--primary, #6750a4) 0%, #4f378b 100%)",
+                  color: "#ffffff",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: isSavingCycleDay ? "not-allowed" : "pointer",
+                  boxShadow: isSavingCycleDay ? "none" : "0 4px 14px rgba(103, 80, 164, 0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                {isSavingCycleDay ? (
+                  <>
+                    <span
+                      className="material-symbols-outlined animate-spin"
+                      style={{ fontSize: 18 }}
+                    >
+                      progress_activity
+                    </span>
+                    {lang === "en" ? "Saving..." : "Menyimpan..."}
+                  </>
+                ) : (
+                  t("common.save")
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Chat History Modal */}
       {isConfirmOpen && (
