@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { AiMarkdown } from "@/components/ai/AiMarkdown";
 import { parseAiResponse } from "@/lib/aiResponse";
+import { useAuth } from "@/contexts/AuthContext";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -34,14 +35,23 @@ function errorMessage(error: unknown, fallback: string): string {
 export default function BottomNav() {
   const pathname = usePathname();
   const { t } = useLanguage();
+  const { user } = useAuth();
 
-  const dynamicNavItems = [
+  const personalNavItems = [
     { icon: "dashboard", href: "/dashboard", label: t("nav.dashboard"), id: "dashboard" },
     { icon: "chat_bubble", href: "/chat", label: t("nav.chat"), id: "chat" },
     { icon: "photo_camera", href: "#scan", label: t("nav.scan"), id: "scan" },
     { icon: "account_balance_wallet", href: "/wallet", label: t("nav.wallet"), id: "wallet" },
     { icon: "settings", href: "/settings", label: t("nav.settings"), id: "settings" },
   ];
+  const posNavItems = [
+    { icon: "point_of_sale", href: "/dashboard/pos", label: "Kasir", id: "dashboard" },
+    { icon: "chat_bubble", href: "/chat", label: t("nav.chat"), id: "chat" },
+    { icon: "inventory_2", href: "/dashboard/pos?tab=products", label: "Produk", id: "products" },
+    { icon: "pending_actions", href: "/dashboard/pos?tab=customers", label: "Kasbon", id: "customers" },
+    { icon: "settings", href: "/settings", label: t("nav.settings"), id: "settings" },
+  ];
+  const dynamicNavItems = user?.mode === "POS" ? posNavItems : personalNavItems;
 
   // Dynamic dashboard path based on workspace selection
   const [dashboardHref, setDashboardHref] = useState("/dashboard");
@@ -341,7 +351,7 @@ export default function BottomNav() {
 
           let href = item.href;
           if (item.id === "dashboard") {
-            href = dashboardHref;
+            href = user?.mode === "POS" ? "/dashboard/pos" : dashboardHref;
           }
 
           const isActive =
@@ -356,8 +366,8 @@ export default function BottomNav() {
               className={`bottom-nav-item ${isActive ? "active" : ""}`}
               aria-label={item.label}
               style={{
-                marginRight: index === 1 ? "16px" : "0",
-                marginLeft: index === 3 ? "16px" : "0",
+                marginRight: user?.mode !== "POS" && index === 1 ? "16px" : "0",
+                marginLeft: user?.mode !== "POS" && index === 3 ? "16px" : "0",
               }}
             >
               <span

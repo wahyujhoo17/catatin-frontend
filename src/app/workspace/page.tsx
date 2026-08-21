@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
@@ -31,7 +31,7 @@ const workspaces = [
     title: "POS Operations (Usaha)",
     subtitle:
       "Kelola penjualan, inventaris toko, dan transaksi kasir bisnis bertenaga AI.",
-    badge: "Segera Hadir",
+    badge: "Siap Digunakan",
     icon: "point_of_sale",
     color: "#8b5cf6",
     bgLight: "rgba(139, 92, 246, 0.08)",
@@ -40,9 +40,9 @@ const workspaces = [
       { icon: "receipt_long", label: "Invoices" },
       { icon: "analytics", label: "Reports" },
     ],
-    cta: "Segera Hadir (Coming Soon)",
-    href: "#",
-    disabled: true,
+    cta: "Buka POS Usaha",
+    href: "/dashboard/pos",
+    disabled: false,
   },
 ];
 
@@ -65,10 +65,11 @@ export default function WorkspacePage() {
     try {
       const mode = ws.id === "pos" ? "POS" : "PERSONAL";
       await updateMode(mode);
-      window.location.href = ws.href;
+      router.push(ws.href);
     } catch {
-      // fallback: tetap navigasi meski API gagal
-      window.location.href = ws.href;
+      setToastMsg("Gagal mengubah workspace. Silakan coba lagi.");
+      setIsToastOpen(true);
+      setSaving(null);
     }
   };
 

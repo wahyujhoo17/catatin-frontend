@@ -159,7 +159,7 @@ function detectPlatform(): "ios" | "android" | "web" {
   // iOS: iPhone / iPad / iPod, atau Safari standalone mode
   const isIOS =
     /iphone|ipad|ipod/.test(ua) ||
-    // @ts-ignore — Safari standalone
+    // @ts-expect-error Safari exposes this non-standard standalone property.
     navigator.standalone === true;
 
   if (isIOS) return "ios";

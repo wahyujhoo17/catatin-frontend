@@ -962,9 +962,9 @@ Untuk POS AI, ada tambahan:
 ### Phase 2 — Enhancement (Bulan 3–4)
 
 - [ ] Voice input
-- [ ] Laporan PDF/Excel export
+- [x] Laporan PDF/Excel export
 - [ ] Koreksi via chat
-- [ ] Stok management + notifikasi hampir habis
+- [x] Stok management + notifikasi hampir habis
 - [ ] Goals/Tabungan (Keuangan Pribadi)
 - [ ] Multi-device sync
 - [ ] Dark mode

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TopAppBar from "@/components/layout/TopAppBar";
 import BottomNav from "@/components/layout/BottomNav";
-import AIProviderLogo from "@/components/AIProviderLogo";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -18,7 +17,6 @@ export default function SettingsPage() {
   // Toggle states
   const [notifTransaksi, setNotifTransaksi] = useState(true);
   const [notifBudget, setNotifBudget] = useState(false);
-  const [biometricSec, setBiometricSec] = useState(true);
 
   const [activeLang, setActiveLang] = useState("id");
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -127,7 +125,7 @@ export default function SettingsPage() {
       } else {
         triggerToast(data.error || "Gagal menyimpan tanggal reset");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to save financial cycle start day:", err);
       triggerToast("Gagal menyimpan tanggal reset");
     } finally {
@@ -169,22 +167,19 @@ export default function SettingsPage() {
   };
 
   const handleWorkspaceChange = async (mode: string) => {
-    if (mode === "pos") {
-      setToastMessage("Fitur Dashboard POS Usaha Segera Hadir (Coming Soon)!");
-      setShowSuccessToast(true);
-      setToastVisible(true);
-      return;
-    }
-    const targetMode = "personal";
+    const targetMode = mode === "pos" ? "pos" : "personal";
     setActiveWS(targetMode);
     if (typeof window !== "undefined") {
       localStorage.setItem("app_user_mode", targetMode);
-      localStorage.setItem("active_dashboard", "/dashboard");
+      localStorage.setItem("active_dashboard", targetMode === "pos" ? "/dashboard/pos" : "/dashboard");
     }
     try {
-      await updateMode("PERSONAL");
-    } catch (e: any) {
+      await updateMode(targetMode === "pos" ? "POS" : "PERSONAL");
+      router.push(targetMode === "pos" ? "/dashboard/pos" : "/dashboard");
+    } catch (e: unknown) {
       console.error("Gagal mengubah mode workspace:", e);
+      setActiveWS(user?.mode?.toLowerCase() === "pos" ? "pos" : "personal");
+      triggerToast("Gagal mengubah workspace. Silakan coba lagi.");
     }
   };
 
@@ -208,8 +203,8 @@ export default function SettingsPage() {
       setToastMessage("Riwayat chat AI berhasil dibersihkan");
       setShowSuccessToast(true);
       setToastVisible(true);
-    } catch (err: any) {
-      setToastMessage(err.message || "Gagal menghapus riwayat chat");
+    } catch (err: unknown) {
+      setToastMessage(err instanceof Error ? err.message : "Gagal menghapus riwayat chat");
       setShowSuccessToast(true);
       setToastVisible(true);
     } finally {
@@ -225,7 +220,7 @@ export default function SettingsPage() {
 
   const workspaces = [
     { value: "personal", label: "Dashboard Personal", disabled: false },
-    { value: "pos", label: "Dashboard POS Usaha (Coming Soon)", disabled: true },
+    { value: "pos", label: "Dashboard POS Usaha", disabled: false },
   ];
 
   const currentLang =
